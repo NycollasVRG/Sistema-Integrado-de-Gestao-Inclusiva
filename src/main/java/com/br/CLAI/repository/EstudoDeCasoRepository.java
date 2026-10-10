@@ -11,4 +11,6 @@ import java.util.UUID;
 public interface EstudoDeCasoRepository extends JpaRepository<EstudoDeCaso, UUID> {
     
     List<EstudoDeCaso> findByAlunoId(UUID alunoId);
+
+    boolean existsByAlunoIdAndStatus(UUID alunoId, com.br.CLAI.domain.enums.StatusEstudoCaso status);
 }
