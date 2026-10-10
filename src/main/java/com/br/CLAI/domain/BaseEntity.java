@@ -7,6 +7,18 @@ import org.hibernate.annotations.SoftDelete;
 @SoftDelete
 public abstract class BaseEntity {
 
+    @jakarta.persistence.Id
+    @jakarta.persistence.GeneratedValue(strategy = jakarta.persistence.GenerationType.UUID)
+    private java.util.UUID id;
+
     public BaseEntity() {
+    }
+
+    public java.util.UUID getId() {
+        return id;
+    }
+
+    public void setId(java.util.UUID id) {
+        this.id = id;
     }
 }
