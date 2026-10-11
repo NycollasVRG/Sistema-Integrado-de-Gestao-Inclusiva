@@ -37,4 +37,36 @@ public class EstudoDeCasoMapper {
 
         return dto;
     }
+
+    public EstudoDeCaso toEntity(com.br.CLAI.dto.request.EstudoDeCasoRequestDTO dto, 
+                                com.br.CLAI.domain.Aluno aluno, 
+                                java.util.List<IndicadorReutilizavel> indicadores) {
+        if (dto == null) {
+            return null;
+        }
+
+        EstudoDeCaso entidade = new EstudoDeCaso();
+        entidade.setAluno(aluno);
+        entidade.setStatus(dto.getStatus());
+        entidade.setDiagnosticoInicial(dto.getDiagnosticoInicial());
+        if (indicadores != null) {
+            entidade.setIndicadores(new java.util.ArrayList<>(indicadores));
+        }
+
+        return entidade;
+    }
+
+    public void updateEntityFromDto(EstudoDeCaso entidade, 
+                                    com.br.CLAI.dto.request.EstudoDeCasoUpdateDTO dto, 
+                                    java.util.List<IndicadorReutilizavel> indicadores) {
+        if (entidade == null || dto == null) {
+            return;
+        }
+
+        entidade.setStatus(dto.getStatus());
+        entidade.setDiagnosticoInicial(dto.getDiagnosticoInicial());
+        if (indicadores != null) {
+            entidade.setIndicadores(new java.util.ArrayList<>(indicadores));
+        }
+    }
 }

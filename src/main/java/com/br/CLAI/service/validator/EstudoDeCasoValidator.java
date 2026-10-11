@@ -9,11 +9,19 @@ import org.springframework.stereotype.Component;
 public class EstudoDeCasoValidator {
 
     public void validarConclusao(EstudoDeCasoRequestDTO dto) {
-        if (StatusEstudoCaso.ENCERRADO.equals(dto.getStatus())) {
-            if (dto.getDiagnosticoInicial() == null || dto.getDiagnosticoInicial().trim().isEmpty()) {
+        validarCamposConclusao(dto.getStatus(), dto.getDiagnosticoInicial(), dto.getIndicadoresIds());
+    }
+
+    public void validarConclusao(com.br.CLAI.dto.request.EstudoDeCasoUpdateDTO dto) {
+        validarCamposConclusao(dto.getStatus(), dto.getDiagnosticoInicial(), dto.getIndicadoresIds());
+    }
+
+    private void validarCamposConclusao(StatusEstudoCaso status, String diagnosticoInicial, java.util.List<java.util.UUID> indicadoresIds) {
+        if (StatusEstudoCaso.ENCERRADO.equals(status)) {
+            if (diagnosticoInicial == null || diagnosticoInicial.trim().isEmpty()) {
                 throw new RegraDeNegocioException("O Diagnóstico Inicial é obrigatório para concluir o Estudo de Caso.");
             }
-            if (dto.getIndicadoresIds() == null || dto.getIndicadoresIds().isEmpty()) {
+            if (indicadoresIds == null || indicadoresIds.isEmpty()) {
                 throw new RegraDeNegocioException("Pelo menos um Indicador é obrigatório para concluir o Estudo de Caso.");
             }
         }

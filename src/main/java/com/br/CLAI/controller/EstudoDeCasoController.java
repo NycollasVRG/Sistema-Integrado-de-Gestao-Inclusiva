@@ -44,4 +44,18 @@ public class EstudoDeCasoController {
         EstudoDeCasoResponseDTO response = service.criar(dto, usuarioId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<EstudoDeCasoResponseDTO> atualizarEstudoDeCaso(
+            @PathVariable UUID id,
+            @Valid @RequestBody com.br.CLAI.dto.request.EstudoDeCasoUpdateDTO dto,
+            @RequestHeader(value = "X-User-Id", required = false) UUID usuarioId) {
+
+        if (usuarioId == null) {
+            usuarioId = UUID.randomUUID();
+        }
+
+        EstudoDeCasoResponseDTO response = service.atualizar(id, dto, usuarioId);
+        return ResponseEntity.ok(response);
+    }
 }

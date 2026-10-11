@@ -41,9 +41,10 @@ public class EstudoDeCasoService {
 
     @Transactional
     public EstudoDeCasoResponseDTO criar(EstudoDeCasoRequestDTO dto, UUID usuarioId) {
-
+        // Validação TA2.3
         validator.validarConclusao(dto);
 
+        // Validação TA2.4
         if (repository.existsByAlunoIdAndStatus(dto.getAlunoId(), StatusEstudoCaso.ATIVO)) {
             throw new RegraDeNegocioException("Já existe um Estudo de Caso ATIVO para este aluno.");
         }
@@ -51,19 +52,10 @@ public class EstudoDeCasoService {
         Aluno aluno = alunoRepository.findById(dto.getAlunoId())
                 .orElseThrow(() -> new RegraDeNegocioException("Aluno não encontrado."));
 
-        EstudoDeCaso entidade = new EstudoDeCaso();
-        entidade.setAluno(aluno);
-        entidade.setStatus(dto.getStatus());
-        entidade.setDiagnosticoInicial(dto.getDiagnosticoInicial());
+        List<IndicadorReutilizavel> indicadores = buscarEValidarIndicadores(dto.getIndicadoresIds());
 
-        if (dto.getIndicadoresIds() != null && !dto.getIndicadoresIds().isEmpty()) {
-            List<IndicadorReutilizavel> indicadores = indicadorRepository.findAllById(dto.getIndicadoresIds());
-            if (indicadores.size() != dto.getIndicadoresIds().size()) {
-                throw new RegraDeNegocioException("Um ou mais Indicadores informados não foram encontrados.");
-            }
-            entidade.setIndicadores(indicadores);
-        }
-
+        // Utilizando o toEntity do Mapper
+        EstudoDeCaso entidade = mapper.toEntity(dto, aluno, indicadores);
         entidade.setCriadoPor(usuarioId);
         entidade.setAtualizadoPor(usuarioId);
 
@@ -87,5 +79,46 @@ public class EstudoDeCasoService {
         return estudos.stream()
                 .map(mapper::toResponse)
                 .toList();
+    }
+
+    @Transactional
+    public EstudoDeCasoResponseDTO atualizar(UUID id, com.br.CLAI.dto.request.EstudoDeCasoUpdateDTO dto, UUID usuarioId) {
+        EstudoDeCaso estudo = repository.findById(id)
+                .orElseThrow(() -> new com.br.CLAI.exception.NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
+
+        // Validação TA2.3
+        validator.validarConclusao(dto);
+
+        // Validação TA2.4: Se estiver alterando para ATIVO, bloqueia se já existir outro ativo para o mesmo aluno
+        if (StatusEstudoCaso.ATIVO.equals(dto.getStatus()) 
+                && repository.existsByAlunoIdAndStatusAndIdNot(estudo.getAluno().getId(), StatusEstudoCaso.ATIVO, id)) {
+            throw new RegraDeNegocioException("Já existe outro Estudo de Caso ATIVO para este aluno.");
+        }
+
+        List<IndicadorReutilizavel> novosIndicadores = null;
+        if (dto.getIndicadoresIds() != null) {
+            novosIndicadores = buscarEValidarIndicadores(dto.getIndicadoresIds());
+        }
+
+        // Utilizando o Mapper para atualizar o estado da entidade
+        mapper.updateEntityFromDto(estudo, dto, novosIndicadores);
+
+        // TA2.2: Rastrear usuário que realizou a atualização
+        estudo.setAtualizadoPor(usuarioId);
+
+        EstudoDeCaso salvo = repository.save(estudo);
+        return mapper.toResponse(salvo);
+    }
+
+    private List<IndicadorReutilizavel> buscarEValidarIndicadores(List<UUID> indicadoresIds) {
+        if (indicadoresIds == null || indicadoresIds.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        List<IndicadorReutilizavel> indicadores = indicadorRepository.findAllById(indicadoresIds);
+        if (indicadores.size() != indicadoresIds.size()) {
+            throw new RegraDeNegocioException("Um ou mais Indicadores informados não foram encontrados.");
+        }
+        return indicadores;
     }
 }

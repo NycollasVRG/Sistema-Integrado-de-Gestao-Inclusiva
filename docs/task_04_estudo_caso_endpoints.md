@@ -9,7 +9,7 @@
 
 **O que será feito nesta Task (Checkpoint Atual - Dividido em Mini-Tasks):**
 - [x] **Task 04.1 (Mini-Task)**: Estrutura inicial (Pacotes, DTOs, Mapper em Classe, GlobalExceptionHandler seguindo RFC 9457) e Endpoint POST (Criação de Rascunho/Concluído) com regras TA2.2, TA2.3 e TA2.4.
-- [ ] **Task 04.2 (Mini-Task)**: Endpoint PUT (Atualização de Estudo de Caso, mudança de status).
+- [x] **Task 04.2 (Mini-Task)**: Endpoint PUT (Atualização de Estudo de Caso, mudança de status).
 - [x] **Task 04.3 (Mini-Task)**: Endpoints GET (Busca por ID e listagem por aluno).
 
 *A ideia de dividir em mini-tasks garante commits mais granulares, focando um verbo HTTP por vez.*
