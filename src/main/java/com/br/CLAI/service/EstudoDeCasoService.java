@@ -70,4 +70,22 @@ public class EstudoDeCasoService {
         EstudoDeCaso salvo = repository.save(entidade);
         return mapper.toResponse(salvo);
     }
+
+    @Transactional(readOnly = true)
+    public EstudoDeCasoResponseDTO buscarPorId(UUID id) {
+        EstudoDeCaso estudo = repository.findById(id)
+                .orElseThrow(() -> new com.br.CLAI.exception.NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
+        return mapper.toResponse(estudo);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EstudoDeCasoResponseDTO> listarPorAluno(UUID alunoId) {
+        if (!alunoRepository.existsById(alunoId)) {
+            throw new com.br.CLAI.exception.NaoEncontradoException("Aluno não encontrado com o ID fornecido.");
+        }
+        List<EstudoDeCaso> estudos = repository.findByAlunoId(alunoId);
+        return estudos.stream()
+                .map(mapper::toResponse)
+                .toList();
+    }
 }

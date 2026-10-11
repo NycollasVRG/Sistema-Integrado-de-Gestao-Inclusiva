@@ -20,6 +20,18 @@ public class EstudoDeCasoController {
         this.service = service;
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<EstudoDeCasoResponseDTO> buscarPorId(@PathVariable UUID id) {
+        EstudoDeCasoResponseDTO response = service.buscarPorId(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/aluno/{alunoId}")
+    public ResponseEntity<java.util.List<EstudoDeCasoResponseDTO>> listarPorAluno(@PathVariable UUID alunoId) {
+        java.util.List<EstudoDeCasoResponseDTO> response = service.listarPorAluno(alunoId);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping
     public ResponseEntity<EstudoDeCasoResponseDTO> criarEstudoDeCaso(
             @Valid @RequestBody EstudoDeCasoRequestDTO dto,

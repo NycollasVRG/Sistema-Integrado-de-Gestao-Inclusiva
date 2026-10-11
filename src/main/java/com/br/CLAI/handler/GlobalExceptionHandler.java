@@ -1,5 +1,6 @@
 package com.br.CLAI.handler;
 
+import com.br.CLAI.exception.NaoEncontradoException;
 import com.br.CLAI.exception.RegraDeNegocioException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -13,6 +14,15 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NaoEncontradoException.class)
+    public ProblemDetail handleNaoEncontradoException(NaoEncontradoException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problemDetail.setTitle("Recurso Não Encontrado");
+        problemDetail.setType(URI.create("https://api.sigi.com/errors/nao-encontrado"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
+    }
 
     @ExceptionHandler(RegraDeNegocioException.class)
     public ProblemDetail handleRegraDeNegocioException(RegraDeNegocioException ex) {
