@@ -110,6 +110,24 @@ public class EstudoDeCasoService {
         return mapper.toResponse(salvo);
     }
 
+    @Transactional
+    public void excluir(UUID id, UUID usuarioId) {
+        EstudoDeCaso estudo = repository.findById(id)
+                .orElseThrow(() -> new com.br.CLAI.exception.NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
+
+        // Regra de Proteção: Não permite exclusão de estudos concluídos
+        if (StatusEstudoCaso.ENCERRADO.equals(estudo.getStatus())) {
+            throw new RegraDeNegocioException("Não é permitido excluir um Estudo de Caso já concluído.");
+        }
+
+        // Rastreia quem executou a exclusão antes do soft delete
+        estudo.setAtualizadoPor(usuarioId);
+        repository.save(estudo);
+
+        // Hibernate SoftDelete intercepta e faz UPDATE set deleted = true
+        repository.delete(estudo);
+    }
+
     private List<IndicadorReutilizavel> buscarEValidarIndicadores(List<UUID> indicadoresIds) {
         if (indicadoresIds == null || indicadoresIds.isEmpty()) {
             return java.util.Collections.emptyList();

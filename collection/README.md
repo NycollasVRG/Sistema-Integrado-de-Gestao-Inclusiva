@@ -63,3 +63,7 @@ npx newman run collection/SIGI_EstudoDeCaso.postman_collection.json -e collectio
 | 3.1 | `PUT` | `/api/estudos-de-caso/{id}` | Concluir Rascunho com Sucesso | `200 OK` | Conclusão / TA2.2 |
 | 3.2 | `PUT` | `/api/estudos-de-caso/{id}` | Concluir sem Diagnóstico | `400 Bad Request` | **TA2.3** / RFC 9457 |
 | 3.3 | `PUT` | `/api/estudos-de-caso/{id}` | Atualizar Estudo Inexistente | `404 Not Found` | RFC 9457 ProblemDetail |
+| 4.1 | `DELETE` | `/api/estudos-de-caso/{id}` | Descartar Rascunho | `204 No Content` | Soft Delete / TA2.2 |
+| 4.2 | `DELETE` | `/api/estudos-de-caso/{id}` | Bloquear Exclusão de Concluído | `400 Bad Request` | Regra de Negócio / RFC 9457 |
+| 4.3 | `DELETE` | `/api/estudos-de-caso/{id}` | Excluir Estudo Inexistente | `404 Not Found` | RFC 9457 ProblemDetail |
+| 4.4 | `GET` | `/api/estudos-de-caso/{id}` | Validar que excluído dá 404 | `404 Not Found` | Validação Soft Delete |

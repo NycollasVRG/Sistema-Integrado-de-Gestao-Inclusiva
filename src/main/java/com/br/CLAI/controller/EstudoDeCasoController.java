@@ -58,4 +58,17 @@ public class EstudoDeCasoController {
         EstudoDeCasoResponseDTO response = service.atualizar(id, dto, usuarioId);
         return ResponseEntity.ok(response);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluirEstudoDeCaso(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-User-Id", required = false) UUID usuarioId) {
+
+        if (usuarioId == null) {
+            usuarioId = UUID.randomUUID();
+        }
+
+        service.excluir(id, usuarioId);
+        return ResponseEntity.noContent().build();
+    }
 }
