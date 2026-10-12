@@ -1,0 +1,544 @@
+{
+  "info": {
+    "_postman_id": "c1f7a4d5-8e3b-482a-a82f-2d12e690f05e",
+    "name": "SIGI - US 02 Estudo de Caso",
+    "description": "Coleção de testes de integração para os endpoints de Estudo de Caso (US 02), cobrindo POST, PUT e GET, critérios de aceite TA2.2 (Auditoria), TA2.3 (Validação 400 Bad Request) e TA2.4 (Bloqueio de Ativos Múltiplos), com suporte a RFC 9457 Problem Details.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. POST - Criação de Estudo de Caso",
+      "item": [
+        {
+          "name": "1.1 Criar Rascunho com Sucesso (201 Created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve retornar ID gerado e status RASCUNHO\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"id\");",
+                  "    pm.expect(json.status).to.eql(\"RASCUNHO\");",
+                  "    pm.expect(json.alunoId).to.eql(pm.environment.get(\"alunoId\"));",
+                  "    pm.environment.set(\"estudoRascunhoId\", json.id);",
+                  "});",
+                  "",
+                  "pm.test(\"TA2.2 - Auditoria: deve preencher criadoEm e atualizadoEm\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"criadoEm\");",
+                  "    pm.expect(json).to.have.property(\"atualizadoEm\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alunoId\": \"{{alunoId}}\",\n  \"status\": \"RASCUNHO\",\n  \"diagnosticoInicial\": null,\n  \"indicadoresIds\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso"]
+            }
+          }
+        },
+        {
+          "name": "1.2 Criar Concluído com Sucesso (201 Created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve retornar campos preenchidos e status ENCERRADO\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"id\");",
+                  "    pm.expect(json.status).to.eql(\"ENCERRADO\");",
+                  "    pm.expect(json.diagnosticoInicial).to.not.be.empty;",
+                  "    pm.expect(json.indicadoresIds).to.be.an(\"array\").with.lengthOf(2);",
+                  "    pm.environment.set(\"estudoConcluidoId\", json.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alunoId\": \"{{alunoId}}\",\n  \"status\": \"ENCERRADO\",\n  \"diagnosticoInicial\": \"Aluno diagnosticado com necessidades pedagógicas adaptadas em leitura.\",\n  \"indicadoresIds\": [\n    \"{{indicadorId1}}\",\n    \"{{indicadorId2}}\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso"]
+            }
+          }
+        },
+        {
+          "name": "1.3 TA2.3 - Falha: Concluído sem campos obrigatórios (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Formato RFC 9457 ProblemDetail presente\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\");",
+                  "    pm.expect(json).to.have.property(\"status\", 400);",
+                  "    pm.expect(json).to.have.property(\"detail\");",
+                  "    pm.expect(json.detail).to.include(\"Diagnóstico Inicial é obrigatório\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alunoId\": \"{{alunoId}}\",\n  \"status\": \"ENCERRADO\",\n  \"diagnosticoInicial\": \"\",\n  \"indicadoresIds\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso"]
+            }
+          }
+        },
+        {
+          "name": "1.4 TA2.4 - Criar Primeiro Estudo ATIVO (201 Created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alunoId\": \"{{alunoConflitoId}}\",\n  \"status\": \"ATIVO\",\n  \"diagnosticoInicial\": \"Primeiro estudo ativo para o aluno de teste.\",\n  \"indicadoresIds\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso"]
+            }
+          }
+        },
+        {
+          "name": "1.5 TA2.4 - Falha: Criar Segundo Estudo ATIVO para mesmo Aluno (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Mensagem indicando conflito de estudo ATIVO\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.detail).to.include(\"Já existe um Estudo de Caso ATIVO para este aluno\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alunoId\": \"{{alunoConflitoId}}\",\n  \"status\": \"ATIVO\",\n  \"diagnosticoInicial\": \"Tentativa de segundo estudo ativo.\",\n  \"indicadoresIds\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso"]
+            }
+          }
+        },
+        {
+          "name": "1.6 Falha: Criar Estudo para Aluno Inexistente (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Mensagem indicando aluno não encontrado\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.detail).to.include(\"Aluno não encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alunoId\": \"00000000-0000-0000-0000-000000000000\",\n  \"status\": \"RASCUNHO\",\n  \"diagnosticoInicial\": null,\n  \"indicadoresIds\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. GET - Consultas",
+      "item": [
+        {
+          "name": "2.1 Buscar Estudo por ID Existente (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve retornar o estudo de caso correspondente\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.id).to.eql(pm.environment.get(\"estudoRascunhoId\"));",
+                  "    pm.expect(json).to.have.property(\"status\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso/{{estudoRascunhoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso", "{{estudoRascunhoId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.2 Buscar Estudo por ID Inexistente (404 Not Found - RFC 9457)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve seguir o formato ProblemDetail RFC 9457\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\", \"Recurso Não Encontrado\");",
+                  "    pm.expect(json).to.have.property(\"status\", 404);",
+                  "    pm.expect(json).to.have.property(\"detail\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso/00000000-0000-0000-0000-000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso", "00000000-0000-0000-0000-000000000000"]
+            }
+          }
+        },
+        {
+          "name": "2.3 Listar Estudos por Aluno Existente (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve retornar um array de estudos vinculados ao aluno\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    pm.expect(json.length).to.be.at.least(1);",
+                  "    pm.expect(json[0].alunoId).to.eql(pm.environment.get(\"alunoId\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso/aluno/{{alunoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso", "aluno", "{{alunoId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.4 Listar Estudos por Aluno Inexistente (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve retornar detalhe de aluno não encontrado\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.detail).to.include(\"Aluno não encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso/aluno/00000000-0000-0000-0000-000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso", "aluno", "00000000-0000-0000-0000-000000000000"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. PUT - Atualização e Conclusão",
+      "item": [
+        {
+          "name": "3.1 Atualizar Rascunho para Concluído com Sucesso (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Status atualizado para ENCERRADO com dados\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql(\"ENCERRADO\");",
+                  "    pm.expect(json.diagnosticoInicial).to.eql(\"Rascunho finalizado com avaliação completa.\");",
+                  "    pm.expect(json.indicadoresIds).to.be.an(\"array\").with.lengthOf(1);",
+                  "});",
+                  "",
+                  "pm.test(\"TA2.2 - Auditoria de atualização\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"atualizadoEm\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ENCERRADO\",\n  \"diagnosticoInicial\": \"Rascunho finalizado com avaliação completa.\",\n  \"indicadoresIds\": [\n    \"{{indicadorId1}}\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso/{{estudoRascunhoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso", "{{estudoRascunhoId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.2 TA2.3 - Falha: Concluir Rascunho sem Diagnóstico Inicial (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Validação RFC 9457 indicando campo obrigatório\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.detail).to.include(\"Diagnóstico Inicial é obrigatório\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ENCERRADO\",\n  \"diagnosticoInicial\": null,\n  \"indicadoresIds\": [\n    \"{{indicadorId1}}\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso/{{estudoRascunhoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso", "{{estudoRascunhoId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.3 Atualizar Estudo Inexistente (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Estrutura RFC 9457 retornada\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql(404);",
+                  "    pm.expect(json.title).to.eql(\"Recurso Não Encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"RASCUNHO\",\n  \"diagnosticoInicial\": \"Teste inexistente\",\n  \"indicadoresIds\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/estudos-de-caso/00000000-0000-0000-0000-000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "estudos-de-caso", "00000000-0000-0000-0000-000000000000"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
