@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/estudos-de-caso")
+@CrossOrigin(origins = "*")
 public class EstudoDeCasoController {
 
     private final EstudoDeCasoService service;
@@ -59,7 +60,7 @@ public class EstudoDeCasoController {
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id}") 
     public ResponseEntity<Void> excluirEstudoDeCaso(
             @PathVariable UUID id,
             @RequestHeader(value = "X-User-Id", required = false) UUID usuarioId) {
