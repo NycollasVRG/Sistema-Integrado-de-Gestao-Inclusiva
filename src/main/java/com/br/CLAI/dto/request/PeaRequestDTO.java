@@ -1,21 +1,28 @@
 package com.br.CLAI.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.UUID;
 
 public class PeaRequestDTO {
 
-    @NotNull
+    @NotNull(message = "O ID do acompanhamento é obrigatório")
     private UUID acompanhamentoId;
 
     private UUID disciplinaId;
 
+    @NotBlank(message = "O objetivo geral é obrigatório")
     private String objetivoGeral;
 
+    @NotBlank(message = "A metodologia é obrigatória")
     private String metodologia;
 
+    @NotBlank(message = "A avaliação é obrigatória")
     private String avaliacao;
+
+    public PeaRequestDTO() {
+    }
 
     public UUID getAcompanhamentoId() {
         return acompanhamentoId;
