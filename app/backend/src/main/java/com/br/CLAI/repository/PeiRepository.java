@@ -11,4 +11,6 @@ import java.util.UUID;
 public interface PeiRepository extends JpaRepository<Pei, UUID> {
     
     List<Pei> findByAcompanhamentoId(UUID acompanhamentoId);
+
+    List<Pei> findByAcompanhamento_Aluno_Id(UUID alunoId);
 }

@@ -1,5 +1,6 @@
 package com.br.CLAI.handler;
 
+import com.br.CLAI.exception.AcessoNegadoException;
 import com.br.CLAI.exception.NaoEncontradoException;
 import com.br.CLAI.exception.RegraDeNegocioException;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,15 @@ public class GlobalExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problemDetail.setTitle("Recurso Não Encontrado");
         problemDetail.setType(URI.create("https://api.sigi.com/errors/nao-encontrado"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
+    }
+
+    @ExceptionHandler(AcessoNegadoException.class)
+    public ProblemDetail handleAcessoNegadoException(AcessoNegadoException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problemDetail.setTitle("Acesso Negado");
+        problemDetail.setType(URI.create("https://api.sigi.com/errors/acesso-negado"));
         problemDetail.setProperty("timestamp", Instant.now());
         return problemDetail;
     }
