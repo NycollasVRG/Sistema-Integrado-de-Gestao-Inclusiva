@@ -9,6 +9,8 @@ import java.util.UUID;
 
 @Repository
 public interface PeaRepository extends JpaRepository<Pea, UUID> {
-    
+
     List<Pea> findByAcompanhamentoId(UUID acompanhamentoId);
+
+    List<Pea> findByAcompanhamento_Aluno_Id(UUID alunoId);
 }
