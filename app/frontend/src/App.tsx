@@ -3,12 +3,15 @@ import { HeaderIFPB } from './components/HeaderIFPB';
 import { VLibrasButton } from './components/VLibrasButton';
 import { TelaAluno } from './components/TelaAluno';
 import { FormularioEstudoDeCaso } from './components/FormularioEstudoDeCaso';
+import { FormularioPei } from './components/FormularioPei';
 import { ToastAlert, type ToastMessage } from './components/ToastAlert';
 import {
   ALUNOS_PADRAO,
   INDICADORES_PADRAO,
   EstudoDeCasoService,
 } from './services/estudoDeCasoService';
+import { ACOMPANHAMENTO_POR_ALUNO, PeiService } from './services/peiService';
+import type { PeiResponseDTO } from './types/pei';
 import type {
   Aluno,
   EstudoDeCasoResponseDTO,
@@ -16,12 +19,13 @@ import type {
   ProblemDetailRFC9457,
 } from './types/estudoDeCaso';
 
-type Visualizacao = 'TELA_ALUNO' | 'FORMULARIO_ESTUDO';
+type Visualizacao = 'TELA_ALUNO' | 'FORMULARIO_ESTUDO' | 'FORMULARIO_PEI';
 
 export const App: React.FC = () => {
   const [alunoSelecionado] = useState<Aluno>(ALUNOS_PADRAO[0]);
   const [indicadores] = useState<IndicadorReutilizavel[]>(INDICADORES_PADRAO);
   const [estudoAtual, setEstudoAtual] = useState<EstudoDeCasoResponseDTO | null>(null);
+  const [peiAtual, setPeiAtual] = useState<PeiResponseDTO | null>(null);
   const [visualizacao, setVisualizacao] = useState<Visualizacao>('TELA_ALUNO');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -57,9 +61,47 @@ export const App: React.FC = () => {
     }
   };
 
+  const carregarPeiDoAluno = async (alunoId: string) => {
+    try {
+      const peis = await PeiService.listarPorAluno(alunoId);
+      setPeiAtual(peis.length > 0 ? peis[0] : null);
+    } catch (e) {
+      console.error('Erro ao buscar PEI do aluno:', e);
+      setPeiAtual(null);
+    }
+  };
+
   useEffect(() => {
     carregarEstudosDoAluno(alunoSelecionado.id);
+    carregarPeiDoAluno(alunoSelecionado.id);
   }, [alunoSelecionado]);
+
+  const handleSalvarPei = async (habilidadesInteresses: string, propostasAdaptacoes: string) => {
+    setIsLoading(true);
+    try {
+      let resultado: PeiResponseDTO;
+      if (peiAtual) {
+        resultado = await PeiService.atualizar(peiAtual.id, { habilidadesInteresses, propostasAdaptacoes });
+      } else {
+        resultado = await PeiService.criar(
+          {
+            acompanhamentoId: ACOMPANHAMENTO_POR_ALUNO[alunoSelecionado.id],
+            habilidadesInteresses,
+            propostasAdaptacoes,
+          },
+          alunoSelecionado.id
+        );
+      }
+      setPeiAtual(resultado);
+      setVisualizacao('TELA_ALUNO');
+      adicionarToast('sucesso', 'PEI Salvo com Sucesso', 'O Plano Educacional Individualizado foi registrado.');
+    } catch (err: any) {
+      const prob: ProblemDetailRFC9457 = err;
+      adicionarToast('erro', prob.title || 'Falha ao Salvar PEI', prob.detail || 'Não foi possível salvar o PEI.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Ação: Salvar Rascunho
   const handleSalvarRascunho = async (diagnostico: string, indicadoresIds: string[]) => {
@@ -172,6 +214,10 @@ export const App: React.FC = () => {
     );
   };
 
+  const dificuldadesDoEstudo = estudoAtual
+    ? indicadores.filter((ind) => estudoAtual.indicadoresIds.includes(ind.id))
+    : [];
+
   return (
     <div className="min-h-screen bg-[#F8FAF8] flex flex-col justify-between selection:bg-ifpb-teal selection:text-white">
       {/* Botão Flutuante VLibras */}
@@ -184,7 +230,13 @@ export const App: React.FC = () => {
       <HeaderIFPB
         searchTerm={termoBusca}
         onSearch={setTermoBusca}
-        subTitle={visualizacao === 'FORMULARIO_ESTUDO' ? 'Formulário de Estudo de Caso' : 'Ficha do Estudante'}
+        subTitle={
+          visualizacao === 'FORMULARIO_ESTUDO'
+            ? 'Formulário de Estudo de Caso'
+            : visualizacao === 'FORMULARIO_PEI'
+              ? 'Plano Educacional Individualizado (PEI)'
+              : 'Ficha do Estudante'
+        }
       />
 
       {/* Conteúdo Principal */}
@@ -196,6 +248,17 @@ export const App: React.FC = () => {
             indicadores={indicadores}
             onAbrirFormularioEstudo={() => setVisualizacao('FORMULARIO_ESTUDO')}
             onCriarPlanoAcao={handleCriarPlanoAcao}
+            peiAtual={peiAtual}
+            onAbrirFormularioPei={() => setVisualizacao('FORMULARIO_PEI')}
+          />
+        ) : visualizacao === 'FORMULARIO_PEI' ? (
+          <FormularioPei
+            aluno={alunoSelecionado}
+            peiExistente={peiAtual}
+            dificuldades={dificuldadesDoEstudo}
+            onSalvar={handleSalvarPei}
+            onVoltar={() => setVisualizacao('TELA_ALUNO')}
+            isLoading={isLoading}
           />
         ) : (
           <FormularioEstudoDeCaso
