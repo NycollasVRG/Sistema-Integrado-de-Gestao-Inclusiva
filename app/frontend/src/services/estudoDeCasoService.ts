@@ -13,21 +13,29 @@ export const ALUNOS_PADRAO: Aluno[] = [
     id: '11111111-1111-1111-1111-111111111111',
     nome: 'Aluno Teste Fluxo Completo',
     matricula: 'MAT-TEST-001',
+    turma: '2026.1',
+    curso: 'Técnico em Informática',
   },
   {
     id: '22222222-2222-2222-2222-222222222222',
     nome: 'Aluno Teste Conflito Ativo',
     matricula: 'MAT-TEST-002',
+    turma: '2025.1',
+    curso: 'Análise e Desenvolvimento de Sistemas',
   },
   {
     id: '33333333-3333-3333-3333-333333333333',
     nome: 'Mariana Medeiros da Silva',
     matricula: '20261SOUSA0095',
+    turma: '2025.2',
+    curso: 'Técnico em Edificações',
   },
   {
     id: '44444444-4444-4444-4444-444444444444',
     nome: 'Carlos Eduardo Santos',
     matricula: '20261SOUSA0102',
+    turma: '2026.1',
+    curso: 'Técnico em Informática',
   },
 ];
 
