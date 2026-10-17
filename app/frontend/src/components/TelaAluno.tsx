@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Aluno, EstudoDeCasoResponseDTO, IndicadorReutilizavel } from '../types/estudoDeCaso';
-import { FileText, PlusCircle, AlertCircle, CheckCircle2, Clock, ArrowRight, ShieldAlert } from 'lucide-react';
+import type { PeiResponseDTO } from '../types/pei';
+import { ClipboardList, FileText, PlusCircle, AlertCircle, CheckCircle2, Clock, ArrowRight, ShieldAlert } from 'lucide-react';
 
 interface TelaAlunoProps {
   alunoSelecionado: Aluno;
@@ -8,6 +9,8 @@ interface TelaAlunoProps {
   indicadores: IndicadorReutilizavel[];
   onAbrirFormularioEstudo: () => void;
   onCriarPlanoAcao: () => void;
+  peiAtual?: PeiResponseDTO | null;
+  onAbrirFormularioPei?: () => void;
 }
 
 export const TelaAluno: React.FC<TelaAlunoProps> = ({
@@ -16,6 +19,8 @@ export const TelaAluno: React.FC<TelaAlunoProps> = ({
   indicadores,
   onAbrirFormularioEstudo,
   onCriarPlanoAcao,
+  peiAtual = null,
+  onAbrirFormularioPei,
 }) => {
   // Determina o status consolidado do Estudo de Caso
   const isPendente = !estudoAtual;
@@ -214,6 +219,17 @@ export const TelaAluno: React.FC<TelaAlunoProps> = ({
                     <span>Criar Plano de Ação</span>
                   </button>
                 </div>
+              )}
+
+              {onAbrirFormularioPei && (
+                <button
+                  type="button"
+                  onClick={onAbrirFormularioPei}
+                  className="w-full py-2.5 px-4 rounded-md text-xs font-bold border border-ifpb-teal text-ifpb-teal hover:bg-ifpb-tealLight transition-colors flex items-center justify-center space-x-2 cursor-pointer"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  <span>{peiAtual ? 'Editar PEI' : 'Elaborar PEI'}</span>
+                </button>
               )}
             </div>
           </div>
