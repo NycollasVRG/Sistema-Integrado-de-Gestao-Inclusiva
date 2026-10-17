@@ -4,6 +4,8 @@ export interface Aluno {
   id: string;
   nome: string;
   matricula: string;
+  turma?: string;
+  curso?: string;
 }
 
 export interface IndicadorReutilizavel {
