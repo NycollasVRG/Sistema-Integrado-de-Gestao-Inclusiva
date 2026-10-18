@@ -47,6 +47,13 @@ export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
         <p className="text-sm text-gray-500 mt-1">
           Sistema Integrado de Gestão Inclusiva (SIGI) &bull; Estudo de Caso e Acompanhamento Individualizado
         </p>
+        
+        {subTitle && (
+          <p className="text-sm font-semibold text-ifpb-teal mt-2">
+            {subTitle}
+          </p>
+        )}
+
       </div>
     </header>
   );

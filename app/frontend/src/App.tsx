@@ -21,9 +21,12 @@ import {
 import { ACOMPANHAMENTO_POR_ALUNO, PeiService } from './services/peiService';
 import { getAlunoHeader } from './services/alunoService';
 import { getTimeline } from './services/timelineService';
+import { FormularioPea } from './components/FormularioPea';
+import { PeaService } from './services/peaService';
 import type { PeiResponseDTO } from './types/pei';
 import type { AlunoHeaderData } from './types/alunoHeader';
 import type { TimelineEventDTO } from './types/timeline';
+import type { PeaResponseDTO } from './types/pea';
 import type {
   AlunoModalData,
   ProntuarioModalTipo,
@@ -42,6 +45,7 @@ export const App: React.FC = () => {
   const [indicadores] = useState<IndicadorReutilizavel[]>(INDICADORES_PADRAO);
   const [estudoAtual, setEstudoAtual] = useState<EstudoDeCasoResponseDTO | null>(null);
   const [peiAtual, setPeiAtual] = useState<PeiResponseDTO | null>(null);
+  const [peaAtual, setPeaAtual] = useState<PeaResponseDTO | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [termoBusca, setTermoBusca] = useState<string>('');
@@ -92,6 +96,25 @@ export const App: React.FC = () => {
       setPeiAtual(null);
     }
   };
+  
+  const carregarPeaDoAluno = async (alunoId: string) => {
+  try {
+    const peas = await PeaService.listarPorAluno(alunoId);
+
+    setPeaAtual(peas.length > 0 ? peas[0] : null);
+  } catch (erro) {
+    console.error('Erro ao buscar PEA do aluno:', erro);
+
+    setPeaAtual(null);
+
+    adicionarToast(
+      'erro',
+      'Erro ao carregar PEA',
+      'Não foi possível consultar os planos do aluno.'
+    );
+  }
+  };
+
 
   const carregarHeader = async (alunoId: string) => {
     setLoadingHeader(true);
@@ -124,10 +147,11 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
-    carregarEstudosDoAluno(alunoSelecionado.id);
-    carregarPeiDoAluno(alunoSelecionado.id);
-    carregarHeader(alunoSelecionado.id);
-    carregarTimeline(alunoSelecionado.id);
+  carregarEstudosDoAluno(alunoSelecionado.id);
+  carregarPeiDoAluno(alunoSelecionado.id);
+  carregarPeaDoAluno(alunoSelecionado.id);
+  carregarHeader(alunoSelecionado.id);
+  carregarTimeline(alunoSelecionado.id);
   }, [alunoSelecionado]);
 
   const handleSalvarPei = async (habilidadesInteresses: string, propostasAdaptacoes: string) => {
@@ -156,6 +180,72 @@ export const App: React.FC = () => {
       setIsLoading(false);
     }
   };
+  
+  const handleSalvarPea = async (dados: {
+    objetivoGeral: string;
+    metodologia: string;
+    avaliacao: string;
+    disciplinaId: string | null;
+  }) => {
+    setIsLoading(true);
+
+    try {
+      let resultado: PeaResponseDTO;
+
+      if (peaAtual) {
+        // Atualiza um PEA existente
+        resultado = await PeaService.atualizar(
+          peaAtual.id,
+          {
+            objetivoGeral: dados.objetivoGeral,
+            metodologia: dados.metodologia,
+            avaliacao: dados.avaliacao
+          }
+        );
+      } else {
+        // Cria um novo PEA
+        const acompanhamentoId =
+          ACOMPANHAMENTO_POR_ALUNO[alunoSelecionado.id];
+
+        if (!acompanhamentoId) {
+          adicionarToast(
+            'erro',
+            'Acompanhamento não encontrado',
+            'Não foi identificado um acompanhamento para este aluno.'
+          );
+          return;
+        }
+
+        resultado = await PeaService.criar({
+          acompanhamentoId,
+          disciplinaId: dados.disciplinaId,
+          objetivoGeral: dados.objetivoGeral,
+          metodologia: dados.metodologia,
+          avaliacao: dados.avaliacao
+        });
+      }
+
+      setPeaAtual(resultado);
+
+      navigate('/');
+
+      adicionarToast(
+        'sucesso',
+        'PEA salvo com sucesso',
+        'O Plano de Ensino Adaptado foi registrado.'
+      );
+
+    } catch (erro: any) {
+      adicionarToast(
+        'erro',
+        erro?.title || 'Erro ao salvar PEA',
+        erro?.detail || 'Não foi possível salvar o PEA.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   // Ação: Salvar Rascunho
   const handleSalvarRascunho = async (diagnostico: string, indicadoresIds: string[]) => {
@@ -319,7 +409,9 @@ export const App: React.FC = () => {
             ? 'Formulário de Estudo de Caso'
             : location.pathname === '/pei'
               ? 'Plano Educacional Individualizado (PEI)'
-              : 'Ficha do Estudante'
+              : location.pathname === '/pea'
+                ? 'Plano de Ensino Adaptado (PEA)'
+                : 'Ficha do Estudante'
         }
       />
 
@@ -366,6 +458,7 @@ export const App: React.FC = () => {
                   onCriarPlanoAcao={handleCriarPlanoAcao}
                   peiAtual={peiAtual}
                   onAbrirFormularioPei={() => navigate('/pei')}
+                  onAbrirFormularioPea={() => navigate('/pea')}
                 />
               </>
             }
@@ -378,6 +471,19 @@ export const App: React.FC = () => {
                 peiExistente={peiAtual}
                 dificuldades={dificuldadesDoEstudo}
                 onSalvar={handleSalvarPei}
+                onVoltar={() => navigate('/')}
+                isLoading={isLoading}
+              />
+            }
+          />
+          <Route
+            path="/pea"
+            element={
+              <FormularioPea
+                aluno={alunoSelecionado}
+                peaExistente={peaAtual}
+                peiId={peiAtual?.id}
+                onSalvar={handleSalvarPea}
                 onVoltar={() => navigate('/')}
                 isLoading={isLoading}
               />
