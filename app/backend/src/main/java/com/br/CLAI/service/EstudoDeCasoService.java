@@ -86,6 +86,13 @@ public class EstudoDeCasoService {
         EstudoDeCaso estudo = repository.findById(id)
                 .orElseThrow(() -> new com.br.CLAI.exception.NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
 
+        // Regra de Proteção: estudo concluído (ENCERRADO/ATIVO) não pode voltar para RASCUNHO (ref. TA2.1)
+        if ((StatusEstudoCaso.ENCERRADO.equals(estudo.getStatus())
+                || StatusEstudoCaso.ATIVO.equals(estudo.getStatus()))
+                && StatusEstudoCaso.RASCUNHO.equals(dto.getStatus())) {
+            throw new RegraDeNegocioException("Não é permitido reverter um Estudo de Caso concluído para Rascunho.");
+        }
+
         // Validação TA2.3
         validator.validarConclusao(dto);
 
@@ -115,8 +122,9 @@ public class EstudoDeCasoService {
         EstudoDeCaso estudo = repository.findById(id)
                 .orElseThrow(() -> new com.br.CLAI.exception.NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
 
-        // Regra de Proteção: Não permite exclusão de estudos concluídos
-        if (StatusEstudoCaso.ENCERRADO.equals(estudo.getStatus())) {
+        // Regra de Proteção: Não permite exclusão de estudos concluídos (ENCERRADO ou ATIVO, ref. TA2.1)
+        if (StatusEstudoCaso.ENCERRADO.equals(estudo.getStatus())
+                || StatusEstudoCaso.ATIVO.equals(estudo.getStatus())) {
             throw new RegraDeNegocioException("Não é permitido excluir um Estudo de Caso já concluído.");
         }
 
