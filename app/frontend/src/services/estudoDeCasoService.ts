@@ -181,7 +181,6 @@ export class EstudoDeCasoService {
     }
 
     // Validação local espelhando backend
-    const estudos = getStoredEstudos();
     if (dto.status === 'ATIVO' && estudos.some((e) => e.alunoId === dto.alunoId && e.status === 'ATIVO')) {
       const conflict: ProblemDetailRFC9457 = {
         title: 'Regra de Negócio Violada',
@@ -189,6 +188,26 @@ export class EstudoDeCasoService {
         detail: 'Já existe um Estudo de Caso ATIVO para este aluno.',
       };
       throw conflict;
+    }
+
+    // TA2.3 (espelho): requer diagnóstico e indicadores se tentar criar como ENCERRADO no fallback
+    if (dto.status === 'ENCERRADO') {
+      if (!dto.diagnosticoInicial || dto.diagnosticoInicial.trim() === '') {
+        const problem: ProblemDetailRFC9457 = {
+          title: 'Erro de Regra de Negócio',
+          status: 400,
+          detail: 'O Diagnóstico Inicial é obrigatório para concluir o Estudo de Caso.',
+        };
+        throw problem;
+      }
+      if (!dto.indicadoresIds || dto.indicadoresIds.length === 0) {
+        const problem: ProblemDetailRFC9457 = {
+          title: 'Erro de Regra de Negócio',
+          status: 400,
+          detail: 'Pelo menos um Indicador é obrigatório para concluir o Estudo de Caso.',
+        };
+        throw problem;
+      }
     }
 
     const novoEstudo: EstudoDeCasoResponseDTO = {
@@ -246,6 +265,50 @@ export class EstudoDeCasoService {
       throw notFound;
     }
 
+    const existente = estudos[index];
+
+    // Não permitir reverter estudo concluído (ENCERRADO/ATIVO) para RASCUNHO
+    if ((existente.status === 'ENCERRADO' || existente.status === 'ATIVO') && dto.status === 'RASCUNHO') {
+      const problem: ProblemDetailRFC9457 = {
+        title: 'Erro de Regra de Negócio',
+        status: 400,
+        detail: 'Não é permitido reverter um Estudo de Caso concluído para Rascunho.',
+      };
+      throw problem;
+    }
+
+    // TA2.4: Se estiver alterando para ATIVO, bloqueia se já existir outro ativo para o mesmo aluno
+    if (dto.status === 'ATIVO') {
+      if (estudos.some((e) => e.alunoId === existente.alunoId && e.status === 'ATIVO' && e.id !== id)) {
+        const conflict: ProblemDetailRFC9457 = {
+          title: 'Regra de Negócio Violada',
+          status: 400,
+          detail: 'Já existe outro Estudo de Caso ATIVO para este aluno.',
+        };
+        throw conflict;
+      }
+    }
+
+    // TA2.3 (espelho): requer diagnóstico e indicadores se tentar concluir no fallback
+    if (dto.status === 'ENCERRADO') {
+      if (!dto.diagnosticoInicial || dto.diagnosticoInicial.trim() === '') {
+        const problem: ProblemDetailRFC9457 = {
+          title: 'Erro de Regra de Negócio',
+          status: 400,
+          detail: 'O Diagnóstico Inicial é obrigatório para concluir o Estudo de Caso.',
+        };
+        throw problem;
+      }
+      if (!dto.indicadoresIds || dto.indicadoresIds.length === 0) {
+        const problem: ProblemDetailRFC9457 = {
+          title: 'Erro de Regra de Negócio',
+          status: 400,
+          detail: 'Pelo menos um Indicador é obrigatório para concluir o Estudo de Caso.',
+        };
+        throw problem;
+      }
+    }
+
     const atualizado: EstudoDeCasoResponseDTO = {
       ...estudos[index],
       status: dto.status,
@@ -284,7 +347,7 @@ export class EstudoDeCasoService {
 
     const estudos = getStoredEstudos();
     const target = estudos.find((e) => e.id === id);
-    if (target && target.status === 'ENCERRADO') {
+    if (target && (target.status === 'ENCERRADO' || target.status === 'ATIVO')) {
       const problem: ProblemDetailRFC9457 = {
         title: 'Operação Não Permitida',
         status: 400,

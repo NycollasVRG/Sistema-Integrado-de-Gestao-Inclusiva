@@ -1,4 +1,5 @@
-import { AlunoHeaderData } from "../types/alunoHeader";
+import type { AlunoHeaderData } from "../types/alunoHeader";
+
 
 export async function getAlunoHeader(alunoId: string): Promise<AlunoHeaderData> {
   // Simula pequeno delay para aproximar comportamento real da API

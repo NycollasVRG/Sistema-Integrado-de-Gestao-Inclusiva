@@ -149,6 +149,15 @@ export const App: React.FC = () => {
 
   // Ação: Salvar Rascunho
   const handleSalvarRascunho = async (diagnostico: string, indicadoresIds: string[]) => {
+    // Proteção contra edição de estudo concluído via código
+    if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
+      adicionarToast(
+        'erro',
+        'Operação Não Permitida',
+        'Não é permitido reverter um Estudo de Caso concluído para Rascunho.'
+      );
+      return;
+    }
     setIsLoading(true);
     try {
       let resultado: EstudoDeCasoResponseDTO;
@@ -187,6 +196,15 @@ export const App: React.FC = () => {
 
   // Ação: Concluir Estudo de Caso (Após validação de front TA2.3)
   const handleConcluir = async (diagnostico: string, indicadoresIds: string[]) => {
+    // Proteção contra alteração de estudo concluído
+    if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
+      adicionarToast(
+        'erro',
+        'Operação Não Permitida',
+        'Não é permitido alterar um Estudo de Caso já concluído.'
+      );
+      return;
+    }
     setIsLoading(true);
     try {
       let resultado: EstudoDeCasoResponseDTO;

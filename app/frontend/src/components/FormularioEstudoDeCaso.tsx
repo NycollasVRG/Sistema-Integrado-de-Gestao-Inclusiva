@@ -12,6 +12,7 @@ import {
   Tag,
   FileEdit,
   Clock,
+  Lock,
 } from 'lucide-react';
 
 interface FormularioEstudoDeCasoProps {
@@ -125,6 +126,8 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
 
   const isRascunho = estudoExistente?.status === 'RASCUNHO';
   const isConcluido = estudoExistente?.status === 'ENCERRADO' || estudoExistente?.status === 'ATIVO';
+  // Estudo concluído é somente leitura (proteção da regra TA2.1 no front)
+  const somenteLeitura = isConcluido;
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden space-y-0">
@@ -143,7 +146,11 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
             <div className="flex items-center space-x-2">
               <FileEdit className="w-5 h-5 text-green-300" />
               <h2 className="text-xl font-bold tracking-tight">
-                {estudoExistente ? 'Edição de Estudo de Caso' : 'Novo Estudo de Caso'}
+                {estudoExistente
+                  ? somenteLeitura
+                    ? 'Visualização de Estudo de Caso'
+                    : 'Edição de Estudo de Caso'
+                  : 'Novo Estudo de Caso'}
               </h2>
             </div>
             <p className="text-xs text-green-100 mt-0.5">
@@ -185,6 +192,18 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
           Para a finalização formal, clique em <strong>"Concluir"</strong> (requer Diagnóstico e ao menos uma Dificuldade selecionada).
         </div>
       </div>
+
+      {/* Aviso de Somente Leitura: estudo concluído não pode ser alterado (ref. TA2.1) */}
+      {somenteLeitura && (
+        <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-3 text-xs text-emerald-800 flex items-start space-x-2">
+          <Lock className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          <p>
+            <span className="font-semibold">Estudo de Caso concluído — visualização somente leitura.</span>{' '}
+            O documento finalizado não pode mais ser editado ou revertido para rascunho. Para alterar o
+            diagnóstico ou os indicadores, entre em contato com a coordenação.
+          </p>
+        </div>
+      )}
 
       {/* Formulário */}
       <form onSubmit={(e) => e.preventDefault()} className="p-6 sm:p-8 space-y-8">
@@ -229,11 +248,14 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
             rows={5}
             value={diagnostico}
             onChange={(e) => handleDiagnosticoChange(e.target.value)}
+            disabled={somenteLeitura}
             placeholder="Exemplo: Aluno apresenta barreiras significativas no processo de decodificação leitora e interpretação textual em ambiente de sala regular, demandando tempo adicional para avaliações e suporte pedagógico adaptado..."
             className={`w-full p-3.5 border rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${
-              erroDiagnostico
-                ? 'border-ifpb-red focus:ring-red-200 bg-red-50/30'
-                : 'border-gray-300 focus:border-ifpb-teal focus:ring-ifpb-tealLight'
+              somenteLeitura
+                ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                : erroDiagnostico
+                  ? 'border-ifpb-red focus:ring-red-200 bg-red-50/30'
+                  : 'border-gray-300 focus:border-ifpb-teal focus:ring-ifpb-tealLight'
             }`}
           />
 
@@ -270,10 +292,13 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
                   type="button"
                   key={ind.id}
                   onClick={() => toggleIndicador(ind.id)}
-                  className={`flex flex-col text-left p-3 rounded-lg border text-xs transition-all cursor-pointer ${
-                    selecionado
-                      ? 'border-ifpb-teal bg-ifpb-tealLight text-ifpb-teal font-semibold shadow-xs'
-                      : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700'
+                  disabled={somenteLeitura}
+                  className={`flex flex-col text-left p-3 rounded-lg border text-xs transition-all ${
+                    somenteLeitura
+                      ? 'cursor-not-allowed bg-gray-50 border-gray-200 text-gray-500'
+                      : selecionado
+                        ? 'cursor-pointer border-ifpb-teal bg-ifpb-tealLight text-ifpb-teal font-semibold shadow-xs'
+                        : 'cursor-pointer border-gray-200 bg-white hover:border-gray-300 text-gray-700'
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
@@ -339,8 +364,9 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
             <button
               type="button"
               onClick={handleSalvarRascunho}
-              disabled={isLoading}
-              className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-xs font-bold border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-xs transition-colors cursor-pointer"
+              disabled={isLoading || somenteLeitura}
+              title={somenteLeitura ? 'Estudo concluído é somente leitura' : undefined}
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-xs font-bold border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-xs transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Save className="w-4 h-4 mr-1.5 text-gray-500" />
               Salvar Rascunho
@@ -350,8 +376,9 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
             <button
               type="button"
               onClick={handleConcluir}
-              disabled={isLoading}
-              className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg text-xs font-bold text-white bg-ifpb-teal hover:bg-ifpb-tealHover focus:outline-none focus:ring-2 focus:ring-ifpb-teal/40 shadow-sm transition-all duration-150 cursor-pointer"
+              disabled={isLoading || somenteLeitura}
+              title={somenteLeitura ? 'Estudo concluído é somente leitura' : undefined}
+              className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg text-xs font-bold text-white bg-ifpb-teal hover:bg-ifpb-tealHover focus:outline-none focus:ring-2 focus:ring-ifpb-teal/40 shadow-sm transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CheckCircle className="w-4 h-4 mr-1.5 text-green-300" />
               Concluir Estudo de Caso
