@@ -180,6 +180,8 @@ export class EstudoDeCasoService {
       console.warn('Backend indisponível, persistindo estudo localmente.');
     }
 
+    const estudos = getStoredEstudos();
+
     // Validação local espelhando backend
     if (dto.status === 'ATIVO' && estudos.some((e) => e.alunoId === dto.alunoId && e.status === 'ATIVO')) {
       const conflict: ProblemDetailRFC9457 = {

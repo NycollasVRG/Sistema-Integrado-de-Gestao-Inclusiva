@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Home, Menu, Search } from 'lucide-react';
 import ifpbLogo from '../assets/imagens/ifpb.png';
 
@@ -39,11 +40,13 @@ export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({
         <div className="py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center space-x-8">
             {/* Logo Oficial IFPB */}
-            <img
-              src={ifpbLogo}
-              alt="Instituto Federal da Paraíba - Campus Cajazeiras"
-              className="h-16 w-auto cursor-pointer"
-            />
+            <Link to="/">
+              <img
+                src={ifpbLogo}
+                alt="Instituto Federal da Paraíba - Campus Cajazeiras"
+                className="h-16 w-auto cursor-pointer"
+              />
+            </Link>
 
             {/* Menu Hambúrguer */}
             <div className="flex items-center space-x-3 border-l border-gray-200 pl-6">
@@ -74,21 +77,21 @@ export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({
       {/* Faixa Breadcrumb Oficial (Fundo #EEF1EC) */}
       <nav aria-label="Breadcrumb" className="w-full bg-ifpb-breadcrumb border-y border-[#E2E8DE] py-2 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex items-center text-xs text-gray-600 space-x-1.5 flex-wrap">
-          <a
-            href="#home"
+          <Link
+            to="/"
             className="text-ifpb-green hover:underline flex items-center"
             title="Página Inicial"
           >
             <Home className="w-3.5 h-3.5 mr-1 text-ifpb-green" />
-          </a>
+          </Link>
           <span className="text-gray-400">&gt;</span>
           <a href="#assistencia" className="text-ifpb-green hover:underline">
             Assistência Estudantil
           </a>
           <span className="text-gray-400">&gt;</span>
-          <span className="font-semibold text-gray-700">
+          <Link to="/" className="font-semibold text-gray-700 hover:underline">
             Coordenação Local de Acessibilidade e Inclusão - CLAI
-          </span>
+          </Link>
           {subTitle && (
             <>
               <span className="text-gray-400">&gt;</span>
