@@ -4,13 +4,15 @@ import type {
   PeiUpdateDTO,
 } from '../types/pei';
 import type { ProblemDetailRFC9457 } from '../types/estudoDeCaso';
+import { apiFetch, usarFallbackLocal } from './apiClient';
+import { USE_LOCAL_FALLBACK } from '../config/featureFlags';
 
 // esta tabela fixa um acompanhamento por aluno para uso até a integração.
+// Os UUIDs abaixo são os do seed da US03 (backend/collection/US03/seed_test_data.sql),
+// que só cria acompanhamento para os alunos 1111... e 2222...
 export const ACOMPANHAMENTO_POR_ALUNO: Record<string, string> = {
-  '11111111-1111-1111-1111-111111111111': 'a1111111-0000-0000-0000-000000000001',
-  '22222222-2222-2222-2222-222222222222': 'a2222222-0000-0000-0000-000000000002',
-  '33333333-3333-3333-3333-333333333333': 'a3333333-0000-0000-0000-000000000003',
-  '44444444-4444-4444-4444-444444444444': 'a4444444-0000-0000-0000-000000000004',
+  '11111111-1111-1111-1111-111111111111': '33333333-3333-3333-3333-333333333333',
+  '22222222-2222-2222-2222-222222222222': '44444444-4444-4444-4444-444444444444',
 };
 
 const STORAGE_KEY = 'sigi_clai_peis';
@@ -39,10 +41,10 @@ export class PeiService {
 
   static async listarPorAluno(alunoId: string): Promise<PeiResponseDTO[]> {
     try {
-      const res = await fetch(`${this.baseUrl}/aluno/${alunoId}`);
-      if (res.ok) return await res.json();
-      if (res.status === 404) return [];
-    } catch {
+      const res = await apiFetch(`${this.baseUrl}/aluno/${alunoId}`);
+      return await res.json();
+    } catch (e: unknown) {
+      if (!usarFallbackLocal(e)) throw e;
       console.warn('Backend indisponível na listagem de PEI, usando repositório local.');
     }
     return getStoredPeis().filter((p) => p.alunoId === alunoId);
@@ -51,22 +53,18 @@ export class PeiService {
   static async criar(dto: PeiRequestDTO, alunoId: string, usuarioId?: string): Promise<PeiResponseDTO> {
     const userId = usuarioId || this.defaultUserId;
     try {
-      const res = await fetch(this.baseUrl, {
+      const res = await apiFetch(this.baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
         body: JSON.stringify(dto),
       });
-      if (res.ok) {
-        const criado: PeiResponseDTO = await res.json();
+      const criado: PeiResponseDTO = await res.json();
+      if (USE_LOCAL_FALLBACK) {
         saveStoredPeis([criado, ...getStoredPeis()]);
-        return criado;
       }
-      if (res.status !== 503) {
-        const problem: ProblemDetailRFC9457 = await res.json();
-        throw problem;
-      }
-    } catch (e: any) {
-      if (e?.detail || e?.status) throw e;
+      return criado;
+    } catch (e: unknown) {
+      if (!usarFallbackLocal(e)) throw e;
     }
     console.warn('Backend indisponível, persistindo PEI localmente.');
     const agora = new Date().toISOString();
@@ -86,22 +84,18 @@ export class PeiService {
   static async atualizar(id: string, dto: PeiUpdateDTO, usuarioId?: string): Promise<PeiResponseDTO> {
     const userId = usuarioId || this.defaultUserId;
     try {
-      const res = await fetch(`${this.baseUrl}/${id}`, {
+      const res = await apiFetch(`${this.baseUrl}/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
         body: JSON.stringify(dto),
       });
-      if (res.ok) {
-        const atualizado: PeiResponseDTO = await res.json();
+      const atualizado: PeiResponseDTO = await res.json();
+      if (USE_LOCAL_FALLBACK) {
         saveStoredPeis(getStoredPeis().map((p) => (p.id === id ? atualizado : p)));
-        return atualizado;
       }
-      if (res.status !== 503) {
-        const problem: ProblemDetailRFC9457 = await res.json();
-        throw problem;
-      }
-    } catch (e: any) {
-      if (e?.detail || e?.status) throw e;
+      return atualizado;
+    } catch (e: unknown) {
+      if (!usarFallbackLocal(e)) throw e;
     }
     console.warn('Backend indisponível, atualizando PEI localmente.');
     const peis = getStoredPeis();

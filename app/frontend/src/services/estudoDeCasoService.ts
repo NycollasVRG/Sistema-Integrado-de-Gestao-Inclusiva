@@ -6,6 +6,8 @@ import type {
   IndicadorReutilizavel,
   ProblemDetailRFC9457,
 } from '../types/estudoDeCaso';
+import { apiFetch, usarFallbackLocal } from './apiClient';
+import { USE_LOCAL_FALLBACK } from '../config/featureFlags';
 
 // Alunos iniciais alinhados com o seed do banco de dados (seed_test_data.sql)
 export const ALUNOS_PADRAO: Aluno[] = [
@@ -99,27 +101,26 @@ function saveStoredEstudos(estudos: EstudoDeCasoResponseDTO[]) {
   }
 }
 
+function normalizarEstudo(estudo: EstudoDeCasoResponseDTO): EstudoDeCasoResponseDTO {
+  // A6: nunca propaga null para a UI (o contrato do Back pode omitir a lista).
+  return {
+    ...estudo,
+    diagnosticoInicial: estudo.diagnosticoInicial ?? null,
+    indicadoresIds: estudo.indicadoresIds ?? [],
+  };
+}
+
 export class EstudoDeCasoService {
   private static baseUrl = '/api/estudos-de-caso';
   private static defaultUserId = '99999999-9999-9999-9999-999999999999';
 
   static async buscarPorId(id: string): Promise<EstudoDeCasoResponseDTO> {
     try {
-      const res = await fetch(`${this.baseUrl}/${id}`);
-      if (res.ok) {
-        return await res.json();
-      }
-      if (res.status === 404) {
-        const errorData: ProblemDetailRFC9457 = await res.json().catch(() => ({
-          title: 'Não Encontrado',
-          status: 404,
-          detail: 'Estudo de caso não encontrado.',
-        }));
-        throw errorData;
-      }
-    } catch (e: any) {
-      if (e?.status) throw e;
-      // Fallback local
+      const res = await apiFetch(`${this.baseUrl}/${id}`);
+      return normalizarEstudo(await res.json());
+    } catch (e: unknown) {
+      if (!usarFallbackLocal(e)) throw e;
+      // Fallback local (somente com VITE_USE_LOCAL_FALLBACK=true)
       console.warn('Backend indisponível, usando repositório local.');
     }
 
@@ -133,30 +134,27 @@ export class EstudoDeCasoService {
       };
       throw notFound;
     }
-    return found;
+    return normalizarEstudo(found);
   }
 
   static async listarPorAluno(alunoId: string): Promise<EstudoDeCasoResponseDTO[]> {
     try {
-      const res = await fetch(`${this.baseUrl}/aluno/${alunoId}`);
-      if (res.ok) {
-        return await res.json();
-      }
-      if (res.status === 404) {
-        return [];
-      }
-    } catch (e) {
+      const res = await apiFetch(`${this.baseUrl}/aluno/${alunoId}`);
+      const lista: EstudoDeCasoResponseDTO[] = await res.json();
+      return lista.map(normalizarEstudo);
+    } catch (e: unknown) {
+      if (!usarFallbackLocal(e)) throw e;
       console.warn('Backend indisponível no endpoint de listagem, usando repositório local.');
     }
 
     const estudos = getStoredEstudos();
-    return estudos.filter((e) => e.alunoId === alunoId);
+    return estudos.filter((e) => e.alunoId === alunoId).map(normalizarEstudo);
   }
 
   static async criar(dto: EstudoDeCasoRequestDTO, usuarioId?: string): Promise<EstudoDeCasoResponseDTO> {
     const userId = usuarioId || this.defaultUserId;
     try {
-      const res = await fetch(this.baseUrl, {
+      const res = await apiFetch(this.baseUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -165,25 +163,21 @@ export class EstudoDeCasoService {
         body: JSON.stringify(dto),
       });
 
-      if (res.ok) {
-        const created: EstudoDeCasoResponseDTO = await res.json();
+      const created = normalizarEstudo(await res.json());
+      if (USE_LOCAL_FALLBACK) {
         // Sincroniza cache local
-        const estudos = getStoredEstudos();
-        saveStoredEstudos([created, ...estudos]);
-        return created;
+        saveStoredEstudos([created, ...getStoredEstudos()]);
       }
-
-      const problem: ProblemDetailRFC9457 = await res.json();
-      throw problem;
-    } catch (e: any) {
-      if (e?.detail || e?.status) throw e;
+      return created;
+    } catch (e: unknown) {
+      if (!usarFallbackLocal(e)) throw e;
       console.warn('Backend indisponível, persistindo estudo localmente.');
     }
 
     const estudos = getStoredEstudos();
 
-    // Validação local espelhando backend
-    if (dto.status === 'ATIVO' && estudos.some((e) => e.alunoId === dto.alunoId && e.status === 'ATIVO')) {
+    // Validação local espelhando backend (TA2.4: qualquer criação é bloqueada se já há um ATIVO)
+    if (estudos.some((e) => e.alunoId === dto.alunoId && e.status === 'ATIVO')) {
       const conflict: ProblemDetailRFC9457 = {
         title: 'Regra de Negócio Violada',
         status: 400,
@@ -233,7 +227,7 @@ export class EstudoDeCasoService {
   ): Promise<EstudoDeCasoResponseDTO> {
     const userId = usuarioId || this.defaultUserId;
     try {
-      const res = await fetch(`${this.baseUrl}/${id}`, {
+      const res = await apiFetch(`${this.baseUrl}/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -242,17 +236,13 @@ export class EstudoDeCasoService {
         body: JSON.stringify(dto),
       });
 
-      if (res.ok) {
-        const updated: EstudoDeCasoResponseDTO = await res.json();
-        const estudos = getStoredEstudos();
-        saveStoredEstudos(estudos.map((e) => (e.id === id ? updated : e)));
-        return updated;
+      const updated = normalizarEstudo(await res.json());
+      if (USE_LOCAL_FALLBACK) {
+        saveStoredEstudos(getStoredEstudos().map((e) => (e.id === id ? updated : e)));
       }
-
-      const problem: ProblemDetailRFC9457 = await res.json();
-      throw problem;
-    } catch (e: any) {
-      if (e?.detail || e?.status) throw e;
+      return updated;
+    } catch (e: unknown) {
+      if (!usarFallbackLocal(e)) throw e;
       console.warn('Backend indisponível, atualizando localmente.');
     }
 
@@ -327,23 +317,19 @@ export class EstudoDeCasoService {
   static async excluir(id: string, usuarioId?: string): Promise<void> {
     const userId = usuarioId || this.defaultUserId;
     try {
-      const res = await fetch(`${this.baseUrl}/${id}`, {
+      await apiFetch(`${this.baseUrl}/${id}`, {
         method: 'DELETE',
         headers: {
           'X-User-Id': userId,
         },
       });
 
-      if (res.ok || res.status === 204) {
-        const estudos = getStoredEstudos();
-        saveStoredEstudos(estudos.filter((e) => e.id !== id));
-        return;
+      if (USE_LOCAL_FALLBACK) {
+        saveStoredEstudos(getStoredEstudos().filter((e) => e.id !== id));
       }
-
-      const problem: ProblemDetailRFC9457 = await res.json();
-      throw problem;
-    } catch (e: any) {
-      if (e?.detail || e?.status) throw e;
+      return;
+    } catch (e: unknown) {
+      if (!usarFallbackLocal(e)) throw e;
       console.warn('Backend indisponível, excluindo localmente.');
     }
 

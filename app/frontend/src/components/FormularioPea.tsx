@@ -84,11 +84,6 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
   };
 
   const abrirAnexos = async () => {
-    // Professor não deve realizar a requisição.
-    if (isProfessor) {
-      return;
-    }
-
     setAbaAtiva('anexos');
     setAnexos([]);
     setErroAcesso(null);
@@ -259,20 +254,19 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
           Dados Pedagógicos
         </button>
 
-        {/* TA3.2: Professor não visualiza esta aba */}
-        {!isProfessor && (
-          <button
-            type="button"
-            onClick={abrirAnexos}
-            className={`pb-3 px-2 text-sm font-semibold border-b-2 ${
-              abaAtiva === 'anexos'
-                ? 'border-ifpb-teal text-ifpb-teal'
-                : 'border-transparent text-gray-500'
-            }`}
-          >
-            Laudos Médicos / Anexos
-          </button>
-        )}
+        {/* TA3.2: O usuário clica para disparar a requisição e validar a autorização no Backend */}
+        <button
+          type="button"
+          onClick={abrirAnexos}
+          disabled={isLoading}
+          className={`pb-3 px-2 text-sm font-semibold border-b-2 cursor-pointer ${
+            abaAtiva === 'anexos'
+              ? 'border-ifpb-teal text-ifpb-teal'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Laudos Médicos / Anexos
+        </button>
       </div>
 
       {/* Formulário pedagógico */}
@@ -296,6 +290,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
               id="pea-objetivo"
               rows={4}
               value={objetivoGeral}
+              disabled={isLoading}
               onChange={(e) => setObjetivoGeral(e.target.value)}
               className={estiloCampo}
             />
@@ -313,6 +308,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
               id="pea-metodologia"
               rows={4}
               value={metodologia}
+              disabled={isLoading}
               onChange={(e) => setMetodologia(e.target.value)}
               className={estiloCampo}
             />
@@ -330,6 +326,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
               id="pea-avaliacao"
               rows={4}
               value={avaliacao}
+              disabled={isLoading}
               onChange={(e) => setAvaliacao(e.target.value)}
               className={estiloCampo}
             />
@@ -348,7 +345,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
               type="text"
               value={disciplinaId}
               onChange={(e) => setDisciplinaId(e.target.value)}
-              disabled={!!peaExistente}
+              disabled={isLoading || !!peaExistente}
               placeholder="UUID da disciplina"
               className={estiloCampo}
             />
@@ -374,7 +371,8 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
             <button
               type="button"
               onClick={onVoltar}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold"
+              disabled={isLoading}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Voltar
             </button>
@@ -383,7 +381,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
               type="button"
               onClick={salvarFormulario}
               disabled={isLoading}
-              className="flex items-center gap-2 px-5 py-2 bg-ifpb-teal text-white rounded-lg text-sm font-bold disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2 bg-ifpb-teal text-white rounded-lg text-sm font-bold disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
               {isLoading ? 'Salvando...' : 'Salvar PEA'}
@@ -394,7 +392,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
       )}
 
       {/* Anexos protegidos */}
-      {!isProfessor && abaAtiva === 'anexos' && (
+      {abaAtiva === 'anexos' && (
         <div className="p-6 space-y-4">
 
           <h3 className="font-bold text-gray-800 flex items-center gap-2">

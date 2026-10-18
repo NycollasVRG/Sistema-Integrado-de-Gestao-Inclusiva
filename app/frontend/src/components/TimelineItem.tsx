@@ -12,6 +12,8 @@ function getEventLabel(tipo: TimelineEventType): string {
       return "PEI";
     case "PEA":
       return "PEA";
+    case "ATENDIMENTO":
+      return "Atendimento";
     default:
       return "Registro";
   }

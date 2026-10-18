@@ -2,6 +2,7 @@ import type { TimelineEventDTO } from '../types/timeline';
 import { EstudoDeCasoService } from './estudoDeCasoService';
 import { PeiService } from './peiService';
 import { ProntuarioService } from './prontuarioService';
+import { apiFetch, usarFallbackLocal } from './apiClient';
 
 function ordenarPorDataCriacao(eventos: TimelineEventDTO[]): TimelineEventDTO[] {
   return [...eventos].sort((a, b) => {
@@ -40,7 +41,7 @@ async function montarEventosLocais(alunoId: string): Promise<TimelineEventDTO[]>
   for (const atend of atendimentos) {
     eventos.push({
       id: atend.id,
-      tipo: 'PEA',
+      tipo: 'ATENDIMENTO',
       dataCriacao: atend.criadoEm,
     });
   }
@@ -50,38 +51,27 @@ async function montarEventosLocais(alunoId: string): Promise<TimelineEventDTO[]>
 
 export async function getTimeline(alunoId: string): Promise<TimelineEventDTO[]> {
   try {
-    const response = await fetch(`/api/alunos/${alunoId}/timeline`);
+    const response = await apiFetch(`/api/alunos/${alunoId}/timeline`);
 
-    if (response.ok) {
-      const backendEvents = (await response.json()) as TimelineEventDTO[];
-      const atendimentosLocais = await ProntuarioService.listarAtendimentosPorAluno(alunoId);
+    const backendEvents = (await response.json()) as TimelineEventDTO[];
+    const atendimentosLocais = await ProntuarioService.listarAtendimentosPorAluno(alunoId);
 
-      const eventosMockAtendimento: TimelineEventDTO[] = atendimentosLocais.map((atend) => ({
-        id: atend.id,
-        tipo: 'PEA',
-        dataCriacao: atend.criadoEm,
-      }));
+    // Atendimentos ainda são mock (sem endpoint): tipo próprio para não colidir com o PEA real do Back.
+    const eventosMockAtendimento: TimelineEventDTO[] = atendimentosLocais.map((atend) => ({
+      id: atend.id,
+      tipo: 'ATENDIMENTO',
+      dataCriacao: atend.criadoEm,
+    }));
 
-      const idsExistentes = new Set(backendEvents.map((e) => e.id));
-      const mesclados = [
-        ...backendEvents,
-        ...eventosMockAtendimento.filter((e) => !idsExistentes.has(e.id)),
-      ];
+    const idsExistentes = new Set(backendEvents.map((e) => e.id));
+    const mesclados = [
+      ...backendEvents,
+      ...eventosMockAtendimento.filter((e) => !idsExistentes.has(e.id)),
+    ];
 
-      return ordenarPorDataCriacao(mesclados);
-    }
-
-    if (response.status !== 503) {
-      const errorText = await response.text().catch(() => '');
-      throw new Error(
-        errorText || `Erro ao carregar linha do tempo: ${response.status}`
-      );
-    }
+    return ordenarPorDataCriacao(mesclados);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : '';
-    if (msg.startsWith('Erro ao carregar linha do tempo:')) {
-      throw e;
-    }
+    if (!usarFallbackLocal(e)) throw e;
     console.warn('Backend indisponível na Timeline, utilizando agregação local de fallback.');
   }
 
