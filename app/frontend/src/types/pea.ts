@@ -16,7 +16,8 @@ export interface PeaUpdateDTO {
 export interface PeaResponseDTO {
   id: string;
   acompanhamentoId: string;
-  disciplinaId?: string | null;
+  alunoId: string;
+  disciplinaId: string | null;
   objetivoGeral: string | null;
   metodologia: string | null;
   avaliacao: string | null;
@@ -24,4 +25,4 @@ export interface PeaResponseDTO {
   atualizadoEm?: string;
 }
 
-export type PerfilUsuario = 'Professor' | 'Coordenador' | 'Outro';
+export type PerfilUsuario = 'Professor' | 'Coordenador';
