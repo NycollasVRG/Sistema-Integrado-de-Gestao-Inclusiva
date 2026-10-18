@@ -1,21 +1,17 @@
 import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutList, FileText, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
 
-type Visualizacao = 'TELA_ALUNO' | 'FORMULARIO_ESTUDO' | 'FORMULARIO_PEI';
-
-interface MenuDevProps {
-  atual: Visualizacao;
-  onNavegar: (v: Visualizacao) => void;
-}
-
-const TELAS: { id: Visualizacao; label: string; icon: React.ReactNode }[] = [
-  { id: 'TELA_ALUNO', label: 'Ficha do Aluno', icon: <LayoutList className="w-4 h-4" /> },
-  { id: 'FORMULARIO_ESTUDO', label: 'Estudo de Caso', icon: <FileText className="w-4 h-4" /> },
-  { id: 'FORMULARIO_PEI', label: 'PEI', icon: <ClipboardList className="w-4 h-4" /> },
+const TELAS: { path: string; label: string; icon: React.ReactNode }[] = [
+  { path: '/', label: 'Ficha do Aluno', icon: <LayoutList className="w-4 h-4" /> },
+  { path: '/estudo-de-caso', label: 'Estudo de Caso', icon: <FileText className="w-4 h-4" /> },
+  { path: '/pei', label: 'PEI', icon: <ClipboardList className="w-4 h-4" /> },
 ];
 
-export const MenuDev: React.FC<MenuDevProps> = ({ atual, onNavegar }) => {
+export const MenuDev: React.FC = () => {
   const [aberto, setAberto] = useState(true);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   return (
     <div className="fixed bottom-4 left-4 z-50 flex items-end">
@@ -25,20 +21,23 @@ export const MenuDev: React.FC<MenuDevProps> = ({ atual, onNavegar }) => {
             Telas
           </p>
           <nav className="flex flex-col gap-1">
-            {TELAS.map((tela) => (
-              <button
-                key={tela.id}
-                onClick={() => onNavegar(tela.id)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-left ${
-                  atual === tela.id
-                    ? 'bg-ifpb-teal text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                {tela.icon}
-                {tela.label}
-              </button>
-            ))}
+            {TELAS.map((tela) => {
+              const isAtivo = location.pathname === tela.path;
+              return (
+                <button
+                  key={tela.path}
+                  onClick={() => navigate(tela.path)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-left ${
+                    isAtivo
+                      ? 'bg-ifpb-teal text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {tela.icon}
+                  {tela.label}
+                </button>
+              );
+            })}
           </nav>
         </div>
       )}
