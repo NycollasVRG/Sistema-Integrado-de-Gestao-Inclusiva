@@ -11,6 +11,7 @@ interface TelaAlunoProps {
   onCriarPlanoAcao: () => void;
   peiAtual?: PeiResponseDTO | null;
   onAbrirFormularioPei?: () => void;
+  onAbrirFormularioPea?: () => void;
 }
 
 export const TelaAluno: React.FC<TelaAlunoProps> = ({
@@ -21,6 +22,7 @@ export const TelaAluno: React.FC<TelaAlunoProps> = ({
   onCriarPlanoAcao,
   peiAtual = null,
   onAbrirFormularioPei,
+  onAbrirFormularioPea,
 }) => {
   // Determina o status consolidado do Estudo de Caso
   const isPendente = !estudoAtual;
@@ -231,6 +233,18 @@ export const TelaAluno: React.FC<TelaAlunoProps> = ({
                   <span>{peiAtual ? 'Editar PEI' : 'Elaborar PEI'}</span>
                 </button>
               )}
+          
+              {onAbrirFormularioPea && (
+                <button
+                  type="button"
+                  onClick={onAbrirFormularioPea}
+                  className="w-full py-2.5 px-4 rounded-md text-xs font-bold border border-ifpb-teal text-ifpb-teal hover:bg-ifpb-tealLight transition-colors flex items-center justify-center space-x-2 cursor-pointer"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  <span>Acessar PEA</span>
+                </button>
+              )}
+
             </div>
           </div>
         </div>
