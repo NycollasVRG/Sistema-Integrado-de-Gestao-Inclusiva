@@ -1,4 +1,4 @@
-# Arquitetura do Frontend — SIGI / CLAI (IFPB Sousa)
+# Arquitetura do Frontend — SIGI / CLAI (IFPB Cajazeiras)
 
 Documento técnico gerado a partir da análise da base de código localizada em `app/frontend/`.
 Descreve a stack, a estrutura de diretórios, os padrões adotados, o gerenciamento de estado e a

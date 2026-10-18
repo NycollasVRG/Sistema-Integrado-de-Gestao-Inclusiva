@@ -5,13 +5,19 @@ import { TelaAluno } from './components/TelaAluno';
 import { FormularioEstudoDeCaso } from './components/FormularioEstudoDeCaso';
 import { FormularioPei } from './components/FormularioPei';
 import { ToastAlert, type ToastMessage } from './components/ToastAlert';
+import { StudentHeader } from './components/StudentHeader';
+import { Timeline } from './components/Timeline';
 import {
   ALUNOS_PADRAO,
   INDICADORES_PADRAO,
   EstudoDeCasoService,
 } from './services/estudoDeCasoService';
 import { ACOMPANHAMENTO_POR_ALUNO, PeiService } from './services/peiService';
+import { getAlunoHeader } from './services/alunoService';
+import { getTimeline } from './services/timelineService';
 import type { PeiResponseDTO } from './types/pei';
+import type { AlunoHeaderData } from './types/alunoHeader';
+import type { TimelineEventDTO } from './types/timeline';
 import type {
   Aluno,
   EstudoDeCasoResponseDTO,
@@ -30,6 +36,12 @@ export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [termoBusca, setTermoBusca] = useState<string>('');
+  const [header, setHeader] = useState<AlunoHeaderData | null>(null);
+  const [timeline, setTimeline] = useState<TimelineEventDTO[]>([]);
+  const [loadingHeader, setLoadingHeader] = useState<boolean>(false);
+  const [loadingTimeline, setLoadingTimeline] = useState<boolean>(false);
+  const [errorHeader, setErrorHeader] = useState<string | null>(null);
+  const [errorTimeline, setErrorTimeline] = useState<string | null>(null);
 
   const adicionarToast = (tipo: 'sucesso' | 'erro' | 'alerta', titulo: string, mensagem: string) => {
     const id = `toast-${Date.now()}-${Math.random()}`;
@@ -71,9 +83,41 @@ export const App: React.FC = () => {
     }
   };
 
+  const carregarHeader = async (alunoId: string) => {
+    setLoadingHeader(true);
+    setErrorHeader(null);
+    try {
+      const data = await getAlunoHeader(alunoId);
+      setHeader(data);
+    } catch (e: any) {
+      console.error('Erro ao carregar header do aluno:', e);
+      setErrorHeader(e?.message || 'Erro ao carregar header do aluno');
+      setHeader(null);
+    } finally {
+      setLoadingHeader(false);
+    }
+  };
+
+  const carregarTimeline = async (alunoId: string) => {
+    setLoadingTimeline(true);
+    setErrorTimeline(null);
+    try {
+      const data = await getTimeline(alunoId);
+      setTimeline(data || []);
+    } catch (e: any) {
+      console.error('Erro ao carregar linha do tempo:', e);
+      setErrorTimeline(e?.message || 'Erro ao carregar linha do tempo');
+      setTimeline([]);
+    } finally {
+      setLoadingTimeline(false);
+    }
+  };
+
   useEffect(() => {
     carregarEstudosDoAluno(alunoSelecionado.id);
     carregarPeiDoAluno(alunoSelecionado.id);
+    carregarHeader(alunoSelecionado.id);
+    carregarTimeline(alunoSelecionado.id);
   }, [alunoSelecionado]);
 
   const handleSalvarPei = async (habilidadesInteresses: string, propostasAdaptacoes: string) => {
@@ -242,15 +286,32 @@ export const App: React.FC = () => {
       {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
         {visualizacao === 'TELA_ALUNO' ? (
-          <TelaAluno
-            alunoSelecionado={alunoSelecionado}
-            estudoAtual={estudoAtual}
-            indicadores={indicadores}
-            onAbrirFormularioEstudo={() => setVisualizacao('FORMULARIO_ESTUDO')}
-            onCriarPlanoAcao={handleCriarPlanoAcao}
-            peiAtual={peiAtual}
-            onAbrirFormularioPei={() => setVisualizacao('FORMULARIO_PEI')}
-          />
+          <>
+            {header && <StudentHeader header={header} />}
+            {!header && (loadingHeader || errorHeader) && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                {loadingHeader && (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                    <span className="ml-3 text-sm text-gray-600">Carregando cabeçalho...</span>
+                  </div>
+                )}
+                {errorHeader && !loadingHeader && (
+                  <p className="text-sm text-red-700">Erro ao carregar cabeçalho: {errorHeader}</p>
+                )}
+              </div>
+            )}
+            <Timeline events={timeline} loading={loadingTimeline} error={errorTimeline} />
+            <TelaAluno
+              alunoSelecionado={alunoSelecionado}
+              estudoAtual={estudoAtual}
+              indicadores={indicadores}
+              onAbrirFormularioEstudo={() => setVisualizacao('FORMULARIO_ESTUDO')}
+              onCriarPlanoAcao={handleCriarPlanoAcao}
+              peiAtual={peiAtual}
+              onAbrirFormularioPei={() => setVisualizacao('FORMULARIO_PEI')}
+            />
+          </>
         ) : visualizacao === 'FORMULARIO_PEI' ? (
           <FormularioPei
             aluno={alunoSelecionado}
