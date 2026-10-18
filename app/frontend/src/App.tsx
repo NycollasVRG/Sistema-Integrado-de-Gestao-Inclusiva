@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { HeaderIFPB } from './components/HeaderIFPB';
 import { VLibrasButton } from './components/VLibrasButton';
 import { TelaAluno } from './components/TelaAluno';
@@ -7,6 +8,11 @@ import { FormularioPei } from './components/FormularioPei';
 import { ToastAlert, type ToastMessage } from './components/ToastAlert';
 import { StudentHeader } from './components/StudentHeader';
 import { Timeline } from './components/Timeline';
+import { MenuDev } from './components/MenuDev';
+import { ProntuarioQuickActions } from './components/ProntuarioQuickActions';
+import { ModalNovoAtendimento } from './components/ModalNovoAtendimento';
+import { ModalNovoEstudo } from './components/ModalNovoEstudo';
+import { ModalConfirmacaoAcao } from './components/ModalConfirmacaoAcao';
 import {
   ALUNOS_PADRAO,
   INDICADORES_PADRAO,
@@ -22,25 +28,24 @@ import type { AlunoHeaderData } from './types/alunoHeader';
 import type { TimelineEventDTO } from './types/timeline';
 import type { PeaResponseDTO } from './types/pea';
 import type {
+  AlunoModalData,
+  ProntuarioModalTipo,
+} from './types/prontuarioAcoes';
+import type {
   Aluno,
   EstudoDeCasoResponseDTO,
   IndicadorReutilizavel,
   ProblemDetailRFC9457,
 } from './types/estudoDeCaso';
 
-type Visualizacao =
-  | 'TELA_ALUNO'
-  | 'FORMULARIO_ESTUDO'
-  | 'FORMULARIO_PEI'
-  | 'FORMULARIO_PEA';
-
 export const App: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [alunoSelecionado] = useState<Aluno>(ALUNOS_PADRAO[0]);
   const [indicadores] = useState<IndicadorReutilizavel[]>(INDICADORES_PADRAO);
   const [estudoAtual, setEstudoAtual] = useState<EstudoDeCasoResponseDTO | null>(null);
   const [peiAtual, setPeiAtual] = useState<PeiResponseDTO | null>(null);
   const [peaAtual, setPeaAtual] = useState<PeaResponseDTO | null>(null);
-  const [visualizacao, setVisualizacao] = useState<Visualizacao>('TELA_ALUNO');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [termoBusca, setTermoBusca] = useState<string>('');
@@ -50,6 +55,7 @@ export const App: React.FC = () => {
   const [loadingTimeline, setLoadingTimeline] = useState<boolean>(false);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
   const [errorTimeline, setErrorTimeline] = useState<string | null>(null);
+  const [modalAtivo, setModalAtivo] = useState<ProntuarioModalTipo>(null);
 
   const adicionarToast = (tipo: 'sucesso' | 'erro' | 'alerta', titulo: string, mensagem: string) => {
     const id = `toast-${Date.now()}-${Math.random()}`;
@@ -165,7 +171,7 @@ export const App: React.FC = () => {
         );
       }
       setPeiAtual(resultado);
-      setVisualizacao('TELA_ALUNO');
+      navigate('/');
       adicionarToast('sucesso', 'PEI Salvo com Sucesso', 'O Plano Educacional Individualizado foi registrado.');
     } catch (err: any) {
       const prob: ProblemDetailRFC9457 = err;
@@ -221,7 +227,7 @@ export const App: React.FC = () => {
 
       setPeaAtual(resultado);
 
-      setVisualizacao('TELA_ALUNO');
+      navigate('/');
 
       adicionarToast(
         'sucesso',
@@ -318,7 +324,7 @@ export const App: React.FC = () => {
       }
 
       setEstudoAtual(resultado);
-      setVisualizacao('TELA_ALUNO');
+      navigate('/');
       adicionarToast(
         'sucesso',
         'Estudo de Caso Concluído!',
@@ -344,7 +350,7 @@ export const App: React.FC = () => {
     try {
       await EstudoDeCasoService.excluir(estudoAtual.id);
       setEstudoAtual(null);
-      setVisualizacao('TELA_ALUNO');
+      navigate('/');
       adicionarToast(
         'sucesso',
         'Rascunho Descartado',
@@ -374,10 +380,22 @@ export const App: React.FC = () => {
     ? indicadores.filter((ind) => estudoAtual.indicadoresIds.includes(ind.id))
     : [];
 
+  // Dados pré-carregados do aluno em foco para os modais (Ref. TA9.3)
+  const alunoEmFoco: AlunoModalData = {
+    id: alunoSelecionado.id,
+    nome: header?.nome || alunoSelecionado.nome,
+    matricula: header?.matricula || alunoSelecionado.matricula,
+    curso: header?.curso || alunoSelecionado.curso || 'Não informado',
+    turma: alunoSelecionado.turma,
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAF8] flex flex-col justify-between selection:bg-ifpb-teal selection:text-white">
       {/* Botão Flutuante VLibras */}
       <VLibrasButton />
+
+      {/* Menu de desenvolvimento para testar telas */}
+      <MenuDev />
 
       {/* Alertas Toasts flutuantes */}
       <ToastAlert toasts={toasts} onFechar={removerToast} />
@@ -387,11 +405,11 @@ export const App: React.FC = () => {
         searchTerm={termoBusca}
         onSearch={setTermoBusca}
         subTitle={
-          visualizacao === 'FORMULARIO_ESTUDO'
+          location.pathname === '/estudo-de-caso'
             ? 'Formulário de Estudo de Caso'
-            : visualizacao === 'FORMULARIO_PEI'
+            : location.pathname === '/pei'
               ? 'Plano Educacional Individualizado (PEI)'
-              : visualizacao === 'FORMULARIO_PEA'
+              : location.pathname === '/pea'
                 ? 'Plano de Ensino Adaptado (PEA)'
                 : 'Ficha do Estudante'
         }
@@ -399,71 +417,149 @@ export const App: React.FC = () => {
 
       {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
-        {visualizacao === 'TELA_ALUNO' ? (
-          <>
-            {header && <StudentHeader header={header} />}
-            {!header && (loadingHeader || errorHeader) && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                {loadingHeader && (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                    <span className="ml-3 text-sm text-gray-600">Carregando cabeçalho...</span>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <>
+                {header && <StudentHeader header={header} />}
+                {!header && (loadingHeader || errorHeader) && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                    {loadingHeader && (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        <span className="ml-3 text-sm text-gray-600">Carregando cabeçalho...</span>
+                      </div>
+                    )}
+                    {errorHeader && !loadingHeader && (
+                      <p className="text-sm text-red-700">Erro ao carregar cabeçalho: {errorHeader}</p>
+                    )}
                   </div>
                 )}
-                {errorHeader && !loadingHeader && (
-                  <p className="text-sm text-red-700">Erro ao carregar cabeçalho: {errorHeader}</p>
-                )}
-              </div>
-            )}
-            <Timeline events={timeline} loading={loadingTimeline} error={errorTimeline} />
-            <TelaAluno
-              alunoSelecionado={alunoSelecionado}
-              estudoAtual={estudoAtual}
-              indicadores={indicadores}
-              onAbrirFormularioEstudo={() => setVisualizacao('FORMULARIO_ESTUDO')}
-              onCriarPlanoAcao={handleCriarPlanoAcao}
-              peiAtual={peiAtual}
-              onAbrirFormularioPei={() => setVisualizacao('FORMULARIO_PEI')}
-              onAbrirFormularioPea={() => setVisualizacao('FORMULARIO_PEA')}
-            />
-          </>
-        
-          ) : visualizacao === 'FORMULARIO_PEI' ? (
-            <FormularioPei
-              aluno={alunoSelecionado}
-              peiExistente={peiAtual}
-              dificuldades={dificuldadesDoEstudo}
-              onSalvar={handleSalvarPei}
-              onVoltar={() => setVisualizacao('TELA_ALUNO')}
-              isLoading={isLoading}
-            />
-          ) : visualizacao === 'FORMULARIO_PEA' ? (
-            <FormularioPea
-              aluno={alunoSelecionado}
-              peaExistente={peaAtual}
-              peiId={peiAtual?.id}
-              onSalvar={handleSalvarPea}
-              onVoltar={() => setVisualizacao('TELA_ALUNO')}
-              isLoading={isLoading}
-            />
-          ) : (
-            <FormularioEstudoDeCaso
-              aluno={alunoSelecionado}
-              estudoExistente={estudoAtual}
-              indicadoresDisponiveis={indicadores}
-              onSalvarRascunho={handleSalvarRascunho}
-              onConcluir={handleConcluir}
-              onExcluirRascunho={
-                estudoAtual?.status === 'RASCUNHO'
-                  ? handleExcluirRascunho
-                  : undefined
-              }
-              onVoltar={() => setVisualizacao('TELA_ALUNO')}
-              isLoading={isLoading}
-            />
-          )}
 
+                {/* Barra de Atalhos Rápidos do Prontuário (Task #13 / US 09) */}
+                <ProntuarioQuickActions
+                  alunoNome={alunoEmFoco.nome}
+                  onNovoAtendimento={() => setModalAtivo('ATENDIMENTO')}
+                  onNovoEstudo={() => setModalAtivo('ESTUDO')}
+                  onEmitirRae={() => setModalAtivo('EMITIR_RAE')}
+                  onGerarDossie={() => setModalAtivo('GERAR_DOSSIE')}
+                />
+
+                <div className="mb-6">
+                  <Timeline events={timeline} loading={loadingTimeline} error={errorTimeline} />
+                </div>
+
+                <TelaAluno
+                  alunoSelecionado={alunoSelecionado}
+                  estudoAtual={estudoAtual}
+                  indicadores={indicadores}
+                  onAbrirFormularioEstudo={() => navigate('/estudo-de-caso')}
+                  onCriarPlanoAcao={handleCriarPlanoAcao}
+                  peiAtual={peiAtual}
+                  onAbrirFormularioPei={() => navigate('/pei')}
+                  onAbrirFormularioPea={() => navigate('/pea')}
+                />
+              </>
+            }
+          />
+          <Route
+            path="/pei"
+            element={
+              <FormularioPei
+                aluno={alunoSelecionado}
+                peiExistente={peiAtual}
+                dificuldades={dificuldadesDoEstudo}
+                onSalvar={handleSalvarPei}
+                onVoltar={() => navigate('/')}
+                isLoading={isLoading}
+              />
+            }
+          />
+          <Route
+            path="/pea"
+            element={
+              <FormularioPea
+                aluno={alunoSelecionado}
+                peaExistente={peaAtual}
+                peiId={peiAtual?.id}
+                onSalvar={handleSalvarPea}
+                onVoltar={() => navigate('/')}
+                isLoading={isLoading}
+              />
+            }
+          />
+          <Route
+            path="/estudo-de-caso"
+            element={
+              <FormularioEstudoDeCaso
+                aluno={alunoSelecionado}
+                estudoExistente={estudoAtual}
+                indicadoresDisponiveis={indicadores}
+                onSalvarRascunho={handleSalvarRascunho}
+                onConcluir={handleConcluir}
+                onExcluirRascunho={estudoAtual?.status === 'RASCUNHO' ? handleExcluirRascunho : undefined}
+                onVoltar={() => navigate('/')}
+                isLoading={isLoading}
+              />
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
+
+      {/* Modais de Ações Rápidas do Prontuário com Aluno Pré-carregado (Ref. TA9.3) */}
+      <ModalNovoAtendimento
+        isOpen={modalAtivo === 'ATENDIMENTO'}
+        onClose={() => setModalAtivo(null)}
+        aluno={alunoEmFoco}
+        onSuccess={async () => {
+          await carregarTimeline(alunoSelecionado.id);
+          adicionarToast(
+            'sucesso',
+            'Atendimento Registrado',
+            `Novo atendimento vinculado a ${alunoEmFoco.nome} (${alunoEmFoco.matricula}) e adicionado à Linha do Tempo.`
+          );
+        }}
+        onError={(titulo, detalhe) => adicionarToast('erro', titulo, detalhe)}
+      />
+
+      <ModalNovoEstudo
+        key={`modal-estudo-${estudoAtual?.id || 'novo'}-${estudoAtual?.status || 'pendente'}`}
+        isOpen={modalAtivo === 'ESTUDO'}
+        onClose={() => setModalAtivo(null)}
+        aluno={alunoEmFoco}
+        indicadoresDisponiveis={indicadores}
+        estudoExistente={estudoAtual}
+        onSuccess={async (estudo, modo) => {
+          setEstudoAtual(estudo);
+          await carregarTimeline(alunoSelecionado.id);
+          adicionarToast(
+            'sucesso',
+            modo === 'RASCUNHO' ? 'Rascunho de Estudo Salvo' : 'Estudo de Caso Concluído!',
+            modo === 'RASCUNHO'
+              ? `O rascunho de ${alunoEmFoco.nome} foi salvo e registrado na Linha do Tempo.`
+              : `Estudo de Caso de ${alunoEmFoco.nome} finalizado e Linha do Tempo atualizada.`
+          );
+        }}
+        onError={(titulo, detalhe) => adicionarToast('erro', titulo, detalhe)}
+      />
+
+      <ModalConfirmacaoAcao
+        isOpen={modalAtivo === 'EMITIR_RAE' || modalAtivo === 'GERAR_DOSSIE'}
+        onClose={() => setModalAtivo(null)}
+        aluno={alunoEmFoco}
+        tipoDocumento={modalAtivo === 'EMITIR_RAE' ? 'RAE' : 'DOSSIE'}
+        onSuccess={async (doc) => {
+          await carregarTimeline(alunoSelecionado.id);
+          adicionarToast(
+            'sucesso',
+            doc.tipoDocumento === 'RAE' ? 'RAE Emitido com Sucesso' : 'Dossiê Gerado com Sucesso',
+            doc.resumo
+          );
+        }}
+        onError={(titulo, detalhe) => adicionarToast('erro', titulo, detalhe)}
+      />
 
       {/* Rodapé Institucional */}
       <footer className="w-full bg-[#1A2E26] text-gray-300 text-xs py-6 mt-12 border-t border-gray-800">

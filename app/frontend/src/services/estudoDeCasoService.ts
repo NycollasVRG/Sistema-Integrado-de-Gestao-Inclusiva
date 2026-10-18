@@ -179,7 +179,7 @@ export class EstudoDeCasoService {
       if (e?.detail || e?.status) throw e;
       console.warn('Backend indisponível, persistindo estudo localmente.');
     }
-    
+
     const estudos = getStoredEstudos();
 
     // Validação local espelhando backend
