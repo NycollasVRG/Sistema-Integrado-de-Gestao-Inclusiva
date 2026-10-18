@@ -7,6 +7,7 @@ import { FormularioPei } from './components/FormularioPei';
 import { ToastAlert, type ToastMessage } from './components/ToastAlert';
 import { StudentHeader } from './components/StudentHeader';
 import { Timeline } from './components/Timeline';
+import { MenuDev } from './components/MenuDev';
 import {
   ALUNOS_PADRAO,
   INDICADORES_PADRAO,
@@ -284,6 +285,9 @@ export const App: React.FC = () => {
     <div className="min-h-screen bg-[#F8FAF8] flex flex-col justify-between selection:bg-ifpb-teal selection:text-white">
       {/* Botão Flutuante VLibras */}
       <VLibrasButton />
+
+      {/* Menu de desenvolvimento para testar telas */}
+      <MenuDev atual={visualizacao} onNavegar={setVisualizacao} />
 
       {/* Alertas Toasts flutuantes */}
       <ToastAlert toasts={toasts} onFechar={removerToast} />
