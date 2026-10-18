@@ -10,7 +10,6 @@ public class EstudoDeCasoUpdateDTO {
     @NotNull(message = "O status do estudo de caso é obrigatório")
     private StatusEstudoCaso status;
 
-    @NotNull(message = "O diagnóstico inicial é obrigatório")
     private String diagnosticoInicial;
 
     private List<UUID> indicadoresIds;
