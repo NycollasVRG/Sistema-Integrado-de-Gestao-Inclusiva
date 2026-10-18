@@ -9,6 +9,10 @@ import { ToastAlert, type ToastMessage } from './components/ToastAlert';
 import { StudentHeader } from './components/StudentHeader';
 import { Timeline } from './components/Timeline';
 import { MenuDev } from './components/MenuDev';
+import { ProntuarioQuickActions } from './components/ProntuarioQuickActions';
+import { ModalNovoAtendimento } from './components/ModalNovoAtendimento';
+import { ModalNovoEstudo } from './components/ModalNovoEstudo';
+import { ModalConfirmacaoAcao } from './components/ModalConfirmacaoAcao';
 import {
   ALUNOS_PADRAO,
   INDICADORES_PADRAO,
@@ -20,6 +24,10 @@ import { getTimeline } from './services/timelineService';
 import type { PeiResponseDTO } from './types/pei';
 import type { AlunoHeaderData } from './types/alunoHeader';
 import type { TimelineEventDTO } from './types/timeline';
+import type {
+  AlunoModalData,
+  ProntuarioModalTipo,
+} from './types/prontuarioAcoes';
 import type {
   Aluno,
   EstudoDeCasoResponseDTO,
@@ -43,6 +51,7 @@ export const App: React.FC = () => {
   const [loadingTimeline, setLoadingTimeline] = useState<boolean>(false);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
   const [errorTimeline, setErrorTimeline] = useState<string | null>(null);
+  const [modalAtivo, setModalAtivo] = useState<ProntuarioModalTipo>(null);
 
   const adicionarToast = (tipo: 'sucesso' | 'erro' | 'alerta', titulo: string, mensagem: string) => {
     const id = `toast-${Date.now()}-${Math.random()}`;
@@ -281,6 +290,15 @@ export const App: React.FC = () => {
     ? indicadores.filter((ind) => estudoAtual.indicadoresIds.includes(ind.id))
     : [];
 
+  // Dados pré-carregados do aluno em foco para os modais (Ref. TA9.3)
+  const alunoEmFoco: AlunoModalData = {
+    id: alunoSelecionado.id,
+    nome: header?.nome || alunoSelecionado.nome,
+    matricula: header?.matricula || alunoSelecionado.matricula,
+    curso: header?.curso || alunoSelecionado.curso || 'Não informado',
+    turma: alunoSelecionado.turma,
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAF8] flex flex-col justify-between selection:bg-ifpb-teal selection:text-white">
       {/* Botão Flutuante VLibras */}
@@ -326,7 +344,20 @@ export const App: React.FC = () => {
                     )}
                   </div>
                 )}
-                <Timeline events={timeline} loading={loadingTimeline} error={errorTimeline} />
+
+                {/* Barra de Atalhos Rápidos do Prontuário (Task #13 / US 09) */}
+                <ProntuarioQuickActions
+                  alunoNome={alunoEmFoco.nome}
+                  onNovoAtendimento={() => setModalAtivo('ATENDIMENTO')}
+                  onNovoEstudo={() => setModalAtivo('ESTUDO')}
+                  onEmitirRae={() => setModalAtivo('EMITIR_RAE')}
+                  onGerarDossie={() => setModalAtivo('GERAR_DOSSIE')}
+                />
+
+                <div className="mb-6">
+                  <Timeline events={timeline} loading={loadingTimeline} error={errorTimeline} />
+                </div>
+
                 <TelaAluno
                   alunoSelecionado={alunoSelecionado}
                   estudoAtual={estudoAtual}
@@ -370,6 +401,59 @@ export const App: React.FC = () => {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      {/* Modais de Ações Rápidas do Prontuário com Aluno Pré-carregado (Ref. TA9.3) */}
+      <ModalNovoAtendimento
+        isOpen={modalAtivo === 'ATENDIMENTO'}
+        onClose={() => setModalAtivo(null)}
+        aluno={alunoEmFoco}
+        onSuccess={async () => {
+          await carregarTimeline(alunoSelecionado.id);
+          adicionarToast(
+            'sucesso',
+            'Atendimento Registrado',
+            `Novo atendimento vinculado a ${alunoEmFoco.nome} (${alunoEmFoco.matricula}) e adicionado à Linha do Tempo.`
+          );
+        }}
+        onError={(titulo, detalhe) => adicionarToast('erro', titulo, detalhe)}
+      />
+
+      <ModalNovoEstudo
+        key={`modal-estudo-${estudoAtual?.id || 'novo'}-${estudoAtual?.status || 'pendente'}`}
+        isOpen={modalAtivo === 'ESTUDO'}
+        onClose={() => setModalAtivo(null)}
+        aluno={alunoEmFoco}
+        indicadoresDisponiveis={indicadores}
+        estudoExistente={estudoAtual}
+        onSuccess={async (estudo, modo) => {
+          setEstudoAtual(estudo);
+          await carregarTimeline(alunoSelecionado.id);
+          adicionarToast(
+            'sucesso',
+            modo === 'RASCUNHO' ? 'Rascunho de Estudo Salvo' : 'Estudo de Caso Concluído!',
+            modo === 'RASCUNHO'
+              ? `O rascunho de ${alunoEmFoco.nome} foi salvo e registrado na Linha do Tempo.`
+              : `Estudo de Caso de ${alunoEmFoco.nome} finalizado e Linha do Tempo atualizada.`
+          );
+        }}
+        onError={(titulo, detalhe) => adicionarToast('erro', titulo, detalhe)}
+      />
+
+      <ModalConfirmacaoAcao
+        isOpen={modalAtivo === 'EMITIR_RAE' || modalAtivo === 'GERAR_DOSSIE'}
+        onClose={() => setModalAtivo(null)}
+        aluno={alunoEmFoco}
+        tipoDocumento={modalAtivo === 'EMITIR_RAE' ? 'RAE' : 'DOSSIE'}
+        onSuccess={async (doc) => {
+          await carregarTimeline(alunoSelecionado.id);
+          adicionarToast(
+            'sucesso',
+            doc.tipoDocumento === 'RAE' ? 'RAE Emitido com Sucesso' : 'Dossiê Gerado com Sucesso',
+            doc.resumo
+          );
+        }}
+        onError={(titulo, detalhe) => adicionarToast('erro', titulo, detalhe)}
+      />
 
       {/* Rodapé Institucional */}
       <footer className="w-full bg-[#1A2E26] text-gray-300 text-xs py-6 mt-12 border-t border-gray-800">

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Home, Menu, Search } from 'lucide-react';
+import { Home, Menu } from 'lucide-react';
 import ifpbLogo from '../assets/imagens/ifpb.png';
 
 interface HeaderIFPBProps {
@@ -9,7 +9,7 @@ interface HeaderIFPBProps {
   subTitle?: string;
 }
 
-export const HeaderIFPB: React.FC<HeaderIFPBProps> = () => {
+export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
   return (
     <header className="w-full bg-white border-b border-gray-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
