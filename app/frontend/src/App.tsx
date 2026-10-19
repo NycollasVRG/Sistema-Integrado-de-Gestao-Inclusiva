@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { HeaderIFPB } from './components/HeaderIFPB';
-import { VLibrasButton } from './components/VLibrasButton';
 import { TelaAluno } from './components/TelaAluno';
 import { FormularioEstudoDeCaso } from './components/FormularioEstudoDeCaso';
 import { FormularioPei } from './components/FormularioPei';
@@ -441,9 +440,6 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAF8] flex flex-col justify-between selection:bg-ifpb-teal selection:text-white">
-      {/* Botão Flutuante VLibras */}
-      <VLibrasButton />
-
       {/* Menu de desenvolvimento para testar telas */}
       <MenuDev />
 
