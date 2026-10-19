@@ -1,0 +1,1239 @@
+{
+  "info": {
+    "_postman_id": "b1e6f2a4-5c8d-4e7a-9f31-2d6b8c0a4e57",
+    "name": "SIGI - US 03 Plano de Ensino Individualizado (PEI/PEA)",
+    "description": "Coleção de testes de integração para os fluxos de PEA (Plano de Ensino Adaptado) e PEI (Plano de Ensino Individualizado) da US 03, cobrindo POST, GET, PUT e DELETE com asserções RFC 9457 Problem Details.\n\nCobertura dos Testes de Aceite:\n- **TA3.1**: o PEI carrega automaticamente os dados institucionais do aluno (vínculo Aluno -> Acompanhamento -> PEI resolvido pelo banco, sem o cliente enviar o alunoId). Observação: matrícula, turma e curso não são expostos pela API atual (ver README).\n- **TA3.2**: professores regentes recebem HTTP 403 (Acesso Negado) ao acessar anexos sensíveis do PEI; perfis não-Professor têm leitura liberada.\n- **TA3.4**: a exclusão do PEI é um soft delete (o registro permanece no banco como inativo), sem exclusão em cascata de PEA, Acompanhamento e Aluno.\n- **TA3.3 (RAI)**: fora do escopo desta coleção por depender de funcionalidades de Sprints futuras.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. PEA - Plano de Ensino Adaptado",
+      "description": "Fluxo completo do PEA. Estas requisições rodam ANTES do fluxo de PEI e criam os PEAs que são utilizados como anexos sensíveis nos cenários do TA3.2 (pastas 2.11 a 2.13).",
+      "item": [
+        {
+          "name": "1.1 Criar PEA com Sucesso (201 Created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve retornar ID gerado e dados pedagógicos preenchidos\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"id\");",
+                  "    pm.expect(json.objetivoGeral).to.not.be.empty;",
+                  "    pm.expect(json.metodologia).to.not.be.empty;",
+                  "    pm.expect(json.avaliacao).to.not.be.empty;",
+                  "    pm.environment.set(\"peaId\", json.id);",
+                  "});",
+                  "",
+                  "pm.test(\"TA3.1 - Vínculo institucional: alunoId derivado automaticamente do acompanhamento\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.alunoId).to.eql(pm.environment.get(\"alunoId\"));",
+                  "    pm.expect(json.acompanhamentoId).to.eql(pm.environment.get(\"acompanhamentoId\"));",
+                  "});",
+                  "",
+                  "pm.test(\"Auditoria: deve preencher criadoEm e atualizadoEm\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"criadoEm\");",
+                  "    pm.expect(json).to.have.property(\"atualizadoEm\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acompanhamentoId\": \"{{acompanhamentoId}}\",\n  \"objetivoGeral\": \"Desenvolver a autonomia do estudante nas atividades de leitura e escrita.\",\n  \"metodologia\": \"Aulas com adaptações de material, agrupamentos cooperativos e mediacao individualizada.\",\n  \"avaliacao\": \"Avaliacao formativa continuada com rubricas adaptadas e registros diarios de progresso.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas"]
+            }
+          }
+        },
+        {
+          "name": "1.2 Criar 2o PEA do mesmo Acompanhamento (201 Created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve salvar o segundo PEA para compor a lista de anexos\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"id\");",
+                  "    pm.expect(json.acompanhamentoId).to.eql(pm.environment.get(\"acompanhamentoId\"));",
+                  "    pm.environment.set(\"peaId2\", json.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acompanhamentoId\": \"{{acompanhamentoId}}\",\n  \"objetivoGeral\": \"Ampliar a compreensao textual em situacoes concretas do cotidiano escolar.\",\n  \"metodologia\": \"Texto-base acessivel, leitura compartilhada e atividades de inferencia com apoio visual.\",\n  \"avaliacao\": \"Producao textual adaptada com criterios de progressao em nivel de apoiado a independente.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas"]
+            }
+          }
+        },
+        {
+          "name": "1.3 Falha: Criar PEA sem Objetivo Geral (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Formato RFC 9457 ProblemDetail presente\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\", \"Erro de Validação de Campos\");",
+                  "    pm.expect(json).to.have.property(\"status\", 400);",
+                  "    pm.expect(json).to.have.property(\"detail\");",
+                  "    pm.expect(json.detail).to.include(\"O objetivo geral é obrigatório\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acompanhamentoId\": \"{{acompanhamentoId}}\",\n  \"objetivoGeral\": \"\",\n  \"metodologia\": \"Metodologia sem objetivo definido.\",\n  \"avaliacao\": \"Avaliacao pendente.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas"]
+            }
+          }
+        },
+        {
+          "name": "1.4 Falha: Criar PEA para Acompanhamento Inexistente (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"RFC 9457 indicando acompanhamento não encontrado\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\", \"Recurso Não Encontrado\");",
+                  "    pm.expect(json).to.have.property(\"status\", 404);",
+                  "    pm.expect(json.detail).to.include(\"Acompanhamento não encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acompanhamentoId\": \"{{idInexistente}}\",\n  \"objetivoGeral\": \"Objetivo para acompanhamento inexistente.\",\n  \"metodologia\": \"N/A\",\n  \"avaliacao\": \"N/A\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas"]
+            }
+          }
+        },
+        {
+          "name": "1.5 Listar PEAs por Aluno Existente (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve retornar um array de PEAs vinculados ao aluno\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    pm.expect(json.length).to.be.at.least(1);",
+                  "    pm.expect(json[0].alunoId).to.eql(pm.environment.get(\"alunoId\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peas/aluno/{{alunoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas", "aluno", "{{alunoId}}"]
+            }
+          }
+        },
+        {
+          "name": "1.6 Listar PEAs por Acompanhamento (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Todos os PEAs devem pertencer ao acompanhamento\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    pm.expect(json.length).to.be.at.least(2);",
+                  "    json.forEach(function (item) {",
+                  "        pm.expect(item.acompanhamentoId).to.eql(pm.environment.get(\"acompanhamentoId\"));",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peas/acompanhamento/{{acompanhamentoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas", "acompanhamento", "{{acompanhamentoId}}"]
+            }
+          }
+        },
+        {
+          "name": "1.7 Buscar PEA por ID Existente (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve retornar o PEA correspondente\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.id).to.eql(pm.environment.get(\"peaId\"));",
+                  "    pm.expect(json).to.have.property(\"objetivoGeral\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peas/{{peaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas", "{{peaId}}"]
+            }
+          }
+        },
+        {
+          "name": "1.8 Buscar PEA por ID Inexistente (404 Not Found - RFC 9457)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve seguir o formato ProblemDetail RFC 9457\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\", \"Recurso Não Encontrado\");",
+                  "    pm.expect(json).to.have.property(\"status\", 404);",
+                  "    pm.expect(json).to.have.property(\"detail\");",
+                  "    pm.expect(json.detail).to.include(\"PEA não encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peas/{{idInexistente}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas", "{{idInexistente}}"]
+            }
+          }
+        },
+        {
+          "name": "1.9 Atualizar PEA com Sucesso (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Campos pedagogicos atualizados\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.objetivoGeral).to.eql(\"Objetivo revisado pela equipe pedagogica.\");",
+                  "    pm.expect(json.metodologia).to.eql(\"Metodologia revisada com apoio de tecnologia assistiva.\");",
+                  "});",
+                  "",
+                  "pm.test(\"Auditoria de atualizacao preenchida\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"atualizadoEm\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objetivoGeral\": \"Objetivo revisado pela equipe pedagogica.\",\n  \"metodologia\": \"Metodologia revisada com apoio de tecnologia assistiva.\",\n  \"avaliacao\": \"Avaliacao revisada com criterios de progressao.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peas/{{peaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas", "{{peaId}}"]
+            }
+          }
+        },
+        {
+          "name": "1.10 Atualizar PEA Inexistente (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Estrutura RFC 9457 retornada\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql(404);",
+                  "    pm.expect(json.title).to.eql(\"Recurso Não Encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objetivoGeral\": \"Tentativa de atualizacao em registro inexistente.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peas/{{idInexistente}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas", "{{idInexistente}}"]
+            }
+          }
+        },
+        {
+          "name": "1.11 Excluir PEA com Sucesso - Soft Delete (204 No Content)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 204 No Content\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/peas/{{peaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas", "{{peaId}}"]
+            }
+          }
+        },
+        {
+          "name": "1.12 Validar que PEA Excluido nao e mais retornado pelo GET (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 404 Not Found (Soft Delete ativo)\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Registro fisico permanece no banco (inativo, nao eliminado)\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\", \"Recurso Não Encontrado\");",
+                  "    pm.expect(json.detail).to.include(\"PEA não encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peas/{{peaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas", "{{peaId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. PEI - Plano de Ensino Individualizado (TA3.1, TA3.2, TA3.4)",
+      "description": "Fluxo completo do PEI cobrindo os testes de aceite da US 03.",
+      "item": [
+        {
+          "name": "2.1 Criar PEI com Sucesso (201 Created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve retornar ID gerado e dados do plano preenchidos\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"id\");",
+                  "    pm.expect(json.habilidadesInteresses).to.not.be.empty;",
+                  "    pm.expect(json.propostasAdaptacoes).to.not.be.empty;",
+                  "    pm.environment.set(\"peiId\", json.id);",
+                  "});",
+                  "",
+                  "pm.test(\"TA3.1 - Dados institucionais carregados automaticamente do banco (alunoId e derivado do acompanhamento, o cliente nao envia)\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.alunoId).to.eql(pm.environment.get(\"alunoId\"));",
+                  "    pm.expect(json.acompanhamentoId).to.eql(pm.environment.get(\"acompanhamentoId\"));",
+                  "});",
+                  "",
+                  "pm.test(\"Auditoria: deve preencher criadoEm e atualizadoEm\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"criadoEm\");",
+                  "    pm.expect(json).to.have.property(\"atualizadoEm\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acompanhamentoId\": \"{{acompanhamentoId}}\",\n  \"habilidadesInteresses\": \"Leitura compartilhada, comunicacao oral por imagens e interesse por atividades de natureza.\",\n  \"propostasAdaptacoes\": \"Material impresso em fonte ampliada, tempo adicional nas evaluacoes e apoio de tecnologia assistiva.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peis",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis"]
+            }
+          }
+        },
+        {
+          "name": "2.2 TA3.1 - Buscar PEI e confirmar dados institucionais automaticos (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"TA3.1 - Formulario carrega vinculo institucional sem reenvio pelo cliente\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.id).to.eql(pm.environment.get(\"peiId\"));",
+                  "    pm.expect(json.alunoId).to.eql(pm.environment.get(\"alunoId\"));",
+                  "    pm.expect(json.acompanhamentoId).to.eql(pm.environment.get(\"acompanhamentoId\"));",
+                  "    pm.expect(json).to.have.property(\"criadoEm\");",
+                  "});",
+                  "",
+                  "pm.test(\"TA3.1 - Observacao: matricula, turma e curso ainda nao sao expostos pela API (pendencia de modelagem)\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property(\"matricula\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/{{peiId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "{{peiId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.3 Falha: Criar PEI sem Habilidades e Interesses (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Formato RFC 9457 ProblemDetail presente\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\", \"Erro de Validação de Campos\");",
+                  "    pm.expect(json).to.have.property(\"status\", 400);",
+                  "    pm.expect(json.detail).to.include(\"Os conhecimentos, habilidades e interesses são obrigatórios\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acompanhamentoId\": \"{{acompanhamentoId}}\",\n  \"habilidadesInteresses\": \"\",\n  \"propostasAdaptacoes\": \"Proposta sem habilidades descritas.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peis",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis"]
+            }
+          }
+        },
+        {
+          "name": "2.4 Falha: Criar PEI sem Propostas de Adaptacao (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Formato RFC 9457 ProblemDetail presente\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\", \"Erro de Validação de Campos\");",
+                  "    pm.expect(json).to.have.property(\"status\", 400);",
+                  "    pm.expect(json.detail).to.include(\"As propostas de adaptações curriculares são obrigatórias\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acompanhamentoId\": \"{{acompanhamentoId}}\",\n  \"habilidadesInteresses\": \"Habilidades descritas corretamente.\",\n  \"propostasAdaptacoes\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peis",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis"]
+            }
+          }
+        },
+        {
+          "name": "2.5 Falha: Criar PEI sem Acompanhamento (400 Bad Request - Obrigatorio)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Campo obrigatorio acompanhamentoId\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"status\", 400);",
+                  "    pm.expect(json.detail).to.include(\"O ID do acompanhamento é obrigatório\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"habilidadesInteresses\": \"Habilidades descritas.\",\n  \"propostasAdaptacoes\": \"Propostas descritas.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peis",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis"]
+            }
+          }
+        },
+        {
+          "name": "2.6 Falha: Criar PEI para Acompanhamento Inexistente (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"RFC 9457 indicando acompanhamento não encontrado\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\", \"Recurso Não Encontrado\");",
+                  "    pm.expect(json).to.have.property(\"status\", 404);",
+                  "    pm.expect(json.detail).to.include(\"Acompanhamento não encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acompanhamentoId\": \"{{idInexistente}}\",\n  \"habilidadesInteresses\": \"Habilidades para acompanhamento inexistente.\",\n  \"propostasAdaptacoes\": \"Propostas para acompanhamento inexistente.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peis",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis"]
+            }
+          }
+        },
+        {
+          "name": "2.7 Listar PEIs por Aluno Existente (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve retornar um array de PEIs vinculados ao aluno\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    pm.expect(json.length).to.be.at.least(1);",
+                  "    json.forEach(function (item) {",
+                  "        pm.expect(item.alunoId).to.eql(pm.environment.get(\"alunoId\"));",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/aluno/{{alunoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "aluno", "{{alunoId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.8 Listar PEIs por Aluno sem Registros - Isolamento (200 OK / array vazio)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Aluno sem PEI deve retornar array vazio (isolamento de dados)\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    pm.expect(json).to.have.lengthOf(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/aluno/{{aluno2Id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "aluno", "{{aluno2Id}}"]
+            }
+          }
+        },
+        {
+          "name": "2.9 Listar PEIs por Acompanhamento (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Todos os PEIs devem pertencer ao acompanhamento\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    pm.expect(json.length).to.be.at.least(1);",
+                  "    json.forEach(function (item) {",
+                  "        pm.expect(item.acompanhamentoId).to.eql(pm.environment.get(\"acompanhamentoId\"));",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/acompanhamento/{{acompanhamentoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "acompanhamento", "{{acompanhamentoId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.10 Buscar PEI por ID Inexistente (404 Not Found - RFC 9457)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve seguir o formato ProblemDetail RFC 9457\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\", \"Recurso Não Encontrado\");",
+                  "    pm.expect(json).to.have.property(\"status\", 404);",
+                  "    pm.expect(json.detail).to.include(\"PEI não encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/{{idInexistente}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "{{idInexistente}}"]
+            }
+          }
+        },
+        {
+          "name": "2.11 Atualizar PEI com Sucesso (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Campos do plano atualizados (atualizacao parcial)\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.habilidadesInteresses).to.eql(\"Habilidades revisadas apos o novo estudo de caso.\");",
+                  "    pm.expect(json.propostasAdaptacoes).to.eql(\"Adaptacoes revisadas com suporte de psicopedagogia.\");",
+                  "});",
+                  "",
+                  "pm.test(\"Vinculo institucional preservado na atualizacao\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.alunoId).to.eql(pm.environment.get(\"alunoId\"));",
+                  "    pm.expect(json.acompanhamentoId).to.eql(pm.environment.get(\"acompanhamentoId\"));",
+                  "    pm.expect(json).to.have.property(\"atualizadoEm\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"habilidadesInteresses\": \"Habilidades revisadas apos o novo estudo de caso.\",\n  \"propostasAdaptacoes\": \"Adaptacoes revisadas com suporte de psicopedagogia.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/{{peiId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "{{peiId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.12 Atualizar PEI Inexistente (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Estrutura RFC 9457 retornada\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql(404);",
+                  "    pm.expect(json.title).to.eql(\"Recurso Não Encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"habilidadesInteresses\": \"Tentativa de atualizacao em registro inexistente.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/{{idInexistente}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "{{idInexistente}}"]
+            }
+          }
+        },
+        {
+          "name": "2.13 TA3.2 - Anexos Sensiveis sem header de perfil (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"TA3.2 - Deve retornar os PEAs anexados ao PEI como laudos/diretrizes\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    pm.expect(json.length).to.be.at.least(1);",
+                  "    json.forEach(function (item) {",
+                  "        pm.expect(item).to.have.property(\"objetivoGeral\");",
+                  "        pm.expect(item.acompanhamentoId).to.eql(pm.environment.get(\"acompanhamentoId\"));",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/{{peiId}}/anexos-sensiveis",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "{{peiId}}", "anexos-sensiveis"]
+            }
+          }
+        },
+        {
+          "name": "2.14 TA3.2 - Anexos Sensiveis com perfil Coordenador (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"TA3.2 - Perfil Coordenador possui leitura liberada\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    pm.expect(json.length).to.be.at.least(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Perfil",
+                "value": "Coordenador"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/{{peiId}}/anexos-sensiveis",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "{{peiId}}", "anexos-sensiveis"]
+            }
+          }
+        },
+        {
+          "name": "2.15 TA3.2 - Falha: Anexos Sensiveis com perfil Professor (403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test(\"TA3.2 - Problema RFC 9457 com titulo Acesso Negado\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\", \"Acesso Negado\");",
+                  "    pm.expect(json).to.have.property(\"status\", 403);",
+                  "    pm.expect(json.detail).to.include(\"O perfil Professor não tem permissão\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Perfil",
+                "value": "Professor"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/{{peiId}}/anexos-sensiveis",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "{{peiId}}", "anexos-sensiveis"]
+            }
+          }
+        },
+        {
+          "name": "2.16 TA3.4 - Inativar PEI com Sucesso - Soft Delete (204 No Content)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 204 No Content\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/{{peiId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "{{peiId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.17 TA3.4 - Validar que PEI Excluido nao e mais retornado (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 404 Not Found (Soft Delete ativo)\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"TA3.4 - O registro continua no banco como inativo (nao ha remocao fisica)\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\", \"Recurso Não Encontrado\");",
+                  "    pm.expect(json.detail).to.include(\"PEI não encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/{{peiId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "{{peiId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.18 TA3.4 - Validar ausencia de exclusao em cascata (PEA do aluno preservado - 200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"TA3.4 - Registros relacionados (PEA/Aluno/Acompanhamento) nao foram apagados em cascata\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    pm.expect(json.length).to.be.at.least(1);",
+                  "    pm.expect(json[0].alunoId).to.eql(pm.environment.get(\"alunoId\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/peas/aluno/{{alunoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peas", "aluno", "{{alunoId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.19 TA3.4 - Excluir PEI Inexistente (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Estrutura RFC 9457 retornada\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql(404);",
+                  "    pm.expect(json.title).to.eql(\"Recurso Não Encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/{{idInexistente}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "{{idInexistente}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
