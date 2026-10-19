@@ -1,4 +1,3 @@
-
 export interface PeaRequestDTO {
   acompanhamentoId: string;
   disciplinaId?: string | null;
@@ -7,7 +6,9 @@ export interface PeaRequestDTO {
   avaliacao: string;
 }
 
+// Alinhado ao PeaUpdateDTO do Back (inclui disciplinaId, ignorado quando null).
 export interface PeaUpdateDTO {
+  disciplinaId?: string | null;
   objetivoGeral?: string;
   metodologia?: string;
   avaliacao?: string;

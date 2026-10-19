@@ -129,6 +129,22 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
   // Estudo concluído é somente leitura (proteção da regra TA2.1 no front)
   const somenteLeitura = isConcluido;
 
+  const isDirty =
+    !somenteLeitura &&
+    (diagnostico !== (estudoExistente?.diagnosticoInicial || '') ||
+      JSON.stringify(indicadoresSelecionados) !==
+        JSON.stringify(estudoExistente?.indicadoresIds || []));
+
+  const handleVoltar = () => {
+    if (isDirty) {
+      const confirmar = window.confirm(
+        'Existem alterações não salvas no Estudo de Caso. Deseja realmente sair e descartar as alterações?'
+      );
+      if (!confirmar) return;
+    }
+    onVoltar();
+  };
+
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden space-y-0">
       {/* Barra Superior do Formulário */}
@@ -136,8 +152,9 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
         <div className="flex items-center space-x-3">
           <button
             type="button"
-            onClick={onVoltar}
-            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+            onClick={handleVoltar}
+            disabled={isLoading}
+            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             title="Voltar para a ficha do aluno"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -337,9 +354,9 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
           <div className="flex items-center space-x-3">
             <button
               type="button"
-              onClick={onVoltar}
+              onClick={handleVoltar}
               disabled={isLoading}
-              className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Voltar
             </button>

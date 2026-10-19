@@ -9,6 +9,7 @@ import type {
   TipoAtendimento,
 } from '../types/prontuarioAcoes';
 import type { ProblemDetailRFC9457 } from '../types/estudoDeCaso';
+import { dataLocalISO } from '../utils/data';
 
 export interface ModalNovoAtendimentoProps {
   isOpen: boolean;
@@ -34,9 +35,7 @@ export const ModalNovoAtendimento: React.FC<ModalNovoAtendimentoProps> = ({
   onError,
 }) => {
   const [tipoAtendimento, setTipoAtendimento] = useState<TipoAtendimento>('PEDAGOGICO');
-  const [dataAtendimento, setDataAtendimento] = useState<string>(() =>
-    new Date().toISOString().slice(0, 10)
-  );
+  const [dataAtendimento, setDataAtendimento] = useState<string>(() => dataLocalISO());
   const [profissionalResponsavel, setProfissionalResponsavel] = useState<string>(
     'Equipe Multidisciplinar CLAI'
   );
@@ -49,7 +48,7 @@ export const ModalNovoAtendimento: React.FC<ModalNovoAtendimentoProps> = ({
 
   const limparFormulario = () => {
     setTipoAtendimento('PEDAGOGICO');
-    setDataAtendimento(new Date().toISOString().slice(0, 10));
+    setDataAtendimento(dataLocalISO());
     setProfissionalResponsavel('Equipe Multidisciplinar CLAI');
     setDescricao('');
     setEncaminhamentos('');

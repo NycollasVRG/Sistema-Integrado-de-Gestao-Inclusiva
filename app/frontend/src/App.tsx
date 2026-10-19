@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { HeaderIFPB } from './components/HeaderIFPB';
 import { VLibrasButton } from './components/VLibrasButton';
@@ -46,7 +46,10 @@ export const App: React.FC = () => {
   const [estudoAtual, setEstudoAtual] = useState<EstudoDeCasoResponseDTO | null>(null);
   const [peiAtual, setPeiAtual] = useState<PeiResponseDTO | null>(null);
   const [peaAtual, setPeaAtual] = useState<PeaResponseDTO | null>(null);
+  const [peasDoAluno, setPeasDoAluno] = useState<PeaResponseDTO[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadingPei, setLoadingPei] = useState<boolean>(false);
+  const [loadingPea, setLoadingPea] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [termoBusca, setTermoBusca] = useState<string>('');
   const [header, setHeader] = useState<AlunoHeaderData | null>(null);
@@ -57,17 +60,28 @@ export const App: React.FC = () => {
   const [errorTimeline, setErrorTimeline] = useState<string | null>(null);
   const [modalAtivo, setModalAtivo] = useState<ProntuarioModalTipo>(null);
 
-  const adicionarToast = (tipo: 'sucesso' | 'erro' | 'alerta', titulo: string, mensagem: string) => {
-    const id = `toast-${Date.now()}-${Math.random()}`;
+  // Evita toasts duplicados decorrentes do StrictMode em desenvolvimento
+  const ultimosToastsRef = useRef<Map<string, number>>(new Map());
+
+  const removerToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const adicionarToast = useCallback((tipo: 'sucesso' | 'erro' | 'alerta', titulo: string, mensagem: string) => {
+    const chave = `${tipo}|${titulo}|${mensagem}`;
+    const agora = Date.now();
+    const ultimo = ultimosToastsRef.current.get(chave);
+    if (ultimo && agora - ultimo < 1000) {
+      return;
+    }
+    ultimosToastsRef.current.set(chave, agora);
+
+    const id = `toast-${agora}-${Math.random()}`;
     setToasts((prev) => [...prev, { id, tipo, titulo, mensagem }]);
     setTimeout(() => {
       removerToast(id);
     }, 5000);
-  };
-
-  const removerToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, [removerToast]);
 
   // Carrega os estudos do aluno selecionado
   const carregarEstudosDoAluno = async (alunoId: string) => {
@@ -79,7 +93,7 @@ export const App: React.FC = () => {
       } else {
         setEstudoAtual(null);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Erro ao buscar estudos do aluno:', e);
       setEstudoAtual(null);
     } finally {
@@ -88,33 +102,41 @@ export const App: React.FC = () => {
   };
 
   const carregarPeiDoAluno = async (alunoId: string) => {
+    setLoadingPei(true);
     try {
       const peis = await PeiService.listarPorAluno(alunoId);
       setPeiAtual(peis.length > 0 ? peis[0] : null);
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('Erro ao buscar PEI do aluno:', e);
       setPeiAtual(null);
+    } finally {
+      setLoadingPei(false);
     }
   };
-  
+
   const carregarPeaDoAluno = async (alunoId: string) => {
-  try {
-    const peas = await PeaService.listarPorAluno(alunoId);
-
-    setPeaAtual(peas.length > 0 ? peas[0] : null);
-  } catch (erro) {
-    console.error('Erro ao buscar PEA do aluno:', erro);
-
-    setPeaAtual(null);
-
-    adicionarToast(
-      'erro',
-      'Erro ao carregar PEA',
-      'Não foi possível consultar os planos do aluno.'
-    );
-  }
+    setLoadingPea(true);
+    try {
+      const peas = await PeaService.listarPorAluno(alunoId);
+      setPeasDoAluno(peas);
+      setPeaAtual(peas.length > 0 ? peas[0] : null);
+    } catch (erro: unknown) {
+      console.error('Erro ao buscar PEA do aluno:', erro);
+      setPeasDoAluno([]);
+      setPeaAtual(null);
+      // N5: suprime o toast na home; exibe apenas na rota '/pea'
+      if (location.pathname === '/pea') {
+        const prob = erro as Partial<ProblemDetailRFC9457>;
+        adicionarToast(
+          'erro',
+          prob?.title || 'Erro ao carregar PEA',
+          prob?.detail || 'Não foi possível consultar os planos do aluno.'
+        );
+      }
+    } finally {
+      setLoadingPea(false);
+    }
   };
-
 
   const carregarHeader = async (alunoId: string) => {
     setLoadingHeader(true);
@@ -122,9 +144,10 @@ export const App: React.FC = () => {
     try {
       const data = await getAlunoHeader(alunoId);
       setHeader(data);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Erro ao carregar header do aluno:', e);
-      setErrorHeader(e?.message || 'Erro ao carregar header do aluno');
+      const err = e as { message?: string };
+      setErrorHeader(err?.message || 'Erro ao carregar header do aluno');
       setHeader(null);
     } finally {
       setLoadingHeader(false);
@@ -137,9 +160,15 @@ export const App: React.FC = () => {
     try {
       const data = await getTimeline(alunoId);
       setTimeline(data || []);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Erro ao carregar linha do tempo:', e);
-      setErrorTimeline(e?.message || 'Erro ao carregar linha do tempo');
+      const prob = e as Partial<ProblemDetailRFC9457> & { message?: string };
+      setErrorTimeline(
+        prob?.detail ||
+          prob?.title ||
+          (typeof prob?.message === 'string' ? prob.message : null) ||
+          'Erro ao carregar linha do tempo'
+      );
       setTimeline([]);
     } finally {
       setLoadingTimeline(false);
@@ -147,35 +176,38 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
-  carregarEstudosDoAluno(alunoSelecionado.id);
-  carregarPeiDoAluno(alunoSelecionado.id);
-  carregarPeaDoAluno(alunoSelecionado.id);
-  carregarHeader(alunoSelecionado.id);
-  carregarTimeline(alunoSelecionado.id);
+    carregarEstudosDoAluno(alunoSelecionado.id);
+    carregarPeiDoAluno(alunoSelecionado.id);
+    carregarPeaDoAluno(alunoSelecionado.id);
+    carregarHeader(alunoSelecionado.id);
+    carregarTimeline(alunoSelecionado.id);
   }, [alunoSelecionado]);
 
   const handleSalvarPei = async (habilidadesInteresses: string, propostasAdaptacoes: string) => {
     setIsLoading(true);
     try {
+      const hab = habilidadesInteresses.trim();
+      const prop = propostasAdaptacoes.trim();
       let resultado: PeiResponseDTO;
       if (peiAtual) {
-        resultado = await PeiService.atualizar(peiAtual.id, { habilidadesInteresses, propostasAdaptacoes });
+        resultado = await PeiService.atualizar(peiAtual.id, { habilidadesInteresses: hab, propostasAdaptacoes: prop });
       } else {
         resultado = await PeiService.criar(
           {
             acompanhamentoId: ACOMPANHAMENTO_POR_ALUNO[alunoSelecionado.id],
-            habilidadesInteresses,
-            propostasAdaptacoes,
+            habilidadesInteresses: hab,
+            propostasAdaptacoes: prop,
           },
           alunoSelecionado.id
         );
       }
       setPeiAtual(resultado);
+      await carregarTimeline(alunoSelecionado.id);
       navigate('/');
       adicionarToast('sucesso', 'PEI Salvo com Sucesso', 'O Plano Educacional Individualizado foi registrado.');
-    } catch (err: any) {
-      const prob: ProblemDetailRFC9457 = err;
-      adicionarToast('erro', prob.title || 'Falha ao Salvar PEI', prob.detail || 'Não foi possível salvar o PEI.');
+    } catch (err: unknown) {
+      const prob = err as Partial<ProblemDetailRFC9457>;
+      adicionarToast('erro', prob?.title || 'Falha ao Salvar PEI', prob?.detail || 'Não foi possível salvar o PEI.');
     } finally {
       setIsLoading(false);
     }
@@ -190,16 +222,22 @@ export const App: React.FC = () => {
     setIsLoading(true);
 
     try {
+      const objetivo = dados.objetivoGeral.trim();
+      const metodologia = dados.metodologia.trim();
+      const avaliacao = dados.avaliacao.trim();
+      const disciplinaId = dados.disciplinaId ? dados.disciplinaId.trim() : null;
+
       let resultado: PeaResponseDTO;
 
       if (peaAtual) {
-        // Atualiza um PEA existente
+        // Atualiza um PEA existente (alinhado com N7 e D3)
         resultado = await PeaService.atualizar(
           peaAtual.id,
           {
-            objetivoGeral: dados.objetivoGeral,
-            metodologia: dados.metodologia,
-            avaliacao: dados.avaliacao
+            disciplinaId,
+            objetivoGeral: objetivo,
+            metodologia,
+            avaliacao,
           }
         );
       } else {
@@ -218,14 +256,16 @@ export const App: React.FC = () => {
 
         resultado = await PeaService.criar({
           acompanhamentoId,
-          disciplinaId: dados.disciplinaId,
-          objetivoGeral: dados.objetivoGeral,
-          metodologia: dados.metodologia,
-          avaliacao: dados.avaliacao
+          disciplinaId,
+          objetivoGeral: objetivo,
+          metodologia,
+          avaliacao,
         });
       }
 
       setPeaAtual(resultado);
+      await carregarTimeline(alunoSelecionado.id);
+      await carregarPeaDoAluno(alunoSelecionado.id);
 
       navigate('/');
 
@@ -235,17 +275,22 @@ export const App: React.FC = () => {
         'O Plano de Ensino Adaptado foi registrado.'
       );
 
-    } catch (erro: any) {
+    } catch (erro: unknown) {
+      const prob = erro as Partial<ProblemDetailRFC9457>;
+      const titulo =
+        prob?.status === 409 || prob?.title === 'Conflito de Recursos'
+          ? 'Conflito no PEA'
+          : (prob?.title || 'Erro ao salvar PEA');
       adicionarToast(
         'erro',
-        erro?.title || 'Erro ao salvar PEA',
-        erro?.detail || 'Não foi possível salvar o PEA.'
+        titulo,
+        prob?.detail || 'Não foi possível salvar o PEA.'
       );
+      throw erro;
     } finally {
       setIsLoading(false);
     }
   };
-
 
   // Ação: Salvar Rascunho
   const handleSalvarRascunho = async (diagnostico: string, indicadoresIds: string[]) => {
@@ -260,34 +305,36 @@ export const App: React.FC = () => {
     }
     setIsLoading(true);
     try {
+      const diag = diagnostico.trim();
       let resultado: EstudoDeCasoResponseDTO;
       if (estudoAtual) {
         resultado = await EstudoDeCasoService.atualizar(estudoAtual.id, {
           status: 'RASCUNHO',
-          diagnosticoInicial: diagnostico,
+          diagnosticoInicial: diag,
           indicadoresIds,
         });
       } else {
         resultado = await EstudoDeCasoService.criar({
           alunoId: alunoSelecionado.id,
           status: 'RASCUNHO',
-          diagnosticoInicial: diagnostico,
+          diagnosticoInicial: diag,
           indicadoresIds,
         });
       }
 
       setEstudoAtual(resultado);
+      await carregarTimeline(alunoSelecionado.id);
       adicionarToast(
         'sucesso',
         'Rascunho Salvo com Sucesso',
         'As informações parciais do Estudo de Caso foram armazenadas com segurança.'
       );
-    } catch (err: any) {
-      const prob: ProblemDetailRFC9457 = err;
+    } catch (err: unknown) {
+      const prob = err as Partial<ProblemDetailRFC9457>;
       adicionarToast(
         'erro',
-        prob.title || 'Falha ao Salvar Rascunho',
-        prob.detail || 'Não foi possível salvar o rascunho.'
+        prob?.title || 'Falha ao Salvar Rascunho',
+        prob?.detail || 'Não foi possível salvar o rascunho.'
       );
     } finally {
       setIsLoading(false);
@@ -307,35 +354,37 @@ export const App: React.FC = () => {
     }
     setIsLoading(true);
     try {
+      const diag = diagnostico.trim();
       let resultado: EstudoDeCasoResponseDTO;
       if (estudoAtual) {
         resultado = await EstudoDeCasoService.atualizar(estudoAtual.id, {
           status: 'ENCERRADO',
-          diagnosticoInicial: diagnostico,
+          diagnosticoInicial: diag,
           indicadoresIds,
         });
       } else {
         resultado = await EstudoDeCasoService.criar({
           alunoId: alunoSelecionado.id,
           status: 'ENCERRADO',
-          diagnosticoInicial: diagnostico,
+          diagnosticoInicial: diag,
           indicadoresIds,
         });
       }
 
       setEstudoAtual(resultado);
+      await carregarTimeline(alunoSelecionado.id);
       navigate('/');
       adicionarToast(
         'sucesso',
         'Estudo de Caso Concluído!',
         'Documento finalizado com sucesso. O aluno agora está liberado para criação do Plano de Ação.'
       );
-    } catch (err: any) {
-      const prob: ProblemDetailRFC9457 = err;
+    } catch (err: unknown) {
+      const prob = err as Partial<ProblemDetailRFC9457>;
       adicionarToast(
         'erro',
-        prob.title || 'Falha ao Concluir',
-        prob.detail || 'Ocorreu um erro ao concluir o estudo de caso.'
+        prob?.title || 'Falha ao Concluir',
+        prob?.detail || 'Ocorreu um erro ao concluir o estudo de caso.'
       );
     } finally {
       setIsLoading(false);
@@ -350,18 +399,19 @@ export const App: React.FC = () => {
     try {
       await EstudoDeCasoService.excluir(estudoAtual.id);
       setEstudoAtual(null);
+      await carregarTimeline(alunoSelecionado.id);
       navigate('/');
       adicionarToast(
         'sucesso',
         'Rascunho Descartado',
         'O rascunho foi removido. O status do estudo voltou para Pendente.'
       );
-    } catch (err: any) {
-      const prob: ProblemDetailRFC9457 = err;
+    } catch (err: unknown) {
+      const prob = err as Partial<ProblemDetailRFC9457>;
       adicionarToast(
         'erro',
-        prob.title || 'Falha ao Excluir',
-        prob.detail || 'Não foi possível excluir o rascunho.'
+        prob?.title || 'Falha ao Excluir',
+        prob?.detail || 'Não foi possível excluir o rascunho.'
       );
     } finally {
       setIsLoading(false);
@@ -377,7 +427,7 @@ export const App: React.FC = () => {
   };
 
   const dificuldadesDoEstudo = estudoAtual
-    ? indicadores.filter((ind) => estudoAtual.indicadoresIds.includes(ind.id))
+    ? indicadores.filter((ind) => (estudoAtual.indicadoresIds ?? []).includes(ind.id))
     : [];
 
   // Dados pré-carregados do aluno em foco para os modais (Ref. TA9.3)
@@ -472,7 +522,7 @@ export const App: React.FC = () => {
                 dificuldades={dificuldadesDoEstudo}
                 onSalvar={handleSalvarPei}
                 onVoltar={() => navigate('/')}
-                isLoading={isLoading}
+                isLoading={isLoading || loadingPei}
               />
             }
           />
@@ -482,10 +532,13 @@ export const App: React.FC = () => {
               <FormularioPea
                 aluno={alunoSelecionado}
                 peaExistente={peaAtual}
+                peasExistentes={peasDoAluno}
+                onSelecionarPea={(pea) => setPeaAtual(pea)}
+                onNovoPea={() => setPeaAtual(null)}
                 peiId={peiAtual?.id}
                 onSalvar={handleSalvarPea}
                 onVoltar={() => navigate('/')}
-                isLoading={isLoading}
+                isLoading={isLoading || loadingPea}
               />
             }
           />
