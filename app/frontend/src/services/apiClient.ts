@@ -63,19 +63,20 @@ export function usarFallbackLocal(e: unknown): boolean {
 }
 
 async function lerProblema(res: Response): Promise<ApiProblem> {
-  let corpo: Partial<ApiProblem> = {};
+  let corpo: Record<string, unknown> = {};
   try {
     const texto = await res.text();
-    if (texto) corpo = JSON.parse(texto) as Partial<ApiProblem>;
+    if (texto) corpo = JSON.parse(texto) as Record<string, unknown>;
   } catch {
     // Corpo vazio ou não-JSON: usa a mensagem padrão do status.
   }
   const padrao = problemaPadrao(res.status);
   return {
-    title: corpo.title || padrao.title,
+    title: (corpo.title as string) || padrao.title,
     status: res.status,
-    detail: corpo.detail || padrao.detail,
-    instance: corpo.instance,
+    detail: (corpo.detail as string) || padrao.detail,
+    instance: (corpo.instance as string) || undefined,
+    errors: (corpo.errors as Record<string, string>) || undefined,
   };
 }
 

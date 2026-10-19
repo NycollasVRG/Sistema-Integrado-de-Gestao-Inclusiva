@@ -153,6 +153,10 @@ export class EstudoDeCasoService {
 
   static async criar(dto: EstudoDeCasoRequestDTO, usuarioId?: string): Promise<EstudoDeCasoResponseDTO> {
     const userId = usuarioId || this.defaultUserId;
+    const payload: EstudoDeCasoRequestDTO = {
+      ...dto,
+      diagnosticoInicial: dto.diagnosticoInicial ? dto.diagnosticoInicial.trim() : null,
+    };
     try {
       const res = await apiFetch(this.baseUrl, {
         method: 'POST',
@@ -160,7 +164,7 @@ export class EstudoDeCasoService {
           'Content-Type': 'application/json',
           'X-User-Id': userId,
         },
-        body: JSON.stringify(dto),
+        body: JSON.stringify(payload),
       });
 
       const created = normalizarEstudo(await res.json());
@@ -226,6 +230,10 @@ export class EstudoDeCasoService {
     usuarioId?: string
   ): Promise<EstudoDeCasoResponseDTO> {
     const userId = usuarioId || this.defaultUserId;
+    const payload: EstudoDeCasoUpdateDTO = {
+      ...dto,
+      diagnosticoInicial: dto.diagnosticoInicial !== undefined ? (dto.diagnosticoInicial ? dto.diagnosticoInicial.trim() : null) : undefined,
+    };
     try {
       const res = await apiFetch(`${this.baseUrl}/${id}`, {
         method: 'PUT',
@@ -233,7 +241,7 @@ export class EstudoDeCasoService {
           'Content-Type': 'application/json',
           'X-User-Id': userId,
         },
-        body: JSON.stringify(dto),
+        body: JSON.stringify(payload),
       });
 
       const updated = normalizarEstudo(await res.json());

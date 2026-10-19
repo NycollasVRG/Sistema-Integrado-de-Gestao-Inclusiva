@@ -52,11 +52,16 @@ export class PeiService {
 
   static async criar(dto: PeiRequestDTO, alunoId: string, usuarioId?: string): Promise<PeiResponseDTO> {
     const userId = usuarioId || this.defaultUserId;
+    const payload: PeiRequestDTO = {
+      acompanhamentoId: dto.acompanhamentoId,
+      habilidadesInteresses: dto.habilidadesInteresses.trim(),
+      propostasAdaptacoes: dto.propostasAdaptacoes.trim(),
+    };
     try {
       const res = await apiFetch(this.baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
-        body: JSON.stringify(dto),
+        body: JSON.stringify(payload),
       });
       const criado: PeiResponseDTO = await res.json();
       if (USE_LOCAL_FALLBACK) {
@@ -70,10 +75,10 @@ export class PeiService {
     const agora = new Date().toISOString();
     const novo: PeiResponseDTO = {
       id: crypto.randomUUID ? crypto.randomUUID() : `mock-${Date.now()}`,
-      acompanhamentoId: dto.acompanhamentoId,
+      acompanhamentoId: payload.acompanhamentoId,
       alunoId,
-      habilidadesInteresses: dto.habilidadesInteresses,
-      propostasAdaptacoes: dto.propostasAdaptacoes,
+      habilidadesInteresses: payload.habilidadesInteresses,
+      propostasAdaptacoes: payload.propostasAdaptacoes,
       criadoEm: agora,
       atualizadoEm: agora,
     };
@@ -83,11 +88,15 @@ export class PeiService {
 
   static async atualizar(id: string, dto: PeiUpdateDTO, usuarioId?: string): Promise<PeiResponseDTO> {
     const userId = usuarioId || this.defaultUserId;
+    const payload: PeiUpdateDTO = {
+      habilidadesInteresses: dto.habilidadesInteresses !== undefined ? dto.habilidadesInteresses.trim() : undefined,
+      propostasAdaptacoes: dto.propostasAdaptacoes !== undefined ? dto.propostasAdaptacoes.trim() : undefined,
+    };
     try {
       const res = await apiFetch(`${this.baseUrl}/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
-        body: JSON.stringify(dto),
+        body: JSON.stringify(payload),
       });
       const atualizado: PeiResponseDTO = await res.json();
       if (USE_LOCAL_FALLBACK) {
@@ -110,8 +119,8 @@ export class PeiService {
     }
     peis[idx] = {
       ...peis[idx],
-      habilidadesInteresses: dto.habilidadesInteresses,
-      propostasAdaptacoes: dto.propostasAdaptacoes,
+      habilidadesInteresses: payload.habilidadesInteresses || peis[idx].habilidadesInteresses,
+      propostasAdaptacoes: payload.propostasAdaptacoes || peis[idx].propostasAdaptacoes,
       atualizadoEm: new Date().toISOString(),
     };
     saveStoredPeis(peis);

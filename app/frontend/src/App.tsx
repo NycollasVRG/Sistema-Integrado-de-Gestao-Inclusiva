@@ -46,6 +46,7 @@ export const App: React.FC = () => {
   const [estudoAtual, setEstudoAtual] = useState<EstudoDeCasoResponseDTO | null>(null);
   const [peiAtual, setPeiAtual] = useState<PeiResponseDTO | null>(null);
   const [peaAtual, setPeaAtual] = useState<PeaResponseDTO | null>(null);
+  const [peasDoAluno, setPeasDoAluno] = useState<PeaResponseDTO[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingPei, setLoadingPei] = useState<boolean>(false);
   const [loadingPea, setLoadingPea] = useState<boolean>(false);
@@ -117,9 +118,11 @@ export const App: React.FC = () => {
     setLoadingPea(true);
     try {
       const peas = await PeaService.listarPorAluno(alunoId);
+      setPeasDoAluno(peas);
       setPeaAtual(peas.length > 0 ? peas[0] : null);
     } catch (erro: unknown) {
       console.error('Erro ao buscar PEA do aluno:', erro);
+      setPeasDoAluno([]);
       setPeaAtual(null);
       // N5: suprime o toast na home; exibe apenas na rota '/pea'
       if (location.pathname === '/pea') {
@@ -159,8 +162,13 @@ export const App: React.FC = () => {
       setTimeline(data || []);
     } catch (e: unknown) {
       console.error('Erro ao carregar linha do tempo:', e);
-      const err = e as { message?: string };
-      setErrorTimeline(err?.message || 'Erro ao carregar linha do tempo');
+      const prob = e as Partial<ProblemDetailRFC9457> & { message?: string };
+      setErrorTimeline(
+        prob?.detail ||
+          prob?.title ||
+          (typeof prob?.message === 'string' ? prob.message : null) ||
+          'Erro ao carregar linha do tempo'
+      );
       setTimeline([]);
     } finally {
       setLoadingTimeline(false);
@@ -178,15 +186,17 @@ export const App: React.FC = () => {
   const handleSalvarPei = async (habilidadesInteresses: string, propostasAdaptacoes: string) => {
     setIsLoading(true);
     try {
+      const hab = habilidadesInteresses.trim();
+      const prop = propostasAdaptacoes.trim();
       let resultado: PeiResponseDTO;
       if (peiAtual) {
-        resultado = await PeiService.atualizar(peiAtual.id, { habilidadesInteresses, propostasAdaptacoes });
+        resultado = await PeiService.atualizar(peiAtual.id, { habilidadesInteresses: hab, propostasAdaptacoes: prop });
       } else {
         resultado = await PeiService.criar(
           {
             acompanhamentoId: ACOMPANHAMENTO_POR_ALUNO[alunoSelecionado.id],
-            habilidadesInteresses,
-            propostasAdaptacoes,
+            habilidadesInteresses: hab,
+            propostasAdaptacoes: prop,
           },
           alunoSelecionado.id
         );
@@ -212,16 +222,22 @@ export const App: React.FC = () => {
     setIsLoading(true);
 
     try {
+      const objetivo = dados.objetivoGeral.trim();
+      const metodologia = dados.metodologia.trim();
+      const avaliacao = dados.avaliacao.trim();
+      const disciplinaId = dados.disciplinaId ? dados.disciplinaId.trim() : null;
+
       let resultado: PeaResponseDTO;
 
       if (peaAtual) {
-        // Atualiza um PEA existente
+        // Atualiza um PEA existente (alinhado com N7 e D3)
         resultado = await PeaService.atualizar(
           peaAtual.id,
           {
-            objetivoGeral: dados.objetivoGeral,
-            metodologia: dados.metodologia,
-            avaliacao: dados.avaliacao,
+            disciplinaId,
+            objetivoGeral: objetivo,
+            metodologia,
+            avaliacao,
           }
         );
       } else {
@@ -240,15 +256,16 @@ export const App: React.FC = () => {
 
         resultado = await PeaService.criar({
           acompanhamentoId,
-          disciplinaId: dados.disciplinaId,
-          objetivoGeral: dados.objetivoGeral,
-          metodologia: dados.metodologia,
-          avaliacao: dados.avaliacao,
+          disciplinaId,
+          objetivoGeral: objetivo,
+          metodologia,
+          avaliacao,
         });
       }
 
       setPeaAtual(resultado);
       await carregarTimeline(alunoSelecionado.id);
+      await carregarPeaDoAluno(alunoSelecionado.id);
 
       navigate('/');
 
@@ -260,11 +277,16 @@ export const App: React.FC = () => {
 
     } catch (erro: unknown) {
       const prob = erro as Partial<ProblemDetailRFC9457>;
+      const titulo =
+        prob?.status === 409 || prob?.title === 'Conflito de Recursos'
+          ? 'Conflito no PEA'
+          : (prob?.title || 'Erro ao salvar PEA');
       adicionarToast(
         'erro',
-        prob?.title || 'Erro ao salvar PEA',
+        titulo,
         prob?.detail || 'Não foi possível salvar o PEA.'
       );
+      throw erro;
     } finally {
       setIsLoading(false);
     }
@@ -283,18 +305,19 @@ export const App: React.FC = () => {
     }
     setIsLoading(true);
     try {
+      const diag = diagnostico.trim();
       let resultado: EstudoDeCasoResponseDTO;
       if (estudoAtual) {
         resultado = await EstudoDeCasoService.atualizar(estudoAtual.id, {
           status: 'RASCUNHO',
-          diagnosticoInicial: diagnostico,
+          diagnosticoInicial: diag,
           indicadoresIds,
         });
       } else {
         resultado = await EstudoDeCasoService.criar({
           alunoId: alunoSelecionado.id,
           status: 'RASCUNHO',
-          diagnosticoInicial: diagnostico,
+          diagnosticoInicial: diag,
           indicadoresIds,
         });
       }
@@ -331,18 +354,19 @@ export const App: React.FC = () => {
     }
     setIsLoading(true);
     try {
+      const diag = diagnostico.trim();
       let resultado: EstudoDeCasoResponseDTO;
       if (estudoAtual) {
         resultado = await EstudoDeCasoService.atualizar(estudoAtual.id, {
           status: 'ENCERRADO',
-          diagnosticoInicial: diagnostico,
+          diagnosticoInicial: diag,
           indicadoresIds,
         });
       } else {
         resultado = await EstudoDeCasoService.criar({
           alunoId: alunoSelecionado.id,
           status: 'ENCERRADO',
-          diagnosticoInicial: diagnostico,
+          diagnosticoInicial: diag,
           indicadoresIds,
         });
       }
@@ -508,6 +532,9 @@ export const App: React.FC = () => {
               <FormularioPea
                 aluno={alunoSelecionado}
                 peaExistente={peaAtual}
+                peasExistentes={peasDoAluno}
+                onSelecionarPea={(pea) => setPeaAtual(pea)}
+                onNovoPea={() => setPeaAtual(null)}
                 peiId={peiAtual?.id}
                 onSalvar={handleSalvarPea}
                 onVoltar={() => navigate('/')}

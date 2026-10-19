@@ -92,14 +92,29 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
         : 'border-gray-300 focus:border-ifpb-teal focus:ring-ifpb-tealLight'
     }`;
 
+  const isDirty =
+    habilidades !== (peiExistente?.habilidadesInteresses || '') ||
+    propostas !== (peiExistente?.propostasAdaptacoes || '');
+
+  const handleVoltar = () => {
+    if (isDirty) {
+      const confirmar = window.confirm(
+        'Existem alterações não salvas no PEI. Deseja realmente sair e descartar as alterações?'
+      );
+      if (!confirmar) return;
+    }
+    onVoltar();
+  };
+
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       <div className="bg-gradient-to-r from-[#0F6460] to-[#12534f] text-white px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center space-x-3">
           <button
             type="button"
-            onClick={onVoltar}
-            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+            onClick={handleVoltar}
+            disabled={isLoading}
+            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             title="Voltar para a ficha do aluno"
             aria-label="Voltar para a ficha do aluno"
           >
@@ -237,7 +252,7 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
         <div className="pt-6 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-4">
           <button
             type="button"
-            onClick={onVoltar}
+            onClick={handleVoltar}
             disabled={isLoading}
             className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
           >

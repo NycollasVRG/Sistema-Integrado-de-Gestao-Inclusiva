@@ -5,8 +5,8 @@ export interface PeiRequestDTO {
 }
 
 export interface PeiUpdateDTO {
-  habilidadesInteresses: string;
-  propostasAdaptacoes: string;
+  habilidadesInteresses?: string;
+  propostasAdaptacoes?: string;
 }
 
 export interface PeiResponseDTO {

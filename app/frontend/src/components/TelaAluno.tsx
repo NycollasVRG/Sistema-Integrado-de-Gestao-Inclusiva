@@ -113,7 +113,9 @@ export const TelaAluno: React.FC<TelaAlunoProps> = ({
                   )}
                   {estudoAtual?.diagnosticoInicial && (
                     <div className="text-xs bg-white p-2 rounded border border-gray-200 text-gray-700 italic">
-                      "{estudoAtual.diagnosticoInicial.slice(0, 100)}..."
+                      "{estudoAtual.diagnosticoInicial.length > 100
+                        ? estudoAtual.diagnosticoInicial.slice(0, 100) + '...'
+                        : estudoAtual.diagnosticoInicial}"
                     </div>
                   )}
                 </div>
