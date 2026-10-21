@@ -7,6 +7,7 @@
 [![Vite](https://img.shields.io/badge/Vite-8.3.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.19-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Status](https://img.shields.io/badge/Status-Em_Desenvolvimento-orange?style=for-the-badge)](#)
 
 ---
@@ -80,7 +81,19 @@ Todas as versões abaixo foram extraídas com precisão dos arquivos de configur
 
 ## 3. Guia de Instalação e Execução
 
-### Pré-requisitos
+> [!TIP]
+> **Execução Rápida com Docker (Recomendado — Task #46):**
+> Você pode subir todo o ambiente de forma 100% isolada e com um único comando na raiz do projeto:
+> ```bash
+> # Linux / macOS
+> cp .env.example .env && docker compose up -d --build
+>
+> # Windows (PowerShell)
+> Copy-Item .env.example .env; docker compose up -d --build
+> ```
+> Para instruções completas de arquitetura, conexão via DBeaver, comandos do dia a dia e *troubleshooting*, consulte o [**Guia de Execução com Docker (`DOCKER_GUIDE.md`)**](file:///DOCKER_GUIDE.md).
+
+### Pré-requisitos (Execução Tradicional / Local)
 Certifique-se de ter os seguintes componentes instalados no seu ambiente:
 * **Java Development Kit (JDK):** Versão **21** (ou superior). Verifique com `java -version`.
 * **Node.js:** Versão **20.x** ou superior (acompanhado do `npm`). Verifique com `node -v` e `npm -v`.
