@@ -66,6 +66,34 @@ services:
       retries: 5
       start_period: 30s
 
+  # ============================================================================
+  # Serviço 3: Frontend SPA (React 19 + Vite + Nginx)
+  # ============================================================================
+  frontend:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_USE_LOCAL_FALLBACK: ${VITE_USE_LOCAL_FALLBACK:-false}
+    container_name: sigi-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8080}
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    networks:
+      - sigi-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
 # ==============================================================================
 # Volumes Nomeados (Persistência de Dados e Anexos Criptografados US 11)
 # ==============================================================================
