@@ -41,3 +41,15 @@ O script executa os 7 passos cobrindo:
 5. Acionamento da revogação instantânea de sessão pelo `ADMIN`.
 6. Validação do bloqueio imediato do token antigo (`401 Unauthorized`).
 7. Tentativa de novo login do usuário revogado bloqueada (`401 Unauthorized`).
+
+---
+
+## 📮 Como Usar a Coleção no Postman
+
+1. No Postman, clique em **Import**.
+2. Selecione os dois arquivos deste diretório:
+   - `SIGI_US11_Autenticacao_RBAC.postman_collection.json`
+   - `SIGI_US11_Environment.postman_environment.json`
+3. No canto superior direito do Postman, selecione o ambiente **SIGI - US11 Environment**.
+4. Você pode executar requisição por requisição ou clicar nos três pontinhos da coleção e selecionar **Run collection** para rodar a suíte inteira de forma automatizada (os tokens `{{tokenAluno}}` e `{{tokenAdmin}}` são salvos automaticamente entre as requisições pelos scripts de teste).
+
