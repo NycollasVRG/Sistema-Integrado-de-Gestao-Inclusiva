@@ -7,10 +7,17 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 @Entity
 @Table(name = "usuario", schema = "sigi")
-public class Usuario extends BaseEntity {
+public class Usuario extends BaseEntity implements UserDetails {
 
     @Column(name = "nome", nullable = false)
     private String nome;
@@ -50,6 +57,51 @@ public class Usuario extends BaseEntity {
         this.autorizacaoSaude = autorizacaoSaude != null ? autorizacaoSaude : false;
         this.acessoAtivo = true;
         this.tokenVersion = 1;
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        if (this.role != null) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + this.role.name()));
+        }
+        if (this.nivelRestricao != null) {
+            authorities.add(new SimpleGrantedAuthority("REST_" + this.nivelRestricao.name()));
+        }
+        if (Boolean.TRUE.equals(this.autorizacaoSaude)) {
+            authorities.add(new SimpleGrantedAuthority("AUTH_SAUDE"));
+        }
+        return authorities;
+    }
+
+    @Override
+    public String getPassword() {
+        return this.senha;
+    }
+
+    @Override
+    public String getUsername() {
+        return this.email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return Boolean.TRUE.equals(this.acessoAtivo);
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return Boolean.TRUE.equals(this.acessoAtivo);
     }
 
     public String getNome() {

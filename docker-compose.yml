@@ -19,6 +19,7 @@ services:
       # Aplicação automática do schema da Sprint 1 e massa de dados inicial (seed)
       - ./app/backend/database/create_tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
       - ./app/backend/collection/US03/seed_test_data.sql:/docker-entrypoint-initdb.d/02-seed-test-data.sql:ro
+      - ./app/backend/collection/US11/seed_test_data.sql:/docker-entrypoint-initdb.d/03-seed-us11-users.sql:ro
     networks:
       - sigi-network
     healthcheck:
