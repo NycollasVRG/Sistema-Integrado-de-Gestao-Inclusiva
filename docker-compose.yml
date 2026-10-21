@@ -1,0 +1,84 @@
+services:
+  # ============================================================================
+  # Serviço 1: Banco de Dados Relacional (PostgreSQL 16 - compatível 14+)
+  # ============================================================================
+  db:
+    image: postgres:16-alpine
+    container_name: sigi-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sigi_clai}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      TZ: America/Fortaleza
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      # Persistência dos dados do PostgreSQL
+      - postgres_data:/var/lib/postgresql/data
+      # Aplicação automática do schema da Sprint 1 e massa de dados inicial (seed)
+      - ./app/backend/database/create_tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
+      - ./app/backend/collection/US03/seed_test_data.sql:/docker-entrypoint-initdb.d/02-seed-test-data.sql:ro
+    networks:
+      - sigi-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-sigi_clai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================================================
+  # Serviço 2: Backend API (Java 21 + Spring Boot)
+  # ============================================================================
+  backend:
+    build:
+      context: ./app/backend
+      dockerfile: Dockerfile
+    container_name: sigi-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8080
+      DB_HOST: db
+      DB_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-sigi_clai}
+      DB_SCHEMA: ${DB_SCHEMA:-sigi}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-sigi_clai}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      JWT_SECRET: ${JWT_SECRET:-sigi-clai-dev-jwt-secret-key-2026-ifpb-change-in-prod}
+      AES_KEY: ${AES_KEY:-0123456789abcdef0123456789abcdef}
+      ATTACHMENTS_STORAGE_PATH: ${ATTACHMENTS_STORAGE_PATH:-/app/storage/anexos}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      # Volume dedicado ao armazenamento de anexos sensíveis criptografados (US 11)
+      - attachments_data:${ATTACHMENTS_STORAGE_PATH:-/app/storage/anexos}
+    networks:
+      - sigi-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+# ==============================================================================
+# Volumes Nomeados (Persistência de Dados e Anexos Criptografados US 11)
+# ==============================================================================
+volumes:
+  postgres_data:
+    name: sigi_postgres_data
+  attachments_data:
+    name: sigi_attachments_data
+
+# ==============================================================================
+# Rede Interna Isolada
+# ==============================================================================
+networks:
+  sigi-network:
+    name: sigi-network
+    driver: bridge
