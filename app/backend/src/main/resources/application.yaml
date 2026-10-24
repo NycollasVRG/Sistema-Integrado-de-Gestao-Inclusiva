@@ -1,11 +1,14 @@
+server:
+  port: ${SERVER_PORT:8080}
+
 spring:
   application:
     name: CLAI
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/sigi_clai
-    username: ${GROUP_DB_USER:postgres}
-    password: ${GROUP_DB_PASSWORD:postgres}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRES_DB:sigi_clai}}
+    username: ${SPRING_DATASOURCE_USERNAME:${GROUP_DB_USER:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${GROUP_DB_PASSWORD:postgres}}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -16,4 +19,11 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        default_schema: sigi
+        default_schema: ${DB_SCHEMA:sigi}
+
+sigi:
+  security:
+    jwt-secret: ${JWT_SECRET:dev-only-jwt-secret-key-change-in-production-minimum-256-bits}
+    aes-key: ${AES_KEY:0123456789abcdef0123456789abcdef}
+  storage:
+    attachments-dir: ${ATTACHMENTS_STORAGE_PATH:/app/storage/anexos}

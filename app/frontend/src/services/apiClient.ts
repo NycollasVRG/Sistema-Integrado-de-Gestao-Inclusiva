@@ -1,5 +1,5 @@
 import type { ProblemDetailRFC9457 } from '../types/estudoDeCaso';
-import { USE_LOCAL_FALLBACK } from '../config/featureFlags';
+import { API_URL, USE_LOCAL_FALLBACK } from '../config/featureFlags';
 
 /**
  * Cliente HTTP único para os serviços (Estudo de Caso, PEI, PEA, Timeline).
@@ -81,13 +81,25 @@ async function lerProblema(res: Response): Promise<ApiProblem> {
 }
 
 /**
+ * Resolve o caminho do endpoint combinando com VITE_API_URL sem duplicar o prefixo /api.
+ */
+export function resolveApiUrl(input: string): string {
+  if (/^https?:\/\//i.test(input)) return input;
+  if (!API_URL || API_URL === '/api') return input;
+  if (API_URL.endsWith('/api') && input.startsWith('/api/')) {
+    return `${API_URL}${input.slice(4)}`;
+  }
+  return `${API_URL}${input.startsWith('/') ? input : `/${input}`}`;
+}
+
+/**
  * fetch que lança ApiProblem para falha de rede e para qualquer resposta
  * não-2xx. Respostas 2xx são devolvidas ao chamador.
  */
 export async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   let res: Response;
   try {
-    res = await fetch(input, init);
+    res = await fetch(resolveApiUrl(input), init);
   } catch {
     throw problemaRede();
   }
@@ -96,3 +108,4 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
   }
   return res;
 }
+
