@@ -1,4 +1,10 @@
 -- ==========================================
+-- 0. GARANTIA DO SCHEMA SIGI (Docker Init)
+-- ==========================================
+
+CREATE SCHEMA IF NOT EXISTS sigi;
+
+-- ==========================================
 -- 1. DROP DAS TABELAS ANTIGAS
 -- ==========================================
 
@@ -10,6 +16,7 @@ DROP TABLE IF EXISTS sigi.estudo_caso_indicador CASCADE;
 DROP TABLE IF EXISTS sigi.estudo_de_caso CASCADE;
 DROP TABLE IF EXISTS sigi.indicador_reutilizavel CASCADE;
 DROP TABLE IF EXISTS sigi.aluno CASCADE;
+DROP TABLE IF EXISTS sigi.usuario CASCADE;
 
 -- Se precisar dropar o schema todo e recriar (opcional):
 -- DROP SCHEMA IF EXISTS sigi CASCADE;
@@ -135,3 +142,29 @@ CREATE TABLE sigi.pea (
     criado_por UUID,
     atualizado_por UUID
 );
+
+-- ==========================================
+-- US 11: Autenticação, Perfis RBAC e Revogação (Task #50)
+-- ==========================================
+
+-- 9. Entidade Usuario
+CREATE TABLE sigi.usuario (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    senha VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    nivel_restricao VARCHAR(50) NOT NULL,
+    autorizacao_saude BOOLEAN NOT NULL DEFAULT FALSE,
+    acesso_ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    token_version INTEGER NOT NULL DEFAULT 1,
+    -- Campos herdados de BaseEntity (@SoftDelete e Auditoria)
+    deleted BOOLEAN DEFAULT FALSE NOT NULL,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    criado_por UUID,
+    atualizado_por UUID
+);
+
+CREATE INDEX idx_usuario_email ON sigi.usuario(email);
+CREATE INDEX idx_usuario_role ON sigi.usuario(role);
