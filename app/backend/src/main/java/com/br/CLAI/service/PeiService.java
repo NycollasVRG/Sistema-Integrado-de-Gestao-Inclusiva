@@ -103,7 +103,7 @@ public class PeiService {
     public PeiResponseDTO criar(PeiRequestDTO dto, UUID usuarioId) {
 
         Acompanhamento acompanhamento = acompanhamentoRepository
-                .findById(dto.getAcompanhamentoId())
+                .findById(dto.acompanhamentoId())
                 .orElseThrow(() ->
                         new NaoEncontradoException("Acompanhamento não encontrado."));
 

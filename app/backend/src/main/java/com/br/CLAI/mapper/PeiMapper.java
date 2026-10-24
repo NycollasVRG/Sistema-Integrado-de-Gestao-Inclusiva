@@ -14,34 +14,37 @@ public class PeiMapper {
 
         return new Pei(
                 acompanhamento,
-                dto.getHabilidadesInteresses(),
-                dto.getPropostasAdaptacoes()
+                dto.habilidadesInteresses(),
+                dto.propostasAdaptacoes()
         );
     }
 
     public void updateEntityFromDto(Pei pei, PeiUpdateDTO dto) {
 
-        if (dto.getHabilidadesInteresses() != null) {
-            pei.setHabilidadesInteresses(dto.getHabilidadesInteresses());
+        if (dto.habilidadesInteresses() != null) {
+            pei.setHabilidadesInteresses(dto.habilidadesInteresses());
         }
 
-        if (dto.getPropostasAdaptacoes() != null) {
-            pei.setPropostasAdaptacoes(dto.getPropostasAdaptacoes());
+        if (dto.propostasAdaptacoes() != null) {
+            pei.setPropostasAdaptacoes(dto.propostasAdaptacoes());
         }
     }
 
     public PeiResponseDTO toResponse(Pei pei) {
+        if (pei == null) {
+            return null;
+        }
 
-        PeiResponseDTO dto = new PeiResponseDTO();
-
-        dto.setId(pei.getId());
-        dto.setAcompanhamentoId(pei.getAcompanhamento().getId());
-        dto.setAlunoId(pei.getAcompanhamento().getAluno().getId());
-        dto.setHabilidadesInteresses(pei.getHabilidadesInteresses());
-        dto.setPropostasAdaptacoes(pei.getPropostasAdaptacoes());
-        dto.setCriadoEm(pei.getCriadoEm());
-        dto.setAtualizadoEm(pei.getAtualizadoEm());
-
-        return dto;
+        return new PeiResponseDTO(
+                pei.getId(),
+                pei.getAcompanhamento() != null ? pei.getAcompanhamento().getId() : null,
+                pei.getAcompanhamento() != null && pei.getAcompanhamento().getAluno() != null
+                        ? pei.getAcompanhamento().getAluno().getId()
+                        : null,
+                pei.getHabilidadesInteresses(),
+                pei.getPropostasAdaptacoes(),
+                pei.getCriadoEm(),
+                pei.getAtualizadoEm()
+        );
     }
 }

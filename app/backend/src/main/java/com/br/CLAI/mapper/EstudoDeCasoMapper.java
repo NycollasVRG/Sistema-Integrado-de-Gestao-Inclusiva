@@ -3,9 +3,12 @@ package com.br.CLAI.mapper;
 import com.br.CLAI.domain.EstudoDeCaso;
 import com.br.CLAI.domain.IndicadorReutilizavel;
 import com.br.CLAI.domain.BaseEntity;
+import com.br.CLAI.dto.request.EstudoDeCasoRequestDTO;
+import com.br.CLAI.dto.request.EstudoDeCasoUpdateDTO;
 import com.br.CLAI.dto.response.EstudoDeCasoResponseDTO;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
@@ -16,39 +19,35 @@ public class EstudoDeCasoMapper {
             return null;
         }
 
-        EstudoDeCasoResponseDTO dto = new EstudoDeCasoResponseDTO();
-        dto.setId(entity.getId());
-        
-        if (entity.getAluno() != null) {
-            dto.setAlunoId(entity.getAluno().getId());
-        }
-        
-        dto.setStatus(entity.getStatus());
-        dto.setDiagnosticoInicial(entity.getDiagnosticoInicial());
-        
+        List<java.util.UUID> indicadoresIds = null;
         if (entity.getIndicadores() != null) {
-            dto.setIndicadoresIds(entity.getIndicadores().stream()
+            indicadoresIds = entity.getIndicadores().stream()
                     .map(BaseEntity::getId)
-                    .collect(Collectors.toList()));
+                    .collect(Collectors.toList());
         }
 
-        dto.setCriadoEm(entity.getCriadoEm());
-        dto.setAtualizadoEm(entity.getAtualizadoEm());
-
-        return dto;
+        return new EstudoDeCasoResponseDTO(
+                entity.getId(),
+                entity.getAluno() != null ? entity.getAluno().getId() : null,
+                entity.getStatus(),
+                entity.getDiagnosticoInicial(),
+                indicadoresIds,
+                entity.getCriadoEm(),
+                entity.getAtualizadoEm()
+        );
     }
 
-    public EstudoDeCaso toEntity(com.br.CLAI.dto.request.EstudoDeCasoRequestDTO dto, 
+    public EstudoDeCaso toEntity(EstudoDeCasoRequestDTO dto, 
                                 com.br.CLAI.domain.Aluno aluno, 
-                                java.util.List<IndicadorReutilizavel> indicadores) {
+                                List<IndicadorReutilizavel> indicadores) {
         if (dto == null) {
             return null;
         }
 
         EstudoDeCaso entidade = new EstudoDeCaso();
         entidade.setAluno(aluno);
-        entidade.setStatus(dto.getStatus());
-        entidade.setDiagnosticoInicial(dto.getDiagnosticoInicial());
+        entidade.setStatus(dto.status());
+        entidade.setDiagnosticoInicial(dto.diagnosticoInicial());
         if (indicadores != null) {
             entidade.setIndicadores(new java.util.ArrayList<>(indicadores));
         }
@@ -57,14 +56,14 @@ public class EstudoDeCasoMapper {
     }
 
     public void updateEntityFromDto(EstudoDeCaso entidade, 
-                                    com.br.CLAI.dto.request.EstudoDeCasoUpdateDTO dto, 
-                                    java.util.List<IndicadorReutilizavel> indicadores) {
+                                    EstudoDeCasoUpdateDTO dto, 
+                                    List<IndicadorReutilizavel> indicadores) {
         if (entidade == null || dto == null) {
             return;
         }
 
-        entidade.setStatus(dto.getStatus());
-        entidade.setDiagnosticoInicial(dto.getDiagnosticoInicial());
+        entidade.setStatus(dto.status());
+        entidade.setDiagnosticoInicial(dto.diagnosticoInicial());
         if (indicadores != null) {
             entidade.setIndicadores(new java.util.ArrayList<>(indicadores));
         }
