@@ -62,6 +62,8 @@ CREATE TABLE sigi.estudo_de_caso (
     aluno_id UUID NOT NULL REFERENCES sigi.aluno(id),
     status VARCHAR(20) NOT NULL DEFAULT 'ATIVO', -- Valores: ATIVO, ENCERRADO, RASCUNHO
     diagnostico_inicial TEXT,
+    historico_familiar TEXT,
+    historico_socioemocional TEXT,
     -- Campos herdados de BaseEntity (@SoftDelete e Auditoria)
     deleted BOOLEAN DEFAULT FALSE NOT NULL,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
