@@ -78,8 +78,8 @@ public class TimelineService {
 
         eventos.sort(
                 Comparator
-                        .comparing(TimelineEventDTO::getDataCriacao)
-                        .thenComparing(TimelineEventDTO::getId)
+                        .comparing(TimelineEventDTO::dataCriacao)
+                        .thenComparing(TimelineEventDTO::id)
         );
 
         return eventos;
