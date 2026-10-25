@@ -477,12 +477,262 @@ ADMIN ──► PATCH /api/v1/admin/usuarios/{id}/revogar-acesso
         Tokens anteriores invalidados (TA11.4)
 ```
 
-Com isso, a US 11 entrega a fundação de segurança institucional do SIGI: autenticação por JWT com claims de RBAC, controle de sessão verificável em tempo real e revogação imediata de acesso, isolando corretamente os perfis e preparando o terreno para as restrições de prontuário sensível das Sprints seguintes.
+Com isso, a US 11 entrega a fundação de segurança institucional do SIGI: autenticação por JWT com claims de RBAC, controle de sessão verificável em tempo real e revogação imediata de acesso, isolando corretamente os perfis e preparando o terreno para as restrições de prontuário sensível.
 
-## 9. Próximos Passos (Trabalhos Futuros)
+---
 
-1. **Restrição de prontuário sensível:** aplicar `nivelRestricao` (`SUPER_RESTRICAO`, `RESTRICAO_MODERADA`, `ACESSO_FUNCIONAL`) e a authority `AUTH_SAUDE` nos endpoints de PEI, anexos sensíveis e Timeline.
+# Plano de Implementação: Motor de Criptografia em Repouso (AES-256) para Anexos Médicos Sensíveis (Task #51 - US 11)
+
+Esta seção descreve a implementação da **Task #51**, que entregou o motor criptográfico JCA/JCE (`javax.crypto`) e o controle de acesso estrito em memória para anexos médicos sensíveis (laudos médicos e diagnósticos neuropsicológicos) da **US 11** em conformidade com a **LGPD (TA11.1, TA11.2 e TA3.2)**.
+
+## 10. Visão Geral da Task #51 (Checkpoints)
+
+**O que já havia sido preparado (Checkpoints Anteriores):**
+- [x] Volume Docker dedicado (`attachments_data` montado em `/app/storage/anexos`) e variável `AES_KEY` de 256 bits (Task #46).
+- [x] Contexto de segurança JWT e `Usuario` com `NivelRestricao` (`SUPER_RESTRICAO`, `RESTRICAO_MODERADA`, `ACESSO_FUNCIONAL`) e `autorizacaoSaude` (Task #50).
+
+**O que foi feito nesta Task (Checkpoint Atual - Dividido em 3 Etapas / Commits):**
+- [x] **Mini-Task 1 (Etapa 1 / Commit 1)**: Modelagem de metadados (`TipoClassificacaoAnexo`, `AnexoEstudante`, `AnexoEstudanteRepository`), migration SQL (`sigi.anexo_estudante`) e motor criptográfico `CryptoStorageService` (`AES/GCM/NoPadding` 256 bits, IV aleatório de 12 bytes e tag de autenticação de 128 bits).
+- [x] **Mini-Task 2 (Etapa 2 / Commit 2)**: Endpoint de upload (`POST /api/v1/estudantes/{id}/anexos`) e persistência seletiva cifrada em repouso (**TA11.1**).
+- [x] **Mini-Task 3 (Etapa 3 / Commit 3)**: Endpoint de download (`GET /api/v1/anexos/{anexoId}/download`) com controle de acesso estrito (`SUPER_RESTRICAO` + `autorizacaoSaude == true`), descriptografia exclusivamente em memória (**TA11.2 / TA3.2**), suítes de testes automatizados, script PowerShell e coleção Postman atualizada.
+
+*O diferencial desta task é a **proteção criptográfica em repouso combinada com descriptografia zero-disk**: laudos médicos nunca ficam abertos no volume Docker ou no PostgreSQL e jamais geram arquivos temporários descriptografados em disco durante a leitura.*
+
+## 11. Arquitetura em Camadas (Task #51)
+
+A implementação seguiu o padrão em camadas de `com.br.CLAI`:
+
+* `domain`
+  * `enums`: Contém `TipoClassificacaoAnexo` (`LAUDO_MEDICO`, `DIAGNOSTICO_NEUROPSICOLOGICO`, `DOCUMENTO_PEDAGOGICO`), indicando quais categorias exigem criptografia obrigatória (`isSensivel()`).
+  * `AnexoEstudante`: Entidade que persiste os metadados do arquivo, vínculo com `Aluno`, flag `criptografado`, caminho relativo no volume e o **Initialization Vector (IV)** em Base64.
+* `repository`: Contém `AnexoEstudanteRepository`, responsável pela persistência e listagem de metadados por estudante.
+* `service`:
+  * `CryptoStorageService`: Motor criptográfico puro baseado na JCA/JCE (`javax.crypto.Cipher`, `SecretKeySpec`, `GCMParameterSpec`) e I/O seguro no volume com proteção contra *Path Traversal*.
+  * `AnexoEstudanteService`: Orquestra a bifurcação de upload (cifrado vs. pedagógico) e a barreira de segurança para download em memória.
+* `controller`: Contém `AnexoEstudanteController` (rotas de upload multipart, listagem de metadados e download binário seguro).
+* `dto`
+  * `response`: Contém `AnexoEstudanteResponseDTO` (omite intencionalmente `iv` e `caminhoArmazenamento`).
+
+### Arquivos criados ou alterados na Task #51
+
+- `src/main/java/com/br/CLAI/domain/enums/TipoClassificacaoAnexo.java`
+- `src/main/java/com/br/CLAI/domain/AnexoEstudante.java`
+- `src/main/java/com/br/CLAI/repository/AnexoEstudanteRepository.java`
+- `src/main/java/com/br/CLAI/service/CryptoStorageService.java`
+- `src/main/java/com/br/CLAI/service/AnexoEstudanteService.java`
+- `src/main/java/com/br/CLAI/controller/AnexoEstudanteController.java`
+- `src/main/java/com/br/CLAI/dto/response/AnexoEstudanteResponseDTO.java`
+- `src/test/java/com/br/CLAI/service/CryptoStorageServiceTest.java`
+- `src/test/java/com/br/CLAI/service/AnexoUploadIntegrationTest.java`
+- `src/test/java/com/br/CLAI/security/AnexoSecurityIntegrationTest.java`
+- `database/create_tables.sql` (tabela `sigi.anexo_estudante`)
+- `database/04-create-anexo-estudante.sql`
+- `collection/US11/test_criptografia_anexos.ps1`
+- `collection/US11/SIGI_US11_Autenticacao_RBAC.postman_collection.json`
+- `collection/US11/SIGI_US11_Environment.postman_environment.json`
+- `collection/US11/README.md`
+
+## 12. Detalhamento da Implementação (Task #51)
+
+### 12.1 Etapa 1 - Motor Criptográfico (`CryptoStorageService`) e Modelagem de Metadados
+
+#### Tabela `sigi.anexo_estudante`
+
+A tabela armazena os metadados do documento e o vetor de inicialização (`iv`) necessário para a decifragem autenticada:
+
+```sql
+CREATE TABLE sigi.anexo_estudante (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aluno_id UUID NOT NULL REFERENCES sigi.aluno(id) ON DELETE CASCADE,
+    nome_original VARCHAR(255) NOT NULL,
+    content_type VARCHAR(100) NOT NULL,
+    tamanho_bytes BIGINT NOT NULL,
+    classificacao VARCHAR(50) NOT NULL, -- Valores: LAUDO_MEDICO, DIAGNOSTICO_NEUROPSICOLOGICO, DOCUMENTO_PEDAGOGICO
+    criptografado BOOLEAN NOT NULL DEFAULT FALSE,
+    caminho_armazenamento VARCHAR(500) NOT NULL,
+    iv VARCHAR(64), -- Initialization Vector (12 bytes em Base64) para AES-256-GCM
+    -- Campos herdados de BaseEntity (@SoftDelete e Auditoria)
+    deleted BOOLEAN DEFAULT FALSE NOT NULL,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    criado_por UUID,
+    atualizado_por UUID
+);
+
+CREATE INDEX idx_anexo_estudante_aluno_id ON sigi.anexo_estudante(aluno_id);
+CREATE INDEX idx_anexo_estudante_classificacao ON sigi.anexo_estudante(classificacao);
+```
+
+| Campo | Função |
+|---|---|
+| `classificacao` | Define se o documento é `LAUDO_MEDICO`, `DIAGNOSTICO_NEUROPSICOLOGICO` ou `DOCUMENTO_PEDAGOGICO`. |
+| `criptografado` | Indica se os bytes persistidos no volume passaram pelo motor AES-256-GCM. |
+| `caminho_armazenamento` | Caminho relativo dentro do volume montado (`/app/storage/anexos`), com extensão `.enc` para arquivos sensíveis. |
+| `iv` | Vetor de inicialização de 12 bytes (96 bits) codificado em Base64, gerado exclusivamente para aquele arquivo. |
+
+#### `CryptoStorageService` - Criptografia Autenticada `AES/GCM/NoPadding`
+
+O serviço injeta a chave simétrica de 256 bits (`sigi.security.aes-key`) e o diretório do volume (`sigi.storage.attachments-dir`). A cada operação de cifragem, gera um **IV único de 12 bytes** com `SecureRandom` e aplica uma tag de integridade AEAD de **128 bits** (`GCMParameterSpec`):
+
+```java
+public EncryptedPayload encrypt(byte[] plaintext) {
+    byte[] iv = new byte[GCM_IV_LENGTH_BYTES]; // 12 bytes (NIST SP 800-38D)
+    secureRandom.nextBytes(iv);
+
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    GCMParameterSpec parameterSpec = new GCMParameterSpec(128, iv);
+    cipher.init(Cipher.ENCRYPT_MODE, secretKey, parameterSpec);
+
+    byte[] ciphertext = cipher.doFinal(plaintext);
+    String ivBase64 = Base64.getEncoder().encodeToString(iv);
+
+    return new EncryptedPayload(ciphertext, iv, ivBase64);
+}
+```
+
+A descriptografia ocorre **estritamente em memória** (`byte[]`), validando a tag de autenticação GCM de 128 bits antes de liberar qualquer byte:
+
+```java
+public byte[] decrypt(byte[] ciphertext, byte[] iv) {
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    GCMParameterSpec parameterSpec = new GCMParameterSpec(128, iv);
+    cipher.init(Cipher.DECRYPT_MODE, secretKey, parameterSpec);
+
+    return cipher.doFinal(ciphertext);
+}
+```
+
+### 12.2 Etapa 2 - Upload e Persistência Seletiva Cifrada (TA11.1)
+
+O método `uploadAnexo` em `AnexoEstudanteService` verifica a sensibilidade da classificação (`classificacao.isSensivel()`):
+
+- **`LAUDO_MEDICO` e `DIAGNOSTICO_NEUROPSICOLOGICO`**: os bytes originais são cifrados em memória com `cryptoStorageService.encrypt(bytesOriginais)`, apenas o `ciphertext` (sem o cabeçalho `%PDF-`) é gravado no volume com sufixo `.enc`, e o `ivBase64` é persistido na entidade `AnexoEstudante`.
+- **`DOCUMENTO_PEDAGOGICO`**: gravado no volume sem exigir chave médica (`criptografado = false`, `iv = null`).
+
+### 12.3 Etapa 3 - Download com Controle de Acesso Estrito em Memória (TA11.2 / TA3.2)
+
+Quando `GET /api/v1/anexos/{anexoId}/download` é acionado para um anexo sensível, o `AnexoEstudanteService` exige simultaneamente duas condições no `Usuario` autenticado no `SecurityContextHolder`:
+
+```java
+private void validarAcessoEstritoSaude(Usuario usuario) {
+    boolean autorizado = usuario != null
+            && usuario.getNivelRestricao() == NivelRestricao.SUPER_RESTRICAO
+            && Boolean.TRUE.equals(usuario.getAutorizacaoSaude());
+
+    if (!autorizado) {
+        throw new AcessoNegadoException(
+                "Acesso negado: visualização e descriptografia de anexos médicos sensíveis restrita a profissionais com nível SUPER_RESTRICAO e autorização de saúde ativa."
+        );
+    }
+}
+```
+
+Caso qualquer uma das duas condições falhe, a `AcessoNegadoException` é convertida pelo `GlobalExceptionHandler` em **HTTP `403 Forbidden`** no padrão ProblemDetail (RFC 9457), impedindo que a descriptografia seja sequer iniciada.
+
+#### Fluxo de Upload Cifrado e Download Restrito em Memória
+
+```text
+   UPLOAD (POST /api/v1/estudantes/{id}/anexos)
+                  │
+                  ▼
+     classificacao.isSensivel()?
+       ├── sim (LAUDO_MEDICO / DIAGNOSTICO_NEUROPSICOLOGICO)
+       │     ├──► SecureRandom gera IV único (12 bytes)
+       │     ├──► Cipher AES/GCM/NoPadding (256 bits, tag 128 bits)
+       │     ├──► Volume Docker (/app/storage/anexos/*.enc) ◄── bytes cifrados (sem %PDF-)
+       │     └──► PostgreSQL (sigi.anexo_estudante)         ◄── iv (Base64) + criptografado=true
+       │
+       └── não (DOCUMENTO_PEDAGOGICO)
+             └──► Volume Docker + PostgreSQL (criptografado=false, iv=null)
+
+   DOWNLOAD (GET /api/v1/anexos/{anexoId}/download)
+                  │
+                  ▼
+     anexo.getClassificacao().isSensivel()?
+       ├── sim ──► NivelRestricao == SUPER_RESTRICAO && autorizacaoSaude == true?
+       │             ├── não ──► 403 Forbidden (ProblemDetail — TA11.2 / TA3.2)
+       │             └── sim ──► Lê .enc do volume + IV do banco
+       │                           └──► Descriptografa exclusivamente em RAM (byte[])
+       │                                  └──► 200 OK (application/pdf, Cache-Control: no-store)
+       └── não ──► 200 OK (para usuários autenticados)
+```
+
+## 13. Endpoints Implementados na Task #51
+
+```http
+POST /api/v1/estudantes/{id}/anexos
+GET  /api/v1/estudantes/{id}/anexos
+GET  /api/v1/anexos/{anexoId}/download
+```
+
+| Método | Rota | Perfil Requerido | Descrição |
+|---|---|---|---|
+| `POST` | `/api/v1/estudantes/{id}/anexos` | Autenticado | **TA11.1**: Recebe `MultipartFile` e `classificacao`. Cifra com AES-256-GCM se for laudo médico ou diagnóstico neuropsicológico. |
+| `GET` | `/api/v1/estudantes/{id}/anexos` | Autenticado | Lista os metadados dos anexos vinculados ao estudante (sem expor `iv` ou caminho físico). |
+| `GET` | `/api/v1/anexos/{anexoId}/download` | `SUPER_RESTRICAO` + `autorizacaoSaude=true` *(para laudos)* | **TA11.2 / TA3.2**: Valida permissão estrita de saúde, descriptografa em memória e retorna o binário original. |
+
+## 14. Matriz de Validação dos Critérios de Aceite (Task #51)
+
+| Critério de Aceite | Cenário Testado | Resultado |
+|---|---|---|
+| **CA 1 [TA11.1]** | Arquivo enviado como `LAUDO_MEDICO` ou `DIAGNOSTICO_NEUROPSICOLOGICO` é gravado cifrado no volume (sem magic bytes `%PDF-` e sem texto clínico em claro). | **APROVADO** (inspeção direta dos bytes em disco confirmada). |
+| **CA 2 [TA11.2]** | Download por usuário com `SUPER_RESTRICAO` e `autorizacaoSaude = true` descriptografa exclusivamente em memória e retorna o PDF íntegro. | **APROVADO** (HTTP 200 OK, bytes idênticos ao PDF original, zero arquivos temporários em disco). |
+| **CA 3 [TA11.2 / TA3.2]** | Bloqueio de download de anexo sensível para Professor, Coordenador (`autorizacaoSaude=false`), Admin de TI (`autorizacaoSaude=false`), Psicopedagogo (`RESTRICAO_MODERADA`) e Aluno Apoiador. | **APROVADO** (HTTP 403 Forbidden em todos os perfis não autorizados). |
+| **Integridade AEAD** | Adulteração de 1 bit no arquivo `.enc` no disco ou divergência de IV/chave é detectada pela tag GCM de 128 bits. | **APROVADO** (`SecurityException` / `AEADBadTagException` bloqueia a leitura). |
+
+## 15. Testes Realizados na Task #51
+
+### Suítes automatizadas (JUnit 5 + MockMvc)
+
+1. **`CryptoStorageServiceTest.java`** (6 testes unitários):
+   - Cifragem AES-256-GCM e decifragem em memória preservando 100% dos bytes originais.
+   - Geração de IVs de 12 bytes e ciphertexts distintos para arquivos idênticos.
+   - Detecção de adulteração nos bytes cifrados (tag AEAD GCM de 128 bits).
+   - Bloqueio quando o IV ou a chave AES de 256 bits divergem.
+   - Validação de tamanho da chave AES (32 bytes UTF-8 ou 64 hex).
+   - Gravação/leitura no volume e bloqueio de *Path Traversal* (`../../`).
+
+2. **`AnexoUploadIntegrationTest.java`** (4 testes de integração):
+   - Upload de `LAUDO_MEDICO` e inspeção física do arquivo `.enc` no volume comprovando ausência de `%PDF-` e de dados clínicos abertos (**TA11.1**).
+   - Upload cifrado de `DIAGNOSTICO_NEUROPSICOLOGICO`.
+   - Upload padrão de `DOCUMENTO_PEDAGOGICO` (`criptografado = false`, `iv = null`).
+   - Retorno `404 Not Found` para estudante inexistente.
+
+3. **`AnexoSecurityIntegrationTest.java`** (4 testes de integração com `JwtAuthenticationFilter` real):
+   - **CA 1 + CA 2**: Upload cifrado e download em memória (`200 OK`) para usuário com `SUPER_RESTRICAO` + `autorizacaoSaude = true`, verificando que nenhum arquivo temporário aberto foi criado no volume.
+   - **CA 3**: Bloqueio com `403 Forbidden` para Professor, Coordenador (`SUPER_RESTRICAO` + `autorizacaoSaude = false`), Admin de TI (`SUPER_RESTRICAO` + `autorizacaoSaude = false`), Psicopedagogo (`RESTRICAO_MODERADA` + `autorizacaoSaude = true`) e Aluno Apoiador.
+   - Permissão normal (`200 OK`) para download de `DOCUMENTO_PEDAGOGICO` por Professor e Coordenador autenticados.
+   - Retorno `404 Not Found` para anexo inexistente.
+
+### Script de ponta a ponta (Task #51)
+
+```powershell
+powershell -File app/backend/collection/US11/test_criptografia_anexos.ps1
+```
+
+## 16. Ordem de Implementação e Commits (Task #51)
+
+1. **Commit 1 (`f111db0`)**: Motor criptográfico AES-256-GCM e modelagem de metadados do anexo.
+
+   ```text
+   feat(security): implementar motor criptografico AES-256-GCM e modelagem de anexo estudante (#51)
+   ```
+
+2. **Commit 2 (`c1d1c91`)**: Endpoint de upload e persistência seletiva cifrada em repouso (TA11.1).
+
+   ```text
+   feat(storage): implementar upload e persistencia seletiva cifrada de laudos em repouso (#51)
+   ```
+
+3. **Commit 3**: Endpoint de download com controle estrito em memória e testes de aceite TA11.2 / TA3.2.
+
+   ```text
+   feat(security): implementar download de laudos com controle estrito em memoria e testes TA11.2 (#51)
+   ```
+
+## 17. Próximos Passos (Trabalhos Futuros)
+
+1. **Auditoria de acesso a anexos médicos:** registrar em log de auditoria LGPD cada operação de visualização/descriptografia bem-sucedida ou negada (`403 Forbidden`) de laudos sensíveis.
 2. **Refresh token:** emitir tokens de curta duração com rotação por `refresh_token`, mantendo a revogação imediata válida para ambas as sessões.
-3. **Auditoria de revogação:** registrar em tabela de auditoria quem revogou, quando revogou e qual vínculo foi desativado.
-4. **Gestão de usuários:** endpoints administrativos de criação, alteração de perfil e reativação de vínculos (`acesso_ativo = true` com novo `token_version`).
-5. **Rotação do segredo JWT:** tornar `sigi.security.jwt-secret` obrigatório via variável de ambiente em produção, removendo o valor padrão de desenvolvimento.
+3. **Rotação de chave simétrica (Key Rotation):** suporte a versionamento de chave AES (`key_version`) para permitir rotação periódica de `AES_KEY` em produção.
+
