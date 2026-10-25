@@ -2,12 +2,17 @@ package com.br.CLAI.service;
 
 import com.br.CLAI.domain.Aluno;
 import com.br.CLAI.domain.AnexoEstudante;
+import com.br.CLAI.domain.Usuario;
+import com.br.CLAI.domain.enums.NivelRestricao;
 import com.br.CLAI.domain.enums.TipoClassificacaoAnexo;
 import com.br.CLAI.dto.response.AnexoEstudanteResponseDTO;
+import com.br.CLAI.exception.AcessoNegadoException;
 import com.br.CLAI.exception.NaoEncontradoException;
 import com.br.CLAI.exception.RegraDeNegocioException;
 import com.br.CLAI.repository.AlunoRepository;
 import com.br.CLAI.repository.AnexoEstudanteRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,6 +23,13 @@ import java.util.UUID;
 
 @Service
 public class AnexoEstudanteService {
+
+    public record AnexoDownloadPayload(
+            String nomeOriginal,
+            String contentType,
+            byte[] conteudo
+    ) {
+    }
 
     private final AnexoEstudanteRepository anexoEstudanteRepository;
     private final AlunoRepository alunoRepository;
@@ -93,6 +105,62 @@ public class AnexoEstudanteService {
 
         AnexoEstudante salvo = anexoEstudanteRepository.save(anexo);
         return AnexoEstudanteResponseDTO.fromEntity(salvo);
+    }
+
+    /**
+     * Realiza o download de um anexo validando rigorosamente as permissões de saúde (TA11.2 e TA3.2)
+     * e executando a descriptografia exclusivamente em memória (RAM).
+     */
+    @Transactional(readOnly = true)
+    public AnexoDownloadPayload downloadAnexo(UUID anexoId, Usuario usuarioAutenticado) {
+        AnexoEstudante anexo = anexoEstudanteRepository.findById(anexoId)
+                .orElseThrow(() -> new NaoEncontradoException("Anexo não encontrado com o ID: " + anexoId));
+
+        Usuario usuario = resolverUsuarioAutenticado(usuarioAutenticado);
+
+        if (anexo.getClassificacao() != null && anexo.getClassificacao().isSensivel()) {
+            validarAcessoEstritoSaude(usuario);
+        } else if (usuario == null) {
+            throw new AcessoNegadoException("Autenticação obrigatória para acessar documentos do estudante.");
+        }
+
+        byte[] bytesArmazenados = cryptoStorageService.lerDoVolume(anexo.getCaminhoArmazenamento());
+
+        byte[] bytesFinaisEmMemoria;
+        if (anexo.isCriptografado()) {
+            bytesFinaisEmMemoria = cryptoStorageService.decrypt(bytesArmazenados, anexo.getIv());
+        } else {
+            bytesFinaisEmMemoria = bytesArmazenados;
+        }
+
+        return new AnexoDownloadPayload(
+                anexo.getNomeOriginal(),
+                anexo.getContentType(),
+                bytesFinaisEmMemoria
+        );
+    }
+
+    private void validarAcessoEstritoSaude(Usuario usuario) {
+        boolean autorizado = usuario != null
+                && usuario.getNivelRestricao() == NivelRestricao.SUPER_RESTRICAO
+                && Boolean.TRUE.equals(usuario.getAutorizacaoSaude());
+
+        if (!autorizado) {
+            throw new AcessoNegadoException(
+                    "Acesso negado: visualização e descriptografia de anexos médicos sensíveis restrita a profissionais com nível SUPER_RESTRICAO e autorização de saúde ativa."
+            );
+        }
+    }
+
+    private Usuario resolverUsuarioAutenticado(Usuario usuarioParametro) {
+        if (usuarioParametro != null) {
+            return usuarioParametro;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof Usuario u) {
+            return u;
+        }
+        return null;
     }
 
     @Transactional(readOnly = true)
