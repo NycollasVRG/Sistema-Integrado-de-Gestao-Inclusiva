@@ -1,13 +1,13 @@
 {
   "info": {
     "_postman_id": "f8a92e10-9b41-4c12-a123-5e7b89d11011",
-    "name": "SIGI - US 11 Autenticação JWT, RBAC e Revogação de Sessão (Task #50)",
-    "description": "Coleção de testes de integração para validação da US 11: Emissão de JWT com claims RBAC, inspeção de contexto de segurança, restrição de rotas administrativas e critério TA11.4 de Revogação Instantânea de Sessão.",
+    "name": "SIGI - US 11 Autenticação JWT, RBAC, Revogação (Task #50) e Criptografia AES-256 (Task #51)",
+    "description": "Coleção de testes de integração para validação completa da US 11: Emissão de JWT com claims RBAC, inspeção de contexto de segurança, restrição de rotas administrativas, critério TA11.4 de Revogação Instantânea de Sessão e critérios TA11.1 / TA11.2 / TA3.2 de Criptografia em Repouso (AES-256-GCM) e Controle de Acesso Estrito em Memória para Anexos Médicos Sensíveis.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "1. Autenticação e Claims JWT (CA 2)",
+      "name": "1. Autenticação e Claims JWT (CA 2 - Task #50)",
       "item": [
         {
           "name": "1.1 Login Aluno Apoiador (200 OK)",
@@ -98,7 +98,7 @@
           }
         },
         {
-          "name": "1.3 Login Administrador (200 OK)",
+          "name": "1.3 Login Administrador Saúde (200 OK)",
           "event": [
             {
               "listen": "test",
@@ -115,7 +115,7 @@
                   "    pm.environment.set(\"tokenAdmin\", json.token);",
                   "});",
                   "",
-                  "pm.test(\"Claims de Administrador devem ter autorizacaoSaude=true\", function () {",
+                  "pm.test(\"Claims de Administrador devem ter SUPER_RESTRICAO e autorizacaoSaude=true\", function () {",
                   "    pm.expect(json.role).to.eql(\"ADMIN\");",
                   "    pm.expect(json.nivelRestricao).to.eql(\"SUPER_RESTRICAO\");",
                   "    pm.expect(json.autorizacaoSaude).to.eql(true);",
@@ -157,7 +157,7 @@
                   "",
                   "var json = pm.response.json();",
                   "",
-                  "pm.test(\"Authorities do Administrador incluem ROLE_ADMIN e AUTH_SAUDE\", function () {",
+                  "pm.test(\"Authorities do Administrador incluem ROLE_ADMIN, REST_SUPER_RESTRICAO e AUTH_SAUDE\", function () {",
                   "    pm.expect(json.role).to.eql(\"ADMIN\");",
                   "    pm.expect(json.authorities).to.include(\"ROLE_ADMIN\");",
                   "    pm.expect(json.authorities).to.include(\"REST_SUPER_RESTRICAO\");",
@@ -186,7 +186,7 @@
       ]
     },
     {
-      "name": "2. Controle de Acesso RBAC",
+      "name": "2. Controle de Acesso RBAC (Task #50)",
       "item": [
         {
           "name": "2.1 Bloqueio: Aluno tenta revogar acesso (403 Forbidden)",
@@ -251,7 +251,7 @@
       ]
     },
     {
-      "name": "3. Revogação Instantânea de Sessão (TA11.4)",
+      "name": "3. Revogação Instantânea de Sessão (TA11.4 - Task #50)",
       "item": [
         {
           "name": "3.1 ADMIN executa Revogação do Aluno Apoiador (200 OK)",
@@ -355,6 +355,343 @@
               "raw": "{{baseUrl}}/api/v1/auth/login",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Criptografia AES-256 em Repouso e Acesso Estrito de Saúde (Task #51 - TA11.1, TA11.2, TA3.2)",
+      "item": [
+        {
+          "name": "4.1 [TA11.1] Upload de Anexo Sensível (LAUDO_MEDICO) Cifrado em Repouso (201 Created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "",
+                  "pm.test(\"TA11.1: Anexo médico deve ser marcado como criptografado e salvar ID\", function () {",
+                  "    pm.expect(json).to.have.property(\"id\");",
+                  "    pm.expect(json.classificacao).to.eql(\"LAUDO_MEDICO\");",
+                  "    pm.expect(json.criptografado).to.eql(true);",
+                  "    pm.expect(json).to.not.have.property(\"iv\");",
+                  "    pm.expect(json).to.not.have.property(\"caminhoArmazenamento\");",
+                  "    pm.environment.set(\"anexoSensivelId\", json.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "arquivo",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "classificacao",
+                  "value": "LAUDO_MEDICO",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/estudantes/{{estudanteId}}/anexos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "estudantes", "{{estudanteId}}", "anexos"]
+            }
+          }
+        },
+        {
+          "name": "4.2 Listar Metadados de Anexos do Estudante (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Deve retornar lista de metadados sem vazar IV ou caminho físico\", function () {",
+                  "    pm.expect(json).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/estudantes/{{estudanteId}}/anexos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "estudantes", "{{estudanteId}}", "anexos"]
+            }
+          }
+        },
+        {
+          "name": "4.3 [CA 2 - TA11.2] Download em Memória por Usuário Autorizado (SUPER_RESTRICAO + autorizacaoSaude=true) (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"CA 2 [TA11.2]: Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve retornar headers Content-Disposition e Cache-Control no-store\", function () {",
+                  "    pm.response.to.have.header(\"Content-Disposition\");",
+                  "    pm.expect(pm.response.headers.get(\"Cache-Control\")).to.include(\"no-store\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/anexos/{{anexoSensivelId}}/download",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "anexos", "{{anexoSensivelId}}", "download"]
+            }
+          }
+        },
+        {
+          "name": "4.4 Login Coordenador (SUPER_RESTRICAO, autorizacaoSaude=false) (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.environment.set(\"tokenCoordenador\", json.token);",
+                  "pm.test(\"Coordenador possui SUPER_RESTRICAO mas autorizacaoSaude=false\", function () {",
+                  "    pm.expect(json.nivelRestricao).to.eql(\"SUPER_RESTRICAO\");",
+                  "    pm.expect(json.autorizacaoSaude).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"coordenador@sigi.ifpb.edu.br\",\n  \"senha\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "4.5 [CA 3 - TA11.2 / TA3.2] Bloqueio: Coordenador sem autorizacaoSaude tenta baixar Laudo (403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"CA 3 [TA11.2]: Coordenador sem autorizacaoSaude deve receber 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"ProblemDetail deve indicar Acesso Negado\", function () {",
+                  "    pm.expect(json.title).to.eql(\"Acesso Negado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCoordenador}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/anexos/{{anexoSensivelId}}/download",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "anexos", "{{anexoSensivelId}}", "download"]
+            }
+          }
+        },
+        {
+          "name": "4.6 Login Professor (ACESSO_FUNCIONAL, autorizacaoSaude=false) (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.environment.set(\"tokenProfessor\", json.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"professor@sigi.ifpb.edu.br\",\n  \"senha\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "4.7 [CA 3 - TA11.2 / TA3.2] Bloqueio: Professor tenta baixar Laudo Médico (403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"CA 3 [TA3.2]: Professor deve receber 403 Forbidden ao tentar acessar laudo\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenProfessor}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/anexos/{{anexoSensivelId}}/download",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "anexos", "{{anexoSensivelId}}", "download"]
+            }
+          }
+        },
+        {
+          "name": "4.8 Login Psicopedagogo (RESTRICAO_MODERADA, autorizacaoSaude=true) (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.environment.set(\"tokenPsicopedagogo\", json.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"psicopedagogo@sigi.ifpb.edu.br\",\n  \"senha\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "4.9 [CA 3 - TA11.2] Bloqueio: Perfil sem SUPER_RESTRICAO tenta baixar Laudo (403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"CA 3 [TA11.2]: Perfil com RESTRICAO_MODERADA deve receber 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenPsicopedagogo}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/anexos/{{anexoSensivelId}}/download",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "anexos", "{{anexoSensivelId}}", "download"]
             }
           }
         }
