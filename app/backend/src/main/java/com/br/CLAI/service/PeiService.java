@@ -82,6 +82,11 @@ public class PeiService {
      * Anexo III). O perfil 'Professor' não pode acessar: retorna HTTP 403.
      */
     @Transactional(readOnly = true)
+    public List<PeaResponseDTO> listarAnexosSensiveis(UUID id) {
+        return listarAnexosSensiveis(id, null);
+    }
+
+    @Transactional(readOnly = true)
     public List<PeaResponseDTO> listarAnexosSensiveis(UUID id, String perfil) {
 
         if (perfil != null && PERFIL_PROFESSOR.equalsIgnoreCase(perfil.trim())) {

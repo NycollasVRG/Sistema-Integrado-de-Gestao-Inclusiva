@@ -92,4 +92,31 @@ public class ProntuarioService {
                 atualizadoEm
         );
     }
+
+    @Transactional(readOnly = true)
+    public com.br.CLAI.dto.response.HistoricoSocioemocionalResponseDTO buscarHistoricoSocioemocional(UUID alunoId) {
+        Aluno aluno = alunoRepository.findById(alunoId)
+                .orElseThrow(() -> new NaoEncontradoException("Estudante não encontrado com o ID: " + alunoId));
+
+        List<EstudoDeCaso> estudos = estudoDeCasoRepository.findByAlunoId(alunoId);
+        EstudoDeCaso estudoAtivo = estudos.stream()
+                .filter(e -> StatusEstudoCaso.ATIVO.equals(e.getStatus()))
+                .findFirst()
+                .orElseGet(() -> estudos.isEmpty() ? null : estudos.get(estudos.size() - 1));
+
+        UUID estudoId = estudoAtivo != null ? estudoAtivo.getId() : null;
+        String historicoFamiliar = estudoAtivo != null ? estudoAtivo.getHistoricoFamiliar() : null;
+        String historicoSocioemocional = estudoAtivo != null ? estudoAtivo.getHistoricoSocioemocional() : null;
+        LocalDateTime atualizadoEm = estudoAtivo != null ? estudoAtivo.getAtualizadoEm() : aluno.getAtualizadoEm();
+
+        return new com.br.CLAI.dto.response.HistoricoSocioemocionalResponseDTO(
+                aluno.getId(),
+                aluno.getNome(),
+                aluno.getMatricula(),
+                estudoId,
+                historicoFamiliar,
+                historicoSocioemocional,
+                atualizadoEm
+        );
+    }
 }

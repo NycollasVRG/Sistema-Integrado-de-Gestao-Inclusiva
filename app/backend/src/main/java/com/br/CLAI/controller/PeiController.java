@@ -8,6 +8,7 @@ import com.br.CLAI.service.PeiService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -47,8 +48,9 @@ public class PeiController {
         return ResponseEntity.ok(service.listarPorAluno(alunoId));
     }
 
-    // TA3.2 - perfil mockado via header X-User-Perfil; 'Professor' recebe 403.
+    // TA3.2 e TA11.3 - Anexos sensíveis do PEI restritos a RESTRICAO_MODERADA ou superior (equipe CLAI)
     @GetMapping("/{id}/anexos-sensiveis")
+    @PreAuthorize("@rbacGuard.temRestricaoModeradaOuSuperior()")
     public ResponseEntity<List<PeaResponseDTO>> listarAnexosSensiveis(
             @PathVariable UUID id,
             @RequestHeader(value = "X-User-Perfil", required = false) String perfil) {
