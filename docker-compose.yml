@@ -16,10 +16,12 @@ services:
     volumes:
       # Persistência dos dados do PostgreSQL
       - postgres_data:/var/lib/postgresql/data
-      # Aplicação automática do schema da Sprint 1 e massa de dados inicial (seed)
-      - ./app/backend/database/create_tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
-      - ./app/backend/collection/US03/seed_test_data.sql:/docker-entrypoint-initdb.d/02-seed-test-data.sql:ro
-      - ./app/backend/collection/US11/seed_test_data.sql:/docker-entrypoint-initdb.d/03-seed-us11-users.sql:ro
+      # Aplicação automática do schema e massa de dados inicial (seeds)
+      - ./app/backend/database/schema/01_create_tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
+      - ./app/backend/database/schema/02_alter_tables_constraints.sql:/docker-entrypoint-initdb.d/02-alter-tables-constraints.sql:ro
+      - ./app/backend/database/inserts/01_seed_us11_rbac.sql:/docker-entrypoint-initdb.d/03-seed-us11-rbac.sql:ro
+      - ./app/backend/database/inserts/02_seed_us02_estudo_caso.sql:/docker-entrypoint-initdb.d/04-seed-us02-estudo-caso.sql:ro
+      - ./app/backend/database/inserts/03_seed_us03_planejamento_pedagogico.sql:/docker-entrypoint-initdb.d/05-seed-us03-planejamento-pedagogico.sql:ro
     networks:
       - sigi-network
     healthcheck:
