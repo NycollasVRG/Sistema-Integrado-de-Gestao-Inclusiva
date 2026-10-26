@@ -31,7 +31,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({AcessoNegadoException.class, AccessDeniedException.class})
     public ProblemDetail handleAcessoNegadoException(RuntimeException ex) {
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        String detail = ex.getMessage();
+        if (detail == null || detail.isBlank() || "Access Denied".equalsIgnoreCase(detail.trim())) {
+            detail = "Seu perfil não possui permissão para acessar este recurso.";
+        }
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, detail);
         problemDetail.setTitle("Acesso Negado");
         problemDetail.setType(URI.create("https://api.sigi.com/errors/acesso-negado"));
         problemDetail.setProperty("timestamp", Instant.now());

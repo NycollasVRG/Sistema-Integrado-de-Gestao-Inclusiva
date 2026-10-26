@@ -21,6 +21,12 @@ public class EstudoDeCaso extends BaseEntity {
     @Column(name = "diagnostico_inicial", columnDefinition = "TEXT")
     private String diagnosticoInicial;
 
+    @Column(name = "historico_familiar", columnDefinition = "TEXT")
+    private String historicoFamiliar;
+
+    @Column(name = "historico_socioemocional", columnDefinition = "TEXT")
+    private String historicoSocioemocional;
+
     @ManyToMany
     @JoinTable(
             name = "estudo_caso_indicador",
@@ -69,5 +75,21 @@ public class EstudoDeCaso extends BaseEntity {
 
     public void setIndicadores(List<IndicadorReutilizavel> indicadores) {
         this.indicadores = indicadores;
+    }
+
+    public String getHistoricoFamiliar() {
+        return historicoFamiliar;
+    }
+
+    public void setHistoricoFamiliar(String historicoFamiliar) {
+        this.historicoFamiliar = historicoFamiliar;
+    }
+
+    public String getHistoricoSocioemocional() {
+        return historicoSocioemocional;
+    }
+
+    public void setHistoricoSocioemocional(String historicoSocioemocional) {
+        this.historicoSocioemocional = historicoSocioemocional;
     }
 }

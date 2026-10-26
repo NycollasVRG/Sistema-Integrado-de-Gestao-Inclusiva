@@ -736,3 +736,52 @@ powershell -File app/backend/collection/US11/test_criptografia_anexos.ps1
 2. **Refresh token:** emitir tokens de curta duração com rotação por `refresh_token`, mantendo a revogação imediata válida para ambas as sessões.
 3. **Rotação de chave simétrica (Key Rotation):** suporte a versionamento de chave AES (`key_version`) para permitir rotação periódica de `AES_KEY` em produção.
 
+---
+
+# Plano de Implementação: Matriz de Autorização Granular - Super Restrição e Restrição Moderada (Task #52 - US 11)
+
+Esta seção descreve a implementação da **Task #52**, que entregou a matriz de autorização granular e a filtragem de dados socioemocionais sensíveis da **US 11 (TA11.3)** e reforço de segurança da **Sprint 1 (TA3.2)** em conformidade com a **LGPD**.
+
+## 18. Visão Geral da Task #52 (Checkpoints)
+
+**O que foi entregue nesta Task (Dividido em 3 Etapas / Commits):**
+- [x] **Etapa 1 / Commit 1**: Habilitação do `@EnableMethodSecurity(prePostEnabled = true)`, criação do avaliador granular `RbacGuard` (`@Component("rbacGuard")`), padronização de erro HTTP 403 Forbidden RFC 9457 em `GlobalExceptionHandler` e suíte `MethodSecurityRbacTest`.
+- [x] **Etapa 2 / Commit 2**: Modelagem de dados sensíveis (`historico_familiar` e `historico_socioemocional`), DTOs anotados com `@JsonInclude(NON_NULL)`, mapper e service com sanitização em tempo de execução para Professor (`ACESSO_FUNCIONAL`), criação do Prontuário Unificado (`ProntuarioResponseDTO`, `ProntuarioService`, `ProntuarioController`) e suíte `ProjecaoSensivelJsonIntegrationTest`.
+- [x] **Etapa 3 / Commit 3**: Rota exclusiva de histórico socioemocional protegida com `@PreAuthorize`, proteção definitiva dos anexos sensíveis do PEI (**TA3.2**) via Method Security, suíte completa de testes de integração (`MatrizAutorizacaoGranularIntegrationTest`), script PowerShell e coleção Postman atualizada.
+
+## 19. Matriz de Autorização Granular (TA11.3 / TA3.2)
+
+| Nível / Role | Estudo de Caso (US 02) | Prontuário Unificado (US 09) | Rota Direta Socioemocional | PEI Anexos Sensíveis (TA3.2) |
+|---|---|---|---|---|
+| **`ACESSO_FUNCIONAL`<br/>(`PROFESSOR`, `ALUNO_APOIADOR`)** | `200 OK`<br/>Campos sensíveis **omitidos** no JSON | `200 OK`<br/>Campos sensíveis **omitidos** no JSON | **`403 Forbidden`**<br/>(RFC 9457 ProblemDetail) | **`403 Forbidden`**<br/>(RFC 9457 ProblemDetail) |
+| **`RESTRICAO_MODERADA`<br/>(`CLAI_PSICOPEDAGOGO`)** | `200 OK`<br/>Campos sensíveis **presentes** | `200 OK`<br/>Campos sensíveis **presentes** | **`200 OK`**<br/>Acesso integral liberado | **`200 OK`**<br/>Acesso liberado aos PEAs |
+| **`SUPER_RESTRICAO`<br/>(`COORDENADOR`, `ADMIN`)** | `200 OK`<br/>Campos sensíveis **presentes** | `200 OK`<br/>Campos sensíveis **presentes** | **`200 OK`**<br/>Acesso integral liberado | **`200 OK`**<br/>Acesso liberado aos PEAs |
+
+## 20. Endpoints Implementados e Protegidos na Task #52
+
+```http
+GET /api/estudos-de-caso/{id}
+GET /api/v1/estudantes/{id}/prontuario
+GET /api/v1/estudantes/{id}/historico-socioemocional
+GET /api/peis/{id}/anexos-sensiveis
+```
+
+## 21. Validação dos Critérios de Aceite
+
+| Critério de Aceite | Cenário Testado | Resultado |
+|---|---|---|
+| **CA 1 [TA11.3]** | Consulta ao Prontuário e Estudo de Caso com token de `PROFESSOR` omite completamente `historicoFamiliar` e `historicoSocioemocional` do payload JSON. | **APROVADO** (`doesNotExist()`) |
+| **CA 1.2 [TA11.3]** | Tentativa de acesso direto à rota `/api/v1/estudantes/{id}/historico-socioemocional` por `PROFESSOR` ou `ALUNO_APOIADOR` é bloqueada imediatamente com HTTP 403. | **APROVADO** (HTTP 403 Forbidden RFC 9457) |
+| **CA 2 [TA11.3]** | Consulta com token de `CLAI_PSICOPEDAGOGO` (`RESTRICAO_MODERADA`) exibe integralmente os dados de histórico familiar e socioemocional em todas as rotas. | **APROVADO** (HTTP 200 OK com payload íntegro) |
+| **CA 2.2 [TA11.3]** | Perfis de `SUPER_RESTRICAO` (`COORDENADOR`, `ADMIN`) possuem acesso liberado em todas as rotas. | **APROVADO** (HTTP 200 OK) |
+| **Reforço TA3.2** | Bloqueio de anexos sensíveis do PEI para Professor e liberação para equipe CLAI via anotação declarativa `@PreAuthorize`. | **APROVADO** (HTTP 403 vs 200 OK) |
+
+## 22. Suíte de Testes Automatizados da Task #52
+
+- `MethodSecurityRbacTest.java`: 9 testes unitários e de integração de AOP/PreAuthorize.
+- `ProjecaoSensivelJsonIntegrationTest.java`: 5 testes com JWT real validando a omissão no JSON.
+- `MatrizAutorizacaoGranularIntegrationTest.java`: 5 testes ponta a ponta dos critérios de aceite.
+
+Total de **29 testes de segurança executados e aprovados** no backend (`mvn test`).
+
+
