@@ -1,95 +1,107 @@
-# SIGI-CLAI — Banco de Dados
+# SIGI / CLAI — Banco de Dados (PostgreSQL)
 
-Banco de dados PostgreSQL do Sistema Integrado de Gestão Inclusiva (SIGI-CLAI), desenvolvido para apoiar a organização e o acompanhamento de informações e documentos relacionados à educação inclusiva.
+Repositório consolidado de scripts **DDL** (criação de schema, tabelas, constraints e índices) e **DML** (cargas iniciais e seeds de teste) do **Sistema Integrado de Gestão Inclusiva (SIGI / CLAI)**, 100% alinhado com o domínio JPA (`com.br.CLAI.domain`) do backend Spring Boot.
 
-## Tecnologias utilizadas
+---
 
-PostgreSQL — sistema gerenciador de banco de dados relacional.
-pgAdmin 4 — ferramenta de administração e execução de comandos SQL.
+## 📁 Estrutura de Diretórios
 
-## Estrutura do banco de dados
+```text
+database/
+├── schema/       # Scripts de criação de tabelas, alterações e constraints (DDL)
+│   ├── 01_create_tables.sql
+│   └── 02_alter_tables_constraints.sql
+├── inserts/      # Scripts de população de dados iniciais e seeds de teste (DML)
+│   ├── 01_seed_us11_rbac.sql
+│   ├── 02_seed_us02_estudo_caso.sql
+│   └── 03_seed_us03_planejamento_pedagogico.sql
+└── README.md     # Guia atualizado de execução na ordem correta
+```
 
-O banco utiliza o schema `sigi`, que organiza as tabelas e os objetos relacionados ao sistema.
+---
 
-As principais áreas são:
+## 🗄️ Descrição dos Arquivos
 
-Usuários e permissões: usuários, papéis, permissões e associações entre eles.
-Gestão acadêmica: cursos, disciplinas, períodos letivos, turmas e matrículas.
-Cadastro de estudantes: dados dos estudantes e autodeclarações.
-Documentação inclusiva: estudos de caso, Plano Educacional Individualizado (PEI), Plano Educacional por disciplina (PEA) e Relatório de Acompanhamento (RAE).
-Validação documental: registro da situação de validação de laudos.
-Acompanhamento educacional: atendimentos, histórico socioemocional, frequência e notas.
-Alertas e notificações: estruturas para registrar alertas e notificações do sistema.
-Avaliações: avaliações e adaptações de avaliação.
-Auditoria: registros destinados ao rastreamento de atividades relevantes.
+### 1. `database/schema/` (DDL — Estrutura e Regras de Integridade)
 
-O script SQL também inclui chaves estrangeiras, índices, gatilhos de atualização, dados iniciais de papéis e permissões e duas views:
+| Ordem | Arquivo | Propósito |
+| :---: | :--- | :--- |
+| **1** | [`schema/01_create_tables.sql`](schema/01_create_tables.sql) | Cria o schema `sigi` e todas as **10 tabelas** exigidas pelas entidades do domínio Java (`usuario`, `aluno`, `indicador_reutilizavel`, `estudo_de_caso`, `estudo_caso_indicador`, `acompanhamento`, `plano_acao`, `pei`, `pea`, `anexo_estudante`), incluindo chaves estrangeiras, `UUID` nativo, coluna sintética de exclusão lógica (`deleted` via `@SoftDelete`) e auditoria (`criado_em`, `atualizado_em`, `criado_por`, `atualizado_por`). |
+| **2** | [`schema/02_alter_tables_constraints.sql`](schema/02_alter_tables_constraints.sql) | Garante de forma idempotente as colunas de histórico sensível (`historico_familiar` e `historico_socioemocional` - **TA11.3**), cria o índice parcial único que impede dois estudos de caso ativos simultâneos por aluno (`idx_estudo_caso_ativo` - **TA2.4**), cria índices de busca/performance para autenticação RBAC, anexos cifrados e Timeline (**US 09**), e registra os comentários de metadados LGPD. |
 
-`vw_resumo_frequencia` — consolida informações de frequência.
-`vw_status_laudo` — apresenta informações sobre o status de validação dos laudos.
+### 2. `database/inserts/` (DML — Cargas de Dados e Seeds de Teste)
 
-## Como executar o banco de dados
+Todos os scripts de seed utilizam `ON CONFLICT DO NOTHING`, podendo ser executados repetidas vezes e em sequência no mesmo banco sem gerar conflitos de chave primária ou constraints `UNIQUE`.
 
-### Pré-requisitos
+| Ordem | Arquivo | Propósito |
+| :---: | :--- | :--- |
+| **1** | [`inserts/01_seed_us11_rbac.sql`](inserts/01_seed_us11_rbac.sql) | Insere os **5 usuários base de autenticação e RBAC** (`ADMIN`, `ALUNO_APOIADOR`, `COORDENADOR`, `CLAI_PSICOPEDAGOGO`, `PROFESSOR`) com senhas criptografadas em BCrypt (`senha123`), níveis de restrição (`SUPER_RESTRICAO`, `RESTRICAO_MODERADA`, `ACESSO_FUNCIONAL`), flag de sigilo médico (`autorizacao_saude`) e controle de versão de sessão (`token_version`). |
+| **2** | [`inserts/02_seed_us02_estudo_caso.sql`](inserts/02_seed_us02_estudo_caso.sql) | Insere os **2 alunos base de teste** (`MAT-TEST-001` e `MAT-TEST-002`) e os **3 indicadores reutilizáveis** (`Dificuldade de Leitura`, `TDAH`, `Discalculia`) utilizados pelas coleções da **US 02**, **US 09** e **US 11**. |
+| **3** | [`inserts/03_seed_us03_planejamento_pedagogico.sql`](inserts/03_seed_us03_planejamento_pedagogico.sql) | Garante os alunos base e insere os **2 registros de `acompanhamento`** que servem de ponte obrigatória para os testes de **PEA**, **PEI** e **Plano de Ação** da **US 03**. |
 
-* PostgreSQL instalado e em execução.
-* pgAdmin 4 instalado.
-* Arquivo `sigi_clai_postgresql.sql` disponível localmente.
+---
 
-### Instalação
+## 🚀 Como Executar (Ordem Exata no PostgreSQL)
 
-1. Abra o pgAdmin 4 e conecte-se ao servidor PostgreSQL.
-2. Crie um banco de dados chamado `sigi_clai`.
-3. Clique com o botão direito no banco e abra o Query Tool.
-4. Abra o arquivo `sigi_clai_postgresql.sql` ou copie seu conteúdo para o editor SQL.
-5. Execute o script pressionando `F5`.
-6. Atualize a árvore de navegação do pgAdmin.
-7. Acesse `Schemas > sigi > Tables` para visualizar as tabelas criadas.
+### Opção 1: Via Terminal (`psql`)
 
-Recomenda-se executar o script em um banco de desenvolvimento vazio, criado especificamente para o projeto.
+A partir do diretório `app/backend/`, execute os scripts na seguinte ordem:
 
-## Verificação da estrutura
+```bash
+# 1. Criar o banco de dados (caso ainda não exista)
+psql -U postgres -c "CREATE DATABASE sigi_clai;"
 
-tabelas criadas:
+# 2. Subir a estrutura (DDL - Schema, Tabelas, Constraints e Índices)
+psql -U postgres -d sigi_clai -f database/schema/01_create_tables.sql
+psql -U postgres -d sigi_clai -f database/schema/02_alter_tables_constraints.sql
 
+# 3. Popular o banco com os dados iniciais e seeds de teste (DML)
+psql -U postgres -d sigi_clai -f database/inserts/01_seed_us11_rbac.sql
+psql -U postgres -d sigi_clai -f database/inserts/02_seed_us02_estudo_caso.sql
+psql -U postgres -d sigi_clai -f database/inserts/03_seed_us03_planejamento_pedagogico.sql
+```
+
+### Opção 2: Via Cliente Gráfico (pgAdmin 4 / DBeaver / IntelliJ Database Tools)
+
+1. Conecte-se ao servidor PostgreSQL e selecione o banco `sigi_clai`.
+2. Abra o **Query Tool / SQL Editor** e execute na ordem:
+   1. `database/schema/01_create_tables.sql`
+   2. `database/schema/02_alter_tables_constraints.sql`
+   3. `database/inserts/01_seed_us11_rbac.sql`
+   4. `database/inserts/02_seed_us02_estudo_caso.sql`
+   5. `database/inserts/03_seed_us03_planejamento_pedagogico.sql`
+
+### Opção 3: Via Docker Compose (Inicialização Automática)
+
+O arquivo [`docker-compose.yml`](../../docker-compose.yml) na raiz do projeto está pré-configurado para montar e aplicar os scripts automaticamente na ordem correta em `/docker-entrypoint-initdb.d/` na primeira inicialização do container `sigi-db`:
+
+```bash
+# Na raiz do projeto:
+docker compose up -d db
+```
+
+---
+
+## 🔍 Consultas de Verificação Pós-Execução
+
+```sql
+-- 1. Verificar todas as tabelas criadas no schema sigi
 SELECT table_name
 FROM information_schema.tables
 WHERE table_schema = 'sigi'
   AND table_type = 'BASE TABLE'
 ORDER BY table_name;
 
+-- 2. Verificar índices criados no schema sigi
+SELECT tablename, indexname
+FROM pg_indexes
+WHERE schemaname = 'sigi'
+ORDER BY tablename, indexname;
 
-views:
-
-SELECT table_name
-FROM information_schema.views
-WHERE table_schema = 'sigi'
-ORDER BY table_name;
-
-
-## Escopo e limitações
-
-Este repositório contém a estrutura SQL inicial do banco de dados. A criação das tabelas e dos relacionamentos não significa que todos os fluxos funcionais do sistema estejam concluídos, então tratem isso apenas como um protótipo que pode ou não ser alterado.
-
-Algumas funcionalidades dependem de implementação e integração com a aplicação, exemplo:
-
-Integração com o SUAP.
-Envio efetivo de notificações.
-Funcionalidades de inteligência artificial para adaptação de avaliações.
-Aplicação das regras de autorização e controle de acesso.
-Validação dos fluxos de trabalho dos documentos educacionais.
-
-As tabelas de papéis e permissões fornecem uma estrutura para autorização, mas a aplicação precisa aplicar essas regras de forma efetiva. A proteção de informações sensíveis também exige controles apropriados, que devem ser implementados e validados.
-
-## Privacidade e segurança
-
-Como o sistema pode lidar com informações educacionais e dados pessoais sensíveis:
-
-Utilizem apenas dados fictícios para testes e demonstrações.
-Implementem controles de acesso adequados e observem os requisitos aplicáveis da Lei Geral de Proteção de Dados (LGPD).
-
-## Status do projeto
-
-Banco de dados: estrutura SQL inicial criada e executada em ambiente de desenvolvimento PostgreSQL.
-
-Próximas etapas: validação funcional, implementação das regras de acesso e integração com as funcionalidades da aplicação.
+-- 3. Conferir contagem dos registros inseridos pelos seeds
+SELECT
+    (SELECT COUNT(*) FROM sigi.usuario) AS total_usuarios,
+    (SELECT COUNT(*) FROM sigi.aluno) AS total_alunos,
+    (SELECT COUNT(*) FROM sigi.indicador_reutilizavel) AS total_indicadores,
+    (SELECT COUNT(*) FROM sigi.acompanhamento) AS total_acompanhamentos;
+```

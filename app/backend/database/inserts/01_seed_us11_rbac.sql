@@ -1,12 +1,14 @@
--- ====================================================================
--- SEED DE DADOS PARA TESTES DE AUTENTICAÇÃO E RBAC - SIGI / CLAI (US 11)
--- ====================================================================
--- Este script insere usuários de teste com credenciais e UUIDs fixos
--- para validação da Task #50 (Autenticação JWT, Perfis RBAC e Revogação).
+-- =============================================================================
+-- SEED 01: AUTENTICAÇÃO JWT, PERFIS RBAC E MATRIZ GRANULAR - SIGI / CLAI (US 11)
+-- =============================================================================
+-- Este script insere os usuários base de teste com credenciais e UUIDs fixos
+-- para validação das Tasks #50, #51 e #52 (Autenticação JWT, Perfis RBAC,
+-- Revogação de Sessão TA11.4, Criptografia AES-256 TA11.1/TA11.2 e Matriz TA11.3).
 --
 -- Senha padrão para todos os usuários abaixo: "senha123"
 -- Hash BCrypt: $2a$10$P.HQ81At.XE1IE7ekR9tDOqLhit.7kAiWoqOgFRI2J2t0K6QksLeC
 -- Script idempotente (ON CONFLICT DO NOTHING).
+-- =============================================================================
 
 INSERT INTO sigi.usuario (
     id, nome, email, senha, role, nivel_restricao, autorizacao_saude, acesso_ativo, token_version, deleted, criado_em, atualizado_em
@@ -81,4 +83,4 @@ INSERT INTO sigi.usuario (
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
     )
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT DO NOTHING;

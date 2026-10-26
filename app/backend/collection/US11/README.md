@@ -1,6 +1,6 @@
 # US 11 - Autenticação JWT, Perfis RBAC, Revogação de Sessão (Task #50), Criptografia AES-256 (Task #51) e Matriz de Autorização Granular (Task #52)
 
-Este diretório contém a massa de dados (seed), coleções Postman e scripts de teste automatizado para validação dos Critérios de Aceite da **US 11** (**TA11.1, TA11.2, TA11.3, TA11.4 e TA3.2**).
+Este diretório contém as coleções Postman e scripts de teste automatizado para validação dos Critérios de Aceite da **US 11** (**TA11.1, TA11.2, TA11.3, TA11.4 e TA3.2**). A massa de dados (seed) dos usuários e perfis RBAC encontra-se consolidada em [`database/inserts/01_seed_us11_rbac.sql`](../../database/inserts/01_seed_us11_rbac.sql).
 
 ---
 
@@ -33,6 +33,14 @@ Este diretório contém a massa de dados (seed), coleções Postman e scripts de
 ---
 
 ## 🧪 Como Executar os Scripts de Validação
+
+### 0. Preparar a Massa de Dados no Banco (Seeds)
+```bash
+# Exemplo via psql (a partir de app/backend):
+psql -U postgres -d sigi_clai -f database/inserts/01_seed_us11_rbac.sql
+psql -U postgres -d sigi_clai -f database/inserts/02_seed_us02_estudo_caso.sql
+psql -U postgres -d sigi_clai -f database/inserts/03_seed_us03_planejamento_pedagogico.sql
+```
 
 ### 1. Validação da Task #52 (Matriz de Autorização Granular - TA11.3 e TA3.2)
 ```powershell
