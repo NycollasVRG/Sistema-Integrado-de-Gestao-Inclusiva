@@ -696,6 +696,247 @@
           }
         }
       ]
+    },
+    {
+      "name": "5. Matriz de Autorização Granular (TA11.3 / TA3.2 - Task #52)",
+      "item": [
+        {
+          "name": "5.1 Login Professor Titular (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.environment.set(\"tokenProfessor\", json.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"professor@sigi.ifpb.edu.br\",\n  \"senha\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "5.2 [CA 1 - TA11.3] Professor: Prontuário Unificado com Omissão de Campos Sensíveis (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"CA 1 [TA11.3]: Campos historicoFamiliar e historicoSocioemocional NÃO devem existir no JSON para Professor\", function () {",
+                  "    pm.expect(json).to.not.have.property(\"historicoFamiliar\");",
+                  "    pm.expect(json).to.not.have.property(\"historicoSocioemocional\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenProfessor}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/estudantes/{{estudanteId}}/prontuario",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "estudantes", "{{estudanteId}}", "prontuario"]
+            }
+          }
+        },
+        {
+          "name": "5.3 [CA 1.2 - TA11.3] Bloqueio: Professor tenta acessar rota direta /historico-socioemocional (403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"CA 1.2 [TA11.3]: Professor deve ser bloqueado com 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Deve retornar ProblemDetail RFC 9457\", function () {",
+                  "    pm.expect(json.status).to.eql(403);",
+                  "    pm.expect(json.title).to.eql(\"Acesso Negado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenProfessor}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/estudantes/{{estudanteId}}/historico-socioemocional",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "estudantes", "{{estudanteId}}", "historico-socioemocional"]
+            }
+          }
+        },
+        {
+          "name": "5.4 [CA 2 - TA11.3] Psicopedagoga: Prontuário Unificado com Campos Sensíveis Presentes (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"CA 2 [TA11.3]: Campos sensíveis devem estar preenchidos para Psicopedagoga (RESTRICAO_MODERADA)\", function () {",
+                  "    pm.expect(json).to.have.property(\"historicoFamiliar\");",
+                  "    pm.expect(json).to.have.property(\"historicoSocioemocional\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenPsicopedagogo}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/estudantes/{{estudanteId}}/prontuario",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "estudantes", "{{estudanteId}}", "prontuario"]
+            }
+          }
+        },
+        {
+          "name": "5.5 [CA 2 - TA11.3] Psicopedagoga: Rota Direta /historico-socioemocional Liberada (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Deve retornar dados completos\", function () {",
+                  "    pm.expect(json).to.have.property(\"historicoFamiliar\");",
+                  "    pm.expect(json).to.have.property(\"historicoSocioemocional\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenPsicopedagogo}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/estudantes/{{estudanteId}}/historico-socioemocional",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "estudantes", "{{estudanteId}}", "historico-socioemocional"]
+            }
+          }
+        },
+        {
+          "name": "5.6 [Reforço TA3.2] Bloqueio: Professor tenta acessar Anexos Sensíveis do PEI (403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"TA3.2: Professor bloqueado via Method Security com 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenProfessor}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/{{peiId}}/anexos-sensiveis",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "{{peiId}}", "anexos-sensiveis"]
+            }
+          }
+        },
+        {
+          "name": "5.7 [Reforço TA3.2] Psicopedagoga acessa Anexos Sensíveis do PEI (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenPsicopedagogo}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/peis/{{peiId}}/anexos-sensiveis",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "peis", "{{peiId}}", "anexos-sensiveis"]
+            }
+          }
+        }
+      ]
     }
   ]
 }
