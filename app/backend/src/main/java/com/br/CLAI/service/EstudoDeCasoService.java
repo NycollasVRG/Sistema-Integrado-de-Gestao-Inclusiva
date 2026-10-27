@@ -13,6 +13,7 @@ import com.br.CLAI.repository.AlunoRepository;
 import com.br.CLAI.repository.EstudoDeCasoRepository;
 import com.br.CLAI.repository.IndicadorReutilizavelRepository;
 import com.br.CLAI.service.validator.EstudoDeCasoValidator;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +43,8 @@ public class EstudoDeCasoService {
 
     @Transactional
     public EstudoDeCasoResponseDTO criar(EstudoDeCasoRequestDTO dto, UUID usuarioId) {
+        validarUsuarioResponsavel(usuarioId);
+
         // Validação TA2.3
         validator.validarConclusao(dto);
 
@@ -84,6 +87,8 @@ public class EstudoDeCasoService {
 
     @Transactional
     public EstudoDeCasoResponseDTO atualizar(UUID id, EstudoDeCasoUpdateDTO dto, UUID usuarioId) {
+        validarUsuarioResponsavel(usuarioId);
+
         EstudoDeCaso estudo = repository.findById(id)
                 .orElseThrow(() -> new com.br.CLAI.exception.NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
 
@@ -120,6 +125,8 @@ public class EstudoDeCasoService {
 
     @Transactional
     public void excluir(UUID id, UUID usuarioId) {
+        validarUsuarioResponsavel(usuarioId);
+
         EstudoDeCaso estudo = repository.findById(id)
                 .orElseThrow(() -> new com.br.CLAI.exception.NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
 
@@ -135,6 +142,14 @@ public class EstudoDeCasoService {
 
         // Hibernate SoftDelete intercepta e faz UPDATE set deleted = true
         repository.delete(estudo);
+    }
+
+    private void validarUsuarioResponsavel(UUID usuarioId) {
+        if (usuarioId == null) {
+            throw new AuthenticationCredentialsNotFoundException(
+                    "Autenticação obrigatória para acessar este recurso."
+            );
+        }
     }
 
     private List<IndicadorReutilizavel> buscarEValidarIndicadores(List<UUID> indicadoresIds) {

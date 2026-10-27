@@ -3,6 +3,8 @@ package com.br.CLAI.security;
 import com.br.CLAI.domain.Usuario;
 import com.br.CLAI.domain.enums.NivelRestricao;
 import com.br.CLAI.domain.enums.Role;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Componente avaliador de expressões granulares de autorização RBAC (Task #52 - US 11).
@@ -52,6 +55,51 @@ public class RbacGuard {
             return Optional.of(usuario);
         }
         return Optional.empty();
+    }
+
+    /**
+     * Obtém e valida obrigatoriamente o usuário autenticado a partir do principal resolvido
+     * ou do SecurityContextHolder. Lança exceção de autenticação (HTTP 401) caso ausente ou inativo.
+     */
+    public Usuario exigirUsuarioAutenticado(Usuario usuarioPrincipal) {
+        Usuario usuario = (usuarioPrincipal != null)
+                ? usuarioPrincipal
+                : getUsuarioAutenticado().orElse(null);
+
+        if (usuario == null || usuario.getId() == null) {
+            throw new AuthenticationCredentialsNotFoundException(
+                    "Autenticação obrigatória para acessar este recurso."
+            );
+        }
+
+        if (!Boolean.TRUE.equals(usuario.getAcessoAtivo())) {
+            throw new DisabledException(
+                    "Acesso revogado: o vínculo deste usuário encontra-se desativado."
+            );
+        }
+
+        return usuario;
+    }
+
+    /**
+     * Obtém e valida obrigatoriamente o usuário autenticado a partir do SecurityContextHolder.
+     */
+    public Usuario exigirUsuarioAutenticado() {
+        return exigirUsuarioAutenticado(null);
+    }
+
+    /**
+     * Obtém o UUID confiável do usuário autenticado a partir do principal ou do contexto de segurança.
+     */
+    public UUID exigirUsuarioAutenticadoId(Usuario usuarioPrincipal) {
+        return exigirUsuarioAutenticado(usuarioPrincipal).getId();
+    }
+
+    /**
+     * Obtém o UUID confiável do usuário autenticado a partir do SecurityContextHolder.
+     */
+    public UUID exigirUsuarioAutenticadoId() {
+        return exigirUsuarioAutenticado(null).getId();
     }
 
     /**

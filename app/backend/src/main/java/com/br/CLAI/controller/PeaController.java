@@ -1,12 +1,16 @@
 package com.br.CLAI.controller;
 
+import com.br.CLAI.domain.Usuario;
 import com.br.CLAI.dto.request.PeaRequestDTO;
 import com.br.CLAI.dto.request.PeaUpdateDTO;
 import com.br.CLAI.dto.response.PeaResponseDTO;
+import com.br.CLAI.security.RbacGuard;
 import com.br.CLAI.service.PeaService;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,9 +21,16 @@ import java.util.UUID;
 public class PeaController {
 
     private final PeaService service;
+    private final RbacGuard rbacGuard;
+
+    @Autowired
+    public PeaController(PeaService service, RbacGuard rbacGuard) {
+        this.service = service;
+        this.rbacGuard = rbacGuard;
+    }
 
     public PeaController(PeaService service) {
-        this.service = service;
+        this(service, new RbacGuard());
     }
 
     @GetMapping
@@ -60,10 +71,10 @@ public class PeaController {
     @PostMapping
     public ResponseEntity<PeaResponseDTO> criar(
             @Valid @RequestBody PeaRequestDTO dto,
-            @RequestHeader("X-User-Id") UUID usuarioId) {
+            @AuthenticationPrincipal Usuario usuarioAutenticado) {
 
-        PeaResponseDTO response =
-                service.criar(dto, usuarioId);
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(usuarioAutenticado);
+        PeaResponseDTO response = service.criar(dto, usuarioId);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -74,8 +85,9 @@ public class PeaController {
     public ResponseEntity<PeaResponseDTO> atualizar(
             @PathVariable UUID id,
             @Valid @RequestBody PeaUpdateDTO dto,
-            @RequestHeader("X-User-Id") UUID usuarioId) {
+            @AuthenticationPrincipal Usuario usuarioAutenticado) {
 
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(usuarioAutenticado);
         return ResponseEntity.ok(
                 service.atualizar(id, dto, usuarioId)
         );
@@ -84,10 +96,11 @@ public class PeaController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluir(
             @PathVariable UUID id,
-            @RequestHeader("X-User-Id") UUID usuarioId) {
+            @AuthenticationPrincipal Usuario usuarioAutenticado) {
 
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(usuarioAutenticado);
         service.excluir(id, usuarioId);
 
         return ResponseEntity.noContent().build();
     }
-}
+}
