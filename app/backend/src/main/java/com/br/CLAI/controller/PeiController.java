@@ -1,14 +1,18 @@
 package com.br.CLAI.controller;
 
+import com.br.CLAI.domain.Usuario;
 import com.br.CLAI.dto.request.PeiRequestDTO;
 import com.br.CLAI.dto.request.PeiUpdateDTO;
 import com.br.CLAI.dto.response.PeaResponseDTO;
 import com.br.CLAI.dto.response.PeiResponseDTO;
+import com.br.CLAI.security.RbacGuard;
 import com.br.CLAI.service.PeiService;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,9 +23,16 @@ import java.util.UUID;
 public class PeiController {
 
     private final PeiService service;
+    private final RbacGuard rbacGuard;
+
+    @Autowired
+    public PeiController(PeiService service, RbacGuard rbacGuard) {
+        this.service = service;
+        this.rbacGuard = rbacGuard;
+    }
 
     public PeiController(PeiService service) {
-        this.service = service;
+        this(service, new RbacGuard());
     }
 
     @GetMapping
@@ -52,17 +63,17 @@ public class PeiController {
     @GetMapping("/{id}/anexos-sensiveis")
     @PreAuthorize("@rbacGuard.temRestricaoModeradaOuSuperior()")
     public ResponseEntity<List<PeaResponseDTO>> listarAnexosSensiveis(
-            @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Perfil", required = false) String perfil) {
+            @PathVariable UUID id) {
 
-        return ResponseEntity.ok(service.listarAnexosSensiveis(id, perfil));
+        return ResponseEntity.ok(service.listarAnexosSensiveis(id));
     }
 
     @PostMapping
     public ResponseEntity<PeiResponseDTO> criar(
             @Valid @RequestBody PeiRequestDTO dto,
-            @RequestHeader("X-User-Id") UUID usuarioId) {
+            @AuthenticationPrincipal Usuario usuarioAutenticado) {
 
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(usuarioAutenticado);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(service.criar(dto, usuarioId));
@@ -72,8 +83,9 @@ public class PeiController {
     public ResponseEntity<PeiResponseDTO> atualizar(
             @PathVariable UUID id,
             @Valid @RequestBody PeiUpdateDTO dto,
-            @RequestHeader("X-User-Id") UUID usuarioId) {
+            @AuthenticationPrincipal Usuario usuarioAutenticado) {
 
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(usuarioAutenticado);
         return ResponseEntity.ok(service.atualizar(id, dto, usuarioId));
     }
 
@@ -81,10 +93,12 @@ public class PeiController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> inativar(
             @PathVariable UUID id,
-            @RequestHeader("X-User-Id") UUID usuarioId) {
+            @AuthenticationPrincipal Usuario usuarioAutenticado) {
 
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(usuarioAutenticado);
         service.inativar(id, usuarioId);
 
         return ResponseEntity.noContent().build();
     }
 }
+

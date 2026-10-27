@@ -9,6 +9,7 @@ import com.br.CLAI.exception.NaoEncontradoException;
 import com.br.CLAI.mapper.PeaMapper;
 import com.br.CLAI.repository.AcompanhamentoRepository;
 import com.br.CLAI.repository.PeaRepository;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,6 +80,8 @@ public class PeaService {
             PeaRequestDTO dto,
             UUID usuarioId) {
 
+        validarUsuarioResponsavel(usuarioId);
+
         Acompanhamento acompanhamento =
                 acompanhamentoRepository
                         .findById(dto.acompanhamentoId())
@@ -106,6 +109,8 @@ public class PeaService {
             PeaUpdateDTO dto,
             UUID usuarioId) {
 
+        validarUsuarioResponsavel(usuarioId);
+
         Pea pea = repository.findById(id)
                 .orElseThrow(() ->
                         new NaoEncontradoException(
@@ -126,6 +131,8 @@ public class PeaService {
             UUID id,
             UUID usuarioId) {
 
+        validarUsuarioResponsavel(usuarioId);
+
         Pea pea = repository.findById(id)
                 .orElseThrow(() ->
                         new NaoEncontradoException(
@@ -140,5 +147,13 @@ public class PeaService {
         // BaseEntity possui @SoftDelete.
         // O registro permanece fisicamente no banco.
         repository.delete(pea);
+    }
+
+    private void validarUsuarioResponsavel(UUID usuarioId) {
+        if (usuarioId == null) {
+            throw new AuthenticationCredentialsNotFoundException(
+                    "Autenticação obrigatória para acessar este recurso."
+            );
+        }
     }
 }

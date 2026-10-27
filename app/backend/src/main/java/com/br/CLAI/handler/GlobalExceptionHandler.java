@@ -6,7 +6,9 @@ import com.br.CLAI.exception.RegraDeNegocioException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -51,6 +53,19 @@ public class GlobalExceptionHandler {
         );
         problemDetail.setTitle("Sessão Revogada");
         problemDetail.setType(URI.create("https://api.sigi.com/errors/sessao-revogada"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
+    }
+
+    @ExceptionHandler({AuthenticationCredentialsNotFoundException.class, InsufficientAuthenticationException.class})
+    public ProblemDetail handleAutenticacaoAusenteException(AuthenticationException ex) {
+        String detail = (ex.getMessage() != null && !ex.getMessage().isBlank())
+                ? ex.getMessage()
+                : "Autenticação obrigatória para acessar este recurso.";
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, detail);
+        problemDetail.setTitle("Não Autorizado");
+        problemDetail.setType(URI.create("https://api.sigi.com/errors/nao-autorizado"));
         problemDetail.setProperty("timestamp", Instant.now());
         return problemDetail;
     }
