@@ -224,7 +224,7 @@ class ProjecaoSensivelJsonIntegrationTest {
     void professorDeveReceberProntuarioComCamposSensiveisOmitidosNoJson() throws Exception {
         String tokenProfessor = jwtService.gerarToken(professorUser);
 
-        mockMvc.perform(get("/api/v1/estudantes/{estudanteId}/prontuario", alunoId)
+        mockMvc.perform(get("/api/v1/alunos/{estudanteId}/prontuario", alunoId)
                         .header("Authorization", "Bearer " + tokenProfessor)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -258,7 +258,7 @@ class ProjecaoSensivelJsonIntegrationTest {
     void psicopedagogaDeveReceberProntuarioComCamposSensiveisPreenchidos() throws Exception {
         String tokenPsicopedagoga = jwtService.gerarToken(psicopedagogoUser);
 
-        mockMvc.perform(get("/api/v1/estudantes/{estudanteId}/prontuario", alunoId)
+        mockMvc.perform(get("/api/v1/alunos/{estudanteId}/prontuario", alunoId)
                         .header("Authorization", "Bearer " + tokenPsicopedagoga)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -284,7 +284,7 @@ class ProjecaoSensivelJsonIntegrationTest {
         SecurityContextHolder.clearContext();
 
         // 2. Admin
-        mockMvc.perform(get("/api/v1/estudantes/{estudanteId}/prontuario", alunoId)
+        mockMvc.perform(get("/api/v1/alunos/{estudanteId}/prontuario", alunoId)
                         .header("Authorization", "Bearer " + tokenAdmin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.historicoFamiliar").exists())

@@ -33,7 +33,7 @@ public class AnexoEstudanteController {
         this.anexoEstudanteService = anexoEstudanteService;
     }
 
-    @PostMapping(value = "/estudantes/{id}/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/alunos/{id}/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AnexoEstudanteResponseDTO> uploadAnexo(
             @PathVariable("id") UUID id,
             @RequestParam(value = "arquivo", required = false) MultipartFile arquivo,
@@ -45,7 +45,7 @@ public class AnexoEstudanteController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @GetMapping("/estudantes/{id}/anexos")
+    @GetMapping("/alunos/{id}/anexos")
     public ResponseEntity<List<AnexoEstudanteResponseDTO>> listarAnexosPorEstudante(
             @PathVariable("id") UUID id
     ) {
