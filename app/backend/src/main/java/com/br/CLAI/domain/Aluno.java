@@ -1,6 +1,6 @@
 package com.br.CLAI.domain;
 
-import com.br.CLAI.domain.enums.StatusEstudante;
+import com.br.CLAI.domain.enums.StatusAluno;
 import jakarta.persistence.*;
 import org.hibernate.annotations.BatchSize;
 
@@ -25,7 +25,7 @@ public class Aluno extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private StatusEstudante status = StatusEstudante.ATIVO;
+    private StatusAluno status = StatusAluno.ATIVO;
 
     /**
      * Inativação lógica de negócio (US 12). Não confundir com o @SoftDelete do Hibernate (coluna "deleted"),
@@ -84,11 +84,11 @@ public class Aluno extends BaseEntity {
         this.turma = turma;
     }
 
-    public StatusEstudante getStatus() {
+    public StatusAluno getStatus() {
         return status;
     }
 
-    public void setStatus(StatusEstudante status) {
+    public void setStatus(StatusAluno status) {
         this.status = status;
     }
 
