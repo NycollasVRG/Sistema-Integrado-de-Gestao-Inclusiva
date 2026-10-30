@@ -98,7 +98,7 @@ class AnexoUploadIntegrationTest {
                 pdfSensivelBytes
         );
 
-        mockMvc.perform(multipart("/api/v1/estudantes/{id}/anexos", estudanteId)
+        mockMvc.perform(multipart("/api/v1/alunos/{id}/anexos", estudanteId)
                         .file(multipartFile)
                         .param("classificacao", TipoClassificacaoAnexo.LAUDO_MEDICO.name()))
                 .andExpect(status().isCreated())
@@ -162,7 +162,7 @@ class AnexoUploadIntegrationTest {
                 pdfNeuro
         );
 
-        mockMvc.perform(multipart("/api/v1/estudantes/{id}/anexos", estudanteId)
+        mockMvc.perform(multipart("/api/v1/alunos/{id}/anexos", estudanteId)
                         .file(multipartFile)
                         .param("classificacao", TipoClassificacaoAnexo.DIAGNOSTICO_NEUROPSICOLOGICO.name()))
                 .andExpect(status().isCreated())
@@ -196,7 +196,7 @@ class AnexoUploadIntegrationTest {
                 pdfPedagogico
         );
 
-        mockMvc.perform(multipart("/api/v1/estudantes/{id}/anexos", estudanteId)
+        mockMvc.perform(multipart("/api/v1/alunos/{id}/anexos", estudanteId)
                         .file(multipartFile)
                         .param("classificacao", TipoClassificacaoAnexo.DOCUMENTO_PEDAGOGICO.name()))
                 .andExpect(status().isCreated())
@@ -227,7 +227,7 @@ class AnexoUploadIntegrationTest {
                 "%PDF-1.4 teste".getBytes(StandardCharsets.UTF_8)
         );
 
-        mockMvc.perform(multipart("/api/v1/estudantes/{id}/anexos", idInexistente)
+        mockMvc.perform(multipart("/api/v1/alunos/{id}/anexos", idInexistente)
                         .file(multipartFile)
                         .param("classificacao", TipoClassificacaoAnexo.LAUDO_MEDICO.name()))
                 .andExpect(status().isNotFound());

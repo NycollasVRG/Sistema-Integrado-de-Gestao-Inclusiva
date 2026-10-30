@@ -79,7 +79,7 @@ public class ProntuarioService {
 
         return new ProntuarioResponseDTO(
                 aluno.getId(),
-                aluno.getNome(),
+                aluno.getNomeCompleto(),
                 aluno.getMatricula(),
                 estudoId,
                 statusEstudo,
@@ -111,7 +111,7 @@ public class ProntuarioService {
 
         return new com.br.CLAI.dto.response.HistoricoSocioemocionalResponseDTO(
                 aluno.getId(),
-                aluno.getNome(),
+                aluno.getNomeCompleto(),
                 aluno.getMatricula(),
                 estudoId,
                 historicoFamiliar,

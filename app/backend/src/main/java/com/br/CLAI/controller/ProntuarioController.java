@@ -17,7 +17,7 @@ import java.util.UUID;
  * Controller do Prontuário Unificado do Estudante (US 09 / TA11.3).
  */
 @RestController
-@RequestMapping("/api/v1/estudantes")
+@RequestMapping("/api/v1/alunos")
 @CrossOrigin(origins = "*")
 public class ProntuarioController {
 

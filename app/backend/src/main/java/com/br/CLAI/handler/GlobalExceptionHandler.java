@@ -1,6 +1,7 @@
 package com.br.CLAI.handler;
 
 import com.br.CLAI.exception.AcessoNegadoException;
+import com.br.CLAI.exception.ConflitoException;
 import com.br.CLAI.exception.NaoEncontradoException;
 import com.br.CLAI.exception.RegraDeNegocioException;
 import org.springframework.http.HttpStatus;
@@ -87,6 +88,15 @@ public class GlobalExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
         problemDetail.setTitle("Erro de Regra de Negócio");
         problemDetail.setType(URI.create("https://api.sigi.com/errors/regra-de-negocio"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
+    }
+
+    @ExceptionHandler(ConflitoException.class)
+    public ProblemDetail handleConflitoException(ConflitoException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problemDetail.setTitle("Conflito de Dados");
+        problemDetail.setType(URI.create("https://api.sigi.com/errors/conflito"));
         problemDetail.setProperty("timestamp", Instant.now());
         return problemDetail;
     }

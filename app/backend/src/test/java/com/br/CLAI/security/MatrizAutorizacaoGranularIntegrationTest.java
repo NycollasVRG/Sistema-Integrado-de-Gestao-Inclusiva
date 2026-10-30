@@ -264,7 +264,7 @@ class MatrizAutorizacaoGranularIntegrationTest {
         SecurityContextHolder.clearContext();
 
         // 2. Prontuário Unificado: 200 OK, porém sem as chaves sensíveis
-        mockMvc.perform(get("/api/v1/estudantes/{estudanteId}/prontuario", alunoId)
+        mockMvc.perform(get("/api/v1/alunos/{estudanteId}/prontuario", alunoId)
                         .header("Authorization", "Bearer " + tokenProfessor))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nomeAluno").value("Mariana Costa"))
@@ -279,7 +279,7 @@ class MatrizAutorizacaoGranularIntegrationTest {
         String tokenApoiador = jwtService.gerarToken(alunoApoiadorUser);
 
         // 1. Tentativa de acesso direto pelo Professor -> 403 Forbidden
-        mockMvc.perform(get("/api/v1/estudantes/{estudanteId}/historico-socioemocional", alunoId)
+        mockMvc.perform(get("/api/v1/alunos/{estudanteId}/historico-socioemocional", alunoId)
                         .header("Authorization", "Bearer " + tokenProfessor))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
@@ -290,7 +290,7 @@ class MatrizAutorizacaoGranularIntegrationTest {
         SecurityContextHolder.clearContext();
 
         // 2. Tentativa de acesso direto pelo Aluno Apoiador -> 403 Forbidden
-        mockMvc.perform(get("/api/v1/estudantes/{estudanteId}/historico-socioemocional", alunoId)
+        mockMvc.perform(get("/api/v1/alunos/{estudanteId}/historico-socioemocional", alunoId)
                         .header("Authorization", "Bearer " + tokenApoiador))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
@@ -312,7 +312,7 @@ class MatrizAutorizacaoGranularIntegrationTest {
         SecurityContextHolder.clearContext();
 
         // 2. Prontuário Unificado: 200 OK com dados completos
-        mockMvc.perform(get("/api/v1/estudantes/{estudanteId}/prontuario", alunoId)
+        mockMvc.perform(get("/api/v1/alunos/{estudanteId}/prontuario", alunoId)
                         .header("Authorization", "Bearer " + tokenPsicopedagoga))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.historicoFamiliar").value("Família monoparental com suporte dos avós maternos; histórico de TDAH no tio."))
@@ -321,7 +321,7 @@ class MatrizAutorizacaoGranularIntegrationTest {
         SecurityContextHolder.clearContext();
 
         // 3. Rota Exclusiva de Detalhes Socioemocionais: 200 OK com dados completos
-        mockMvc.perform(get("/api/v1/estudantes/{estudanteId}/historico-socioemocional", alunoId)
+        mockMvc.perform(get("/api/v1/alunos/{estudanteId}/historico-socioemocional", alunoId)
                         .header("Authorization", "Bearer " + tokenPsicopedagoga))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.alunoId").value(alunoId.toString()))
@@ -337,7 +337,7 @@ class MatrizAutorizacaoGranularIntegrationTest {
         String tokenAdmin = jwtService.gerarToken(adminUser);
 
         // 1. Coordenador
-        mockMvc.perform(get("/api/v1/estudantes/{estudanteId}/historico-socioemocional", alunoId)
+        mockMvc.perform(get("/api/v1/alunos/{estudanteId}/historico-socioemocional", alunoId)
                         .header("Authorization", "Bearer " + tokenCoordenador))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.historicoFamiliar").exists())
@@ -346,7 +346,7 @@ class MatrizAutorizacaoGranularIntegrationTest {
         SecurityContextHolder.clearContext();
 
         // 2. Admin
-        mockMvc.perform(get("/api/v1/estudantes/{estudanteId}/historico-socioemocional", alunoId)
+        mockMvc.perform(get("/api/v1/alunos/{estudanteId}/historico-socioemocional", alunoId)
                         .header("Authorization", "Bearer " + tokenAdmin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.historicoFamiliar").exists())
