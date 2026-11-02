@@ -19,6 +19,7 @@ import {
 } from './services/estudoDeCasoService';
 import { ACOMPANHAMENTO_POR_ALUNO, PeiService } from './services/peiService';
 import { getAlunoHeader } from './services/alunoService';
+import type { EstudanteResumo } from './types/gestaoEstudantes';
 import { getTimeline } from './services/timelineService';
 import { FormularioPea } from './components/FormularioPea';
 import { PeaService } from './services/peaService';
@@ -36,11 +37,12 @@ import type {
   IndicadorReutilizavel,
   ProblemDetailRFC9457,
 } from './types/estudoDeCaso';
+import { AreaGestaoEstudantes } from './components/AreaGestaoEstudantes';
 
 export const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [alunoSelecionado] = useState<Aluno>(ALUNOS_PADRAO[0]);
+  const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno>(ALUNOS_PADRAO[0]);
   const [indicadores] = useState<IndicadorReutilizavel[]>(INDICADORES_PADRAO);
   const [estudoAtual, setEstudoAtual] = useState<EstudoDeCasoResponseDTO | null>(null);
   const [peiAtual, setPeiAtual] = useState<PeiResponseDTO | null>(null);
@@ -438,6 +440,24 @@ export const App: React.FC = () => {
     turma: alunoSelecionado.turma,
   };
 
+  // US12: seleciona o aluno real na listagem e recarrega os dados do prontuário.
+  const abrirProntuarioDaListagem = (estudante: EstudanteResumo) => {
+    setEstudoAtual(null);
+    setPeiAtual(null);
+    setPeaAtual(null);
+    setPeasDoAluno([]);
+    setHeader(null);
+    setTimeline([]);
+    setAlunoSelecionado({
+      id: estudante.id,
+      nome: estudante.nomeCompleto,
+      matricula: estudante.matricula,
+      curso: estudante.curso,
+      turma: estudante.turma,
+    });
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAF8] flex flex-col justify-between selection:bg-ifpb-teal selection:text-white">
       {/* Menu de desenvolvimento para testar telas */}
@@ -451,7 +471,9 @@ export const App: React.FC = () => {
         searchTerm={termoBusca}
         onSearch={setTermoBusca}
         subTitle={
-          location.pathname === '/estudo-de-caso'
+          location.pathname === '/estudantes'
+            ? 'Gestão de Estudantes'
+            : location.pathname === '/estudo-de-caso'
             ? 'Formulário de Estudo de Caso'
             : location.pathname === '/pei'
               ? 'Plano Educacional Individualizado (PEI)'
@@ -464,6 +486,10 @@ export const App: React.FC = () => {
       {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
         <Routes>
+          <Route
+              path="/estudantes"
+              element={<AreaGestaoEstudantes onAbrirProntuario={abrirProntuarioDaListagem} />}
+            />
           <Route
             path="/"
             element={

@@ -1,22 +1,15 @@
-import type { AlunoHeaderData } from "../types/alunoHeader";
+import type { AlunoHeaderData } from '../types/alunoHeader';
+import { GestaoEstudantesService } from './gestaoEstudantesService';
 
-
+// US12 / TA12.3: consulta sempre o estudante escolhido, em vez do mock fixo.
 export async function getAlunoHeader(alunoId: string): Promise<AlunoHeaderData> {
-  // Simula pequeno delay para aproximar comportamento real da API
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  // Dados mockados realistas - cenário com fotoUrl: null para validar placeholder
-  const mockHeader: AlunoHeaderData = {
-    id: alunoId,
-    nome: "Maria Silva Santos",
+  const aluno = await GestaoEstudantesService.buscarPorId(alunoId);
+  return {
+    id: aluno.id,
+    nome: aluno.nomeCompleto,
     fotoUrl: null,
-    matricula: "2026.1.000123",
-    curso: "Pedagogia",
-    tagsDificuldade: ["TDAH", "Dislexia", "Baixa Visão"],
+    matricula: aluno.matricula,
+    curso: aluno.curso,
+    tagsDificuldade: aluno.tagsDificuldade.map((tag) => tag.nome),
   };
-
-  return mockHeader;
-
-  // TODO: Descomentar na próxima Sprint quando o endpoint de Aluno estiver disponível
-  // return api.get<AlunoHeaderData>(`/api/alunos/${alunoId}`);
 }
