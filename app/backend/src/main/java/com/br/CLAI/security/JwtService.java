@@ -16,7 +16,7 @@ import java.util.Map;
 @Service
 public class JwtService {
 
-    @Value("${sigi.security.jwt-secret:sigi-clai-dev-jwt-secret-key-2026-ifpb-change-in-prod}")
+    @Value("${sigi.security.jwt-secret}")
     private String jwtSecret;
 
     @Value("${sigi.security.jwt-expiration-ms:28800000}")
