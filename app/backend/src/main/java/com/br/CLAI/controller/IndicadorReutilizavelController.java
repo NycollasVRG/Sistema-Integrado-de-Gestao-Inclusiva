@@ -1,8 +1,8 @@
 package com.br.CLAI.controller;
 
-import com.br.CLAI.domain.IndicadorReutilizavel;
 import com.br.CLAI.repository.IndicadorReutilizavelRepository;
-import org.springframework.data.domain.Sort;
+import com.br.CLAI.service.IndicadorReutilizavelService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,20 +15,20 @@ import java.util.UUID;
 @RequestMapping("/api/v1/indicadores")
 public class IndicadorReutilizavelController {
 
-    private final IndicadorReutilizavelRepository repository;
+    private final IndicadorReutilizavelService service;
+
+    @Autowired
+    public IndicadorReutilizavelController(IndicadorReutilizavelService service) {
+        this.service = service;
+    }
 
     public IndicadorReutilizavelController(IndicadorReutilizavelRepository repository) {
-        this.repository = repository;
+        this(new IndicadorReutilizavelService(repository));
     }
 
     @GetMapping
     public List<IndicadorResposta> listar() {
-        // O @SoftDelete herdado de BaseEntity oculta registros excluídos.
-        return repository.findAll(Sort.by(Sort.Direction.ASC, "nome"))
-                .stream()
-                .map(indicador -> new IndicadorResposta(
-                        indicador.getId(), indicador.getNome(), indicador.getDescricao()))
-                .toList();
+        return service.listar();
     }
 
     public record IndicadorResposta(UUID id, String nome, String descricao) {}
