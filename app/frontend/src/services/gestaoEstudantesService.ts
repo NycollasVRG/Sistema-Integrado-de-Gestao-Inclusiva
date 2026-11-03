@@ -107,7 +107,7 @@ async function requisitar<T>(
 export const GestaoEstudantesService = {
   // Catálogo completo de indicadores, independente da página atual de estudantes.
   async listarTags(signal?: AbortSignal): Promise<TagDificuldadeDTO[]> {
-    const dados = await requisitar<unknown>('/api/v1/indicadores', { signal });
+    const dados = await requisitar<unknown>('/api/indicadores', { signal });
     if (!Array.isArray(dados)) {
       throw new Error('A API de indicadores retornou um formato inesperado.');
     }
@@ -140,7 +140,7 @@ export const GestaoEstudantesService = {
       size: number;
       totalElements: number;
       totalPages: number;
-    }>(`/api/v1/alunos?${parametros}`, { signal });
+    }>(`/api/alunos?${parametros}`, { signal });
     if (!Array.isArray(dados.content)) {
       throw new Error('Formato de paginação inesperado na resposta da API.');
     }
@@ -154,17 +154,17 @@ export const GestaoEstudantesService = {
   },
 
   async buscarPorId(id: string, signal?: AbortSignal): Promise<EstudanteResumo> {
-    const dados = await requisitar<unknown>(`/api/v1/alunos/${encodeURIComponent(id)}`, { signal });
+    const dados = await requisitar<unknown>(`/api/alunos/${encodeURIComponent(id)}`, { signal });
     return normalizarEstudante(dados);
   },
 
   async criar(dados: DadosEstudanteFormulario): Promise<EstudanteResumo> {
-    const resposta = await requisitar<unknown>('/api/v1/alunos', { method: 'POST', body: dados });
+    const resposta = await requisitar<unknown>('/api/alunos', { method: 'POST', body: dados });
     return normalizarEstudante(resposta);
   },
 
   async atualizar(id: string, dados: DadosEstudanteFormulario): Promise<EstudanteResumo> {
-    const resposta = await requisitar<unknown>(`/api/v1/alunos/${encodeURIComponent(id)}`, {
+    const resposta = await requisitar<unknown>(`/api/alunos/${encodeURIComponent(id)}`, {
       method: 'PUT', body: dados,
     });
     return normalizarEstudante(resposta);
@@ -172,7 +172,7 @@ export const GestaoEstudantesService = {
 
   async inativar(id: string, status: 'INATIVO' | 'EVADIDO'): Promise<void> {
     const params = new URLSearchParams({ status });
-    await requisitar<void>(`/api/v1/alunos/${encodeURIComponent(id)}?${params}`, {
+    await requisitar<void>(`/api/alunos/${encodeURIComponent(id)}?${params}`, {
       method: 'DELETE',
     });
   },

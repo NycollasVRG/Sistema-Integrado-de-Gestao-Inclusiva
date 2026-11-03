@@ -29,7 +29,7 @@ export function sairGestao(): void {
 }
 
 export async function entrarGestao(email: string, senha: string): Promise<SessaoGestaoEstudantes> {
-  const resposta = await fetch(`${API_BASE}/api/v1/auth/login`, {
+  const resposta = await fetch(`${API_BASE}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ email: email.trim(), senha }),
