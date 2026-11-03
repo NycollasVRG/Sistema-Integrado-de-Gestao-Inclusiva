@@ -2,6 +2,7 @@ package com.br.CLAI.domain;
 
 import com.br.CLAI.domain.enums.StatusEstudoCaso;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,7 @@ public class EstudoDeCaso extends BaseEntity {
             joinColumns = @JoinColumn(name = "estudo_de_caso_id"),
             inverseJoinColumns = @JoinColumn(name = "indicador_id")
     )
+    @BatchSize(size = 50)
     private List<IndicadorReutilizavel> indicadores = new ArrayList<>();
 
     public EstudoDeCaso() {
