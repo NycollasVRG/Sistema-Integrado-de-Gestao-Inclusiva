@@ -102,7 +102,7 @@ public class AuthRevocationIntegrationTest {
     void deveEmitirTokenComClaimsObrigatoriasEPopularContexto() throws Exception {
         LoginRequestDTO loginRequest = new LoginRequestDTO("admin.test@sigi.ifpb.edu.br", "senha123");
 
-        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
@@ -128,7 +128,7 @@ public class AuthRevocationIntegrationTest {
         assertEquals("admin.test@sigi.ifpb.edu.br", jwtService.extrairEmail(token));
 
         // Validar que o SecurityContextHolder carrega o usuário e as authorities correspondentes
-        mockMvc.perform(get("/api/v1/auth/me")
+        mockMvc.perform(get("/api/auth/me")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("ADMIN"))
@@ -143,7 +143,7 @@ public class AuthRevocationIntegrationTest {
     void alunoNaoPodeAcessarEndpointDeRevogacao() throws Exception {
         // Login como ALUNO_APOIADOR
         LoginRequestDTO loginAluno = new LoginRequestDTO("aluno.test@sigi.ifpb.edu.br", "senha123");
-        MvcResult loginAlunoResult = mockMvc.perform(post("/api/v1/auth/login")
+        MvcResult loginAlunoResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginAluno)))
                 .andExpect(status().isOk())
@@ -155,7 +155,7 @@ public class AuthRevocationIntegrationTest {
         );
 
         // Tentativa de chamar endpoint admin de revogação
-        mockMvc.perform(patch("/api/v1/admin/usuarios/" + alunoApoiadorUser.getId() + "/revogar-acesso")
+        mockMvc.perform(patch("/api/admin/usuarios/" + alunoApoiadorUser.getId() + "/revogar-acesso")
                         .header("Authorization", "Bearer " + alunoResponse.token()))
                 .andExpect(status().isForbidden());
     }
@@ -165,7 +165,7 @@ public class AuthRevocationIntegrationTest {
     void deveRevogarAcessoImediatamenteEBloquearTokenAnterior() throws Exception {
         // 1. Aluno Apoiador faz login e recebe token
         LoginRequestDTO loginAluno = new LoginRequestDTO("aluno.test@sigi.ifpb.edu.br", "senha123");
-        MvcResult loginAlunoResult = mockMvc.perform(post("/api/v1/auth/login")
+        MvcResult loginAlunoResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginAluno)))
                 .andExpect(status().isOk())
@@ -178,14 +178,14 @@ public class AuthRevocationIntegrationTest {
         String tokenAluno = alunoResponse.token();
 
         // 2. Aluno Apoiador usa seu token com sucesso
-        mockMvc.perform(get("/api/v1/auth/me")
+        mockMvc.perform(get("/api/auth/me")
                         .header("Authorization", "Bearer " + tokenAluno))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("aluno.test@sigi.ifpb.edu.br"));
 
         // 3. Administrador faz login
         LoginRequestDTO loginAdmin = new LoginRequestDTO("admin.test@sigi.ifpb.edu.br", "senha123");
-        MvcResult loginAdminResult = mockMvc.perform(post("/api/v1/auth/login")
+        MvcResult loginAdminResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginAdmin)))
                 .andExpect(status().isOk())
@@ -198,20 +198,20 @@ public class AuthRevocationIntegrationTest {
         String tokenAdmin = adminResponse.token();
 
         // 4. Administrador aciona o endpoint de revogação contra o Aluno Apoiador
-        mockMvc.perform(patch("/api/v1/admin/usuarios/" + alunoApoiadorUser.getId() + "/revogar-acesso")
+        mockMvc.perform(patch("/api/admin/usuarios/" + alunoApoiadorUser.getId() + "/revogar-acesso")
                         .header("Authorization", "Bearer " + tokenAdmin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.acessoAtivo").value(false))
                 .andExpect(jsonPath("$.tokenVersion").value(2));
 
         // 5. [CRITÉRIO DE ACEITE TA11.4]: O token emitido ANTES da revogação deve ser BLOQUEADO imediatamente (401)
-        mockMvc.perform(get("/api/v1/auth/me")
+        mockMvc.perform(get("/api/auth/me")
                         .header("Authorization", "Bearer " + tokenAluno))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Acesso revogado: o vínculo do usuário está desativado."));
 
         // 6. Tentativa de novo login do aluno revogado também deve ser rejeitada
-        mockMvc.perform(post("/api/v1/auth/login")
+        mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginAluno)))
                 .andExpect(status().isUnauthorized());
@@ -228,7 +228,7 @@ public class AuthRevocationIntegrationTest {
         usuarioRepository.save(adminUser);
 
         // O token antigo (v1) deve falhar imediatamente na validação
-        mockMvc.perform(get("/api/v1/auth/me")
+        mockMvc.perform(get("/api/auth/me")
                         .header("Authorization", "Bearer " + tokenV1))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Sessão revogada ou versão do token inválida."));

@@ -1,4 +1,4 @@
-# Documentação Técnica: Matriz de Autorização Granular (Task #52 - US 11 / TA11.3 / TA3.2)
+﻿# Documentação Técnica: Matriz de Autorização Granular (Task #52 - US 11 / TA11.3 / TA3.2)
 
 Este documento descreve a arquitetura e os critérios de validação da **Task #52**, responsável por implementar a autorização granular nos níveis `SUPER_RESTRICAO`, `RESTRICAO_MODERADA` e `ACESSO_FUNCIONAL` no backend do Sistema Integrado de Gestão Inclusiva (SIGI).
 
@@ -44,7 +44,7 @@ public record EstudoDeCasoResponseDTO(
 Quando o usuário é um `PROFESSOR`, o mapper e o service deixam essas variáveis como `null`. Devido ao `@JsonInclude(NON_NULL)`, o serializador do Jackson **não renderiza as chaves no JSON**, cumprindo com rigor a LGPD e o princípio de privilégio mínimo.
 
 ### 3.3 Rotas Protegidas com `@PreAuthorize`
-- `GET /api/v1/estudantes/{estudanteId}/historico-socioemocional`:
+- `GET /api/alunos/{estudanteId}/historico-socioemocional`:
   Anotado com `@PreAuthorize("@rbacGuard.temRestricaoModeradaOuSuperior()")`.
 - `GET /api/peis/{id}/anexos-sensiveis`:
   Anotado com `@PreAuthorize("@rbacGuard.temRestricaoModeradaOuSuperior()")`.
@@ -66,8 +66,8 @@ Tentativas de acesso não autorizado são interceptadas e convertidas pelo `Glob
 
 ```http
 GET /api/estudos-de-caso/{id}
-GET /api/v1/estudantes/{id}/prontuario
-GET /api/v1/estudantes/{id}/historico-socioemocional
+GET /api/alunos/{id}/prontuario
+GET /api/alunos/{id}/historico-socioemocional
 GET /api/peis/{id}/anexos-sensiveis
 ```
 
@@ -80,3 +80,4 @@ GET /api/peis/{id}/anexos-sensiveis
 3. `MatrizAutorizacaoGranularIntegrationTest`: 5 testes de integração ponta a ponta validando formalmente os critérios **CA 1**, **CA 1.2**, **CA 2** e **TA3.2**.
 
 Totalizando **29 testes de segurança da aplicação aprovados com 100% de sucesso**.
+

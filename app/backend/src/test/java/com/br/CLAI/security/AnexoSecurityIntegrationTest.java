@@ -239,7 +239,7 @@ class AnexoSecurityIntegrationTest {
         // [CA 2 - TA11.2]: Download autenticado com JWT de usuário SUPER_RESTRICAO + autorizacaoSaude = true
         String tokenSaudeAutorizada = jwtService.gerarToken(profissionalSaudeSuperRestrito);
 
-        MvcResult downloadResult = mockMvc.perform(get("/api/v1/anexos/{anexoId}/download", dtoCriado.id())
+        MvcResult downloadResult = mockMvc.perform(get("/api/anexos/{anexoId}/download", dtoCriado.id())
                         .header("Authorization", "Bearer " + tokenSaudeAutorizada))
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE))
@@ -277,7 +277,7 @@ class AnexoSecurityIntegrationTest {
 
         // 1. Professor (ACESSO_FUNCIONAL, autorizacaoSaude = false) -> 403 Forbidden
         String tokenProfessor = jwtService.gerarToken(professorSemAutorizacaoSaude);
-        mockMvc.perform(get("/api/v1/anexos/{anexoId}/download", anexoSensivel.id())
+        mockMvc.perform(get("/api/anexos/{anexoId}/download", anexoSensivel.id())
                         .header("Authorization", "Bearer " + tokenProfessor))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
@@ -286,7 +286,7 @@ class AnexoSecurityIntegrationTest {
 
         // 2. Coordenador (SUPER_RESTRICAO, porém autorizacaoSaude = false) -> 403 Forbidden
         String tokenCoordenador = jwtService.gerarToken(coordenadorSemAutorizacaoSaude);
-        mockMvc.perform(get("/api/v1/anexos/{anexoId}/download", anexoSensivel.id())
+        mockMvc.perform(get("/api/anexos/{anexoId}/download", anexoSensivel.id())
                         .header("Authorization", "Bearer " + tokenCoordenador))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
@@ -294,7 +294,7 @@ class AnexoSecurityIntegrationTest {
 
         // 3. Admin de TI (Role ADMIN + SUPER_RESTRICAO, porém autorizacaoSaude = false) -> 403 Forbidden
         String tokenAdminTi = jwtService.gerarToken(adminTiSemAutorizacaoSaude);
-        mockMvc.perform(get("/api/v1/anexos/{anexoId}/download", anexoSensivel.id())
+        mockMvc.perform(get("/api/anexos/{anexoId}/download", anexoSensivel.id())
                         .header("Authorization", "Bearer " + tokenAdminTi))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
@@ -302,7 +302,7 @@ class AnexoSecurityIntegrationTest {
 
         // 4. Psicopedagogo (autorizacaoSaude = true, porém RESTRICAO_MODERADA != SUPER_RESTRICAO) -> 403 Forbidden
         String tokenPsicopedagogo = jwtService.gerarToken(psicopedagogoRestricaoModerada);
-        mockMvc.perform(get("/api/v1/anexos/{anexoId}/download", anexoSensivel.id())
+        mockMvc.perform(get("/api/anexos/{anexoId}/download", anexoSensivel.id())
                         .header("Authorization", "Bearer " + tokenPsicopedagogo))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
@@ -310,7 +310,7 @@ class AnexoSecurityIntegrationTest {
 
         // 5. Aluno Apoiador (ACESSO_FUNCIONAL, autorizacaoSaude = false) -> 403 Forbidden
         String tokenAlunoApoiador = jwtService.gerarToken(alunoApoiador);
-        mockMvc.perform(get("/api/v1/anexos/{anexoId}/download", anexoSensivel.id())
+        mockMvc.perform(get("/api/anexos/{anexoId}/download", anexoSensivel.id())
                         .header("Authorization", "Bearer " + tokenAlunoApoiador))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
@@ -334,7 +334,7 @@ class AnexoSecurityIntegrationTest {
         );
 
         String tokenProfessor = jwtService.gerarToken(professorSemAutorizacaoSaude);
-        MvcResult result = mockMvc.perform(get("/api/v1/anexos/{anexoId}/download", anexoPedagogico.id())
+        MvcResult result = mockMvc.perform(get("/api/anexos/{anexoId}/download", anexoPedagogico.id())
                         .header("Authorization", "Bearer " + tokenProfessor))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -347,7 +347,7 @@ class AnexoSecurityIntegrationTest {
     void deveRetornar404QuandoAnexoNaoExistir() throws Exception {
         String tokenSaude = jwtService.gerarToken(profissionalSaudeSuperRestrito);
 
-        mockMvc.perform(get("/api/v1/anexos/{anexoId}/download", UUID.randomUUID())
+        mockMvc.perform(get("/api/anexos/{anexoId}/download", UUID.randomUUID())
                         .header("Authorization", "Bearer " + tokenSaude))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));

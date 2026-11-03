@@ -11,7 +11,7 @@ function Obter-TokenJwt($email, $senha) {
         email = $email
         senha = $senha
     } | ConvertTo-Json
-    $resp = Invoke-RestMethod -Uri "$baseUrl/api/v1/auth/login" -Method POST -ContentType "application/json" -Body $payload
+    $resp = Invoke-RestMethod -Uri "$baseUrl/api/auth/login" -Method POST -ContentType "application/json" -Body $payload
     return $resp.token
 }
 
@@ -30,7 +30,7 @@ $pdfConteudoOriginal = "%PDF-1.7`n1 0 obj << /Type /Catalog >> endobj`nLAUDO MED
 $tempPdfPath = Join-Path $env:TEMP "laudo_teste_task51.pdf"
 [System.IO.File]::WriteAllText($tempPdfPath, $pdfConteudoOriginal, [System.Text.Encoding]::UTF8)
 
-$curlUploadOutput = curl.exe -s -X POST "$baseUrl/api/v1/estudantes/$estudanteId/anexos" `
+$curlUploadOutput = curl.exe -s -X POST "$baseUrl/api/alunos/$estudanteId/anexos" `
     -H "Authorization: Bearer $tokenSaude" `
     -F "arquivo=@$tempPdfPath;type=application/pdf" `
     -F "classificacao=LAUDO_MEDICO"
@@ -47,7 +47,7 @@ Write-Host "`n===========================================================" -Fore
 Write-Host " [PASSO 3 - CA 2 / TA11.2] Download em Memória por Profissional Autorizado (Deve retornar 200 OK)" -ForegroundColor Cyan
 Write-Host "===========================================================" -ForegroundColor Cyan
 
-$responseDownload = Invoke-WebRequest -Uri "$baseUrl/api/v1/anexos/$anexoId/download" -Method GET -Headers @{ Authorization = "Bearer $tokenSaude" } -UseBasicParsing
+$responseDownload = Invoke-WebRequest -Uri "$baseUrl/api/anexos/$anexoId/download" -Method GET -Headers @{ Authorization = "Bearer $tokenSaude" } -UseBasicParsing
 $textoDescriptografado = [System.Text.Encoding]::UTF8.GetString($responseDownload.Content)
 
 if ($responseDownload.StatusCode -eq 200 -and $textoDescriptografado.StartsWith("%PDF-1.7")) {
@@ -62,7 +62,7 @@ Write-Host "===========================================================" -Foregr
 
 $tokenCoordenador = Obter-TokenJwt "coordenador@sigi.ifpb.edu.br" "senha123"
 try {
-    Invoke-RestMethod -Uri "$baseUrl/api/v1/anexos/$anexoId/download" -Method GET -Headers @{ Authorization = "Bearer $tokenCoordenador" }
+    Invoke-RestMethod -Uri "$baseUrl/api/anexos/$anexoId/download" -Method GET -Headers @{ Authorization = "Bearer $tokenCoordenador" }
     Write-Host " FALHA: Coordenador sem autorização de saúde não deveria baixar laudo médico!" -ForegroundColor Red
 } catch {
     $statusCode = $_.Exception.Response.StatusCode.value__
@@ -75,7 +75,7 @@ Write-Host "===========================================================" -Foregr
 
 $tokenProfessor = Obter-TokenJwt "professor@sigi.ifpb.edu.br" "senha123"
 try {
-    Invoke-RestMethod -Uri "$baseUrl/api/v1/anexos/$anexoId/download" -Method GET -Headers @{ Authorization = "Bearer $tokenProfessor" }
+    Invoke-RestMethod -Uri "$baseUrl/api/anexos/$anexoId/download" -Method GET -Headers @{ Authorization = "Bearer $tokenProfessor" }
     Write-Host " FALHA: Professor não deveria baixar laudo médico!" -ForegroundColor Red
 } catch {
     $statusCode = $_.Exception.Response.StatusCode.value__
@@ -88,7 +88,7 @@ Write-Host "===========================================================" -Foregr
 
 $tokenPsicopedagogo = Obter-TokenJwt "psicopedagogo@sigi.ifpb.edu.br" "senha123"
 try {
-    Invoke-RestMethod -Uri "$baseUrl/api/v1/anexos/$anexoId/download" -Method GET -Headers @{ Authorization = "Bearer $tokenPsicopedagogo" }
+    Invoke-RestMethod -Uri "$baseUrl/api/anexos/$anexoId/download" -Method GET -Headers @{ Authorization = "Bearer $tokenPsicopedagogo" }
     Write-Host " FALHA: Perfil sem SUPER_RESTRICAO não deveria baixar laudo médico!" -ForegroundColor Red
 } catch {
     $statusCode = $_.Exception.Response.StatusCode.value__
