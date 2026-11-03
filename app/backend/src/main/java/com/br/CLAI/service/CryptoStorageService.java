@@ -35,7 +35,7 @@ public class CryptoStorageService {
     }
 
     public CryptoStorageService(
-            @Value("${sigi.security.aes-key:0123456789abcdef0123456789abcdef}") String aesKeyRaw,
+            @Value("${sigi.security.aes-key}") String aesKeyRaw,
             @Value("${sigi.storage.attachments-dir:/app/storage/anexos}") String attachmentsDir
     ) {
         this.secretKey = buildSecretKey(aesKeyRaw);
