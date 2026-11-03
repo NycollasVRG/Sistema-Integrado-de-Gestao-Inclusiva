@@ -12,7 +12,7 @@ import java.util.UUID;
 
 /** Catálogo de tags para os formulários da US12. Exige JWT pelo SecurityConfig. */
 @RestController
-@RequestMapping("/api/v1/indicadores")
+@RequestMapping("/api/indicadores")
 public class IndicadorReutilizavelController {
 
     private final IndicadorReutilizavelService service;

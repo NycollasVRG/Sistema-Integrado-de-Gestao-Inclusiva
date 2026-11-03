@@ -1,4 +1,4 @@
-# Plano de Implementação: Autenticação JWT, Perfis RBAC e Revogação de Sessão (US 11)
+﻿# Plano de Implementação: Autenticação JWT, Perfis RBAC e Revogação de Sessão (US 11)
 
 Este documento descreve a implementação da **Task #50**, que entregou a base arquitetural completa da **US 11** no backend Spring Boot 3+ / Spring Security 6+ com PostgreSQL do projeto Sistema Integrado de Gestão Inclusiva (SIGI).
 
@@ -263,13 +263,13 @@ A configuração define sessão `STATELESS` (nenhum cookie ou `HttpSession` é c
 ...
 .authorizeHttpRequests(auth -> auth
         .requestMatchers(
-                "/api/v1/auth/login",
+                "/api/auth/login",
                 "/actuator/**",
                 "/v3/api-docs/**",
                 "/swagger-ui/**",
                 "/swagger-ui.html"
         ).permitAll()
-        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+        .requestMatchers("/api/admin/**").hasRole("ADMIN")
         .anyRequest().authenticated()
 )
 ```
@@ -278,14 +278,14 @@ O `authenticationEntryPoint` e o `accessDeniedHandler` respondem em **RFC 9457**
 
 #### `AuthController` - login e sessão corrente
 
-- `POST /api/v1/auth/login` — autentica as credenciais via `AuthenticationManager` e devolve o token com as claims de RBAC.
-- `GET /api/v1/auth/me` — retorna os dados do usuário autenticado e as `authorities` ativas no `SecurityContextHolder`.
+- `POST /api/auth/login` — autentica as credenciais via `AuthenticationManager` e devolve o token com as claims de RBAC.
+- `GET /api/auth/me` — retorna os dados do usuário autenticado e as `authorities` ativas no `SecurityContextHolder`.
 
 ### 3.3 Etapa 3 - Endpoint de Revogação e Validação do TA11.4
 
 #### `UsuarioAdminService` e `UsuarioAdminController`
 
-O `UsuarioAdminController` expõe a rota de revogação restrita ao perfil `ADMIN`, tanto pela regra de URL (`/api/v1/admin/**`) quanto pela anotação de método:
+O `UsuarioAdminController` expõe a rota de revogação restrita ao perfil `ADMIN`, tanto pela regra de URL (`/api/admin/**`) quanto pela anotação de método:
 
 ```java
 @PatchMapping("/{id}/revogar-acesso")
@@ -328,41 +328,41 @@ A resposta confirma o novo estado da sessão:
 ```text
               ALUNO_APOIADOR                ADMIN
                    │                          │
-        POST /api/v1/auth/login               │
+        POST /api/auth/login               │
                    │                          │
         ◀── JWT (tokenVersion = 1)           │
                    │                          │
-        GET /api/v1/auth/me  ──── 200 OK ────┤
+        GET /api/auth/me  ──── 200 OK ────┤
                    │                          │
-                   │        POST /api/v1/auth/login
+                   │        POST /api/auth/login
                    │                          │
                    │        ◀── JWT (ROLE_ADMIN)
                    │                          │
-                   │   PATCH /api/v1/admin/usuarios/{id}/revogar-acesso
+                   │   PATCH /api/admin/usuarios/{id}/revogar-acesso
                    │                          │
                    │        acesso_ativo = false
                    │        token_version  = 2
                    │                          │
-        GET /api/v1/auth/me  ──── 401 Unauthorized
+        GET /api/auth/me  ──── 401 Unauthorized
         (token antigo invalidado — TA11.4)
                    │
-        POST /api/v1/auth/login ─── 401 Unauthorized
+        POST /api/auth/login ─── 401 Unauthorized
         (reautenticação bloqueada)
 ```
 
 ## 4. Endpoints Implementados
 
 ```http
-POST /api/v1/auth/login
-GET /api/v1/auth/me
-PATCH /api/v1/admin/usuarios/{id}/revogar-acesso
+POST /api/auth/login
+GET /api/auth/me
+PATCH /api/admin/usuarios/{id}/revogar-acesso
 ```
 
 | Método | Rota | Perfil Requerido | Descrição |
 |---|---|---|---|
-| `POST` | `/api/v1/auth/login` | Público | Autentica e emite o token JWT com as claims de RBAC, nível de restrição e `tokenVersion`. |
-| `GET` | `/api/v1/auth/me` | Autenticado | Retorna os dados do usuário e as `authorities` ativas no `SecurityContextHolder`. |
-| `PATCH` | `/api/v1/admin/usuarios/{id}/revogar-acesso` | `ADMIN` | **TA11.4**: invalida imediatamente qualquer JWT anterior (`token_version++`) e desativa o vínculo (`acesso_ativo = false`). |
+| `POST` | `/api/auth/login` | Público | Autentica e emite o token JWT com as claims de RBAC, nível de restrição e `tokenVersion`. |
+| `GET` | `/api/auth/me` | Autenticado | Retorna os dados do usuário e as `authorities` ativas no `SecurityContextHolder`. |
+| `PATCH` | `/api/admin/usuarios/{id}/revogar-acesso` | `ADMIN` | **TA11.4**: invalida imediatamente qualquer JWT anterior (`token_version++`) e desativa o vínculo (`acesso_ativo = false`). |
 
 ## 5. Matriz de Validação dos Critérios de Aceite
 
@@ -376,11 +376,11 @@ PATCH /api/v1/admin/usuarios/{id}/revogar-acesso
 
 ## 6. Testes Realizados
 
-- [x] `POST /api/v1/auth/login` retornando `200 OK` com token e claims preenchidas.
-- [x] `GET /api/v1/auth/me` retornando `200 OK` com as `authorities` esperadas.
+- [x] `POST /api/auth/login` retornando `200 OK` com token e claims preenchidas.
+- [x] `GET /api/auth/me` retornando `200 OK` com as `authorities` esperadas.
 - [x] Claims do JWT conferidas no payload: `role`, `nivelRestricao`, `autorizacaoSaude`, `tokenVersion` e `sub`.
 - [x] `authorities` conferidas: `ROLE_ADMIN`, `REST_SUPER_RESTRICAO` e `AUTH_SAUDE`.
-- [x] `PATCH /api/v1/admin/usuarios/{id}/revogar-acesso` retornando `200 OK` com `acessoAtivo = false` e `tokenVersion` incrementado.
+- [x] `PATCH /api/admin/usuarios/{id}/revogar-acesso` retornando `200 OK` com `acessoAtivo = false` e `tokenVersion` incrementado.
 - [x] Token anterior bloqueado com `401 Unauthorized` imediatamente após a revogação.
 - [x] Reautenticação do usuário revogado bloqueada com `401 Unauthorized`.
 - [x] Isolamento RBAC validado: perfil não-ADMIN recebe `403 Forbidden` na rota administrativa.
@@ -392,7 +392,7 @@ O arquivo `AuthRevocationIntegrationTest.java` automatiza a cobertura dos crité
 
 | Teste (`@DisplayName`) | Cenário | Expectativa |
 |---|---|---|
-| CA 2: Deve autenticar com sucesso e emitir JWT com todas as claims | Login do ADMIN e leitura de `/api/v1/auth/me` | `200` + claims e `authorities` conferidas |
+| CA 2: Deve autenticar com sucesso e emitir JWT com todas as claims | Login do ADMIN e leitura de `/api/auth/me` | `200` + claims e `authorities` conferidas |
 | RBAC: Usuário com perfil não-ADMIN deve ser bloqueado ao tentar revogar acesso | ALUNO_APOIADOR no `PATCH` de revogação | `403 Forbidden` |
 | CA 1 [TA11.4]: Revogação Imediata | Login, uso do token, revogação pelo ADMIN e reuso do token antigo | `200` na revogação e `401` no reuso do token |
 | Sessão Ativa: Token com tokenVersion defasada deve ser rejeitado | Token `v1` com usuário em `v2` | `401 Unauthorized` |
@@ -442,7 +442,7 @@ A pasta `collection/US11` contém a collection `SIGI_US11_Autenticacao_RBAC.post
 O fluxo final de autenticação e revogação ficou:
 
 ```text
-POST /api/v1/auth/login
+POST /api/auth/login
           ↓
     AuthService
           ↓
@@ -454,7 +454,7 @@ POST /api/v1/auth/login
      JWT (Bearer)
           │
           ▼
-  GET /api/v1/auth/me
+  GET /api/auth/me
           │
           ▼
 JwtAuthenticationFilter
@@ -465,7 +465,7 @@ JwtAuthenticationFilter
           │
           └──► revogado  ──► 401 ProblemDetail (RFC 9457)
 
-ADMIN ──► PATCH /api/v1/admin/usuarios/{id}/revogar-acesso
+ADMIN ──► PATCH /api/admin/usuarios/{id}/revogar-acesso
           │
           ▼
  UsuarioAdminService
@@ -493,8 +493,8 @@ Esta seção descreve a implementação da **Task #51**, que entregou o motor cr
 
 **O que foi feito nesta Task (Checkpoint Atual - Dividido em 3 Etapas / Commits):**
 - [x] **Mini-Task 1 (Etapa 1 / Commit 1)**: Modelagem de metadados (`TipoClassificacaoAnexo`, `AnexoEstudante`, `AnexoEstudanteRepository`), migration SQL (`sigi.anexo_estudante`) e motor criptográfico `CryptoStorageService` (`AES/GCM/NoPadding` 256 bits, IV aleatório de 12 bytes e tag de autenticação de 128 bits).
-- [x] **Mini-Task 2 (Etapa 2 / Commit 2)**: Endpoint de upload (`POST /api/v1/estudantes/{id}/anexos`) e persistência seletiva cifrada em repouso (**TA11.1**).
-- [x] **Mini-Task 3 (Etapa 3 / Commit 3)**: Endpoint de download (`GET /api/v1/anexos/{anexoId}/download`) com controle de acesso estrito (`SUPER_RESTRICAO` + `autorizacaoSaude == true`), descriptografia exclusivamente em memória (**TA11.2 / TA3.2**), suítes de testes automatizados, script PowerShell e coleção Postman atualizada.
+- [x] **Mini-Task 2 (Etapa 2 / Commit 2)**: Endpoint de upload (`POST /api/alunos/{id}/anexos`) e persistência seletiva cifrada em repouso (**TA11.1**).
+- [x] **Mini-Task 3 (Etapa 3 / Commit 3)**: Endpoint de download (`GET /api/anexos/{anexoId}/download`) com controle de acesso estrito (`SUPER_RESTRICAO` + `autorizacaoSaude == true`), descriptografia exclusivamente em memória (**TA11.2 / TA3.2**), suítes de testes automatizados, script PowerShell e coleção Postman atualizada.
 
 *O diferencial desta task é a **proteção criptográfica em repouso combinada com descriptografia zero-disk**: laudos médicos nunca ficam abertos no volume Docker ou no PostgreSQL e jamais geram arquivos temporários descriptografados em disco durante a leitura.*
 
@@ -611,7 +611,7 @@ O método `uploadAnexo` em `AnexoEstudanteService` verifica a sensibilidade da c
 
 ### 12.3 Etapa 3 - Download com Controle de Acesso Estrito em Memória (TA11.2 / TA3.2)
 
-Quando `GET /api/v1/anexos/{anexoId}/download` é acionado para um anexo sensível, o `AnexoEstudanteService` exige simultaneamente duas condições no `Usuario` autenticado no `SecurityContextHolder`:
+Quando `GET /api/anexos/{anexoId}/download` é acionado para um anexo sensível, o `AnexoEstudanteService` exige simultaneamente duas condições no `Usuario` autenticado no `SecurityContextHolder`:
 
 ```java
 private void validarAcessoEstritoSaude(Usuario usuario) {
@@ -632,7 +632,7 @@ Caso qualquer uma das duas condições falhe, a `AcessoNegadoException` é conve
 #### Fluxo de Upload Cifrado e Download Restrito em Memória
 
 ```text
-   UPLOAD (POST /api/v1/estudantes/{id}/anexos)
+   UPLOAD (POST /api/alunos/{id}/anexos)
                   │
                   ▼
      classificacao.isSensivel()?
@@ -645,7 +645,7 @@ Caso qualquer uma das duas condições falhe, a `AcessoNegadoException` é conve
        └── não (DOCUMENTO_PEDAGOGICO)
              └──► Volume Docker + PostgreSQL (criptografado=false, iv=null)
 
-   DOWNLOAD (GET /api/v1/anexos/{anexoId}/download)
+   DOWNLOAD (GET /api/anexos/{anexoId}/download)
                   │
                   ▼
      anexo.getClassificacao().isSensivel()?
@@ -660,16 +660,16 @@ Caso qualquer uma das duas condições falhe, a `AcessoNegadoException` é conve
 ## 13. Endpoints Implementados na Task #51
 
 ```http
-POST /api/v1/estudantes/{id}/anexos
-GET  /api/v1/estudantes/{id}/anexos
-GET  /api/v1/anexos/{anexoId}/download
+POST /api/alunos/{id}/anexos
+GET  /api/alunos/{id}/anexos
+GET  /api/anexos/{anexoId}/download
 ```
 
 | Método | Rota | Perfil Requerido | Descrição |
 |---|---|---|---|
-| `POST` | `/api/v1/estudantes/{id}/anexos` | Autenticado | **TA11.1**: Recebe `MultipartFile` e `classificacao`. Cifra com AES-256-GCM se for laudo médico ou diagnóstico neuropsicológico. |
-| `GET` | `/api/v1/estudantes/{id}/anexos` | Autenticado | Lista os metadados dos anexos vinculados ao estudante (sem expor `iv` ou caminho físico). |
-| `GET` | `/api/v1/anexos/{anexoId}/download` | `SUPER_RESTRICAO` + `autorizacaoSaude=true` *(para laudos)* | **TA11.2 / TA3.2**: Valida permissão estrita de saúde, descriptografa em memória e retorna o binário original. |
+| `POST` | `/api/alunos/{id}/anexos` | Autenticado | **TA11.1**: Recebe `MultipartFile` e `classificacao`. Cifra com AES-256-GCM se for laudo médico ou diagnóstico neuropsicológico. |
+| `GET` | `/api/alunos/{id}/anexos` | Autenticado | Lista os metadados dos anexos vinculados ao estudante (sem expor `iv` ou caminho físico). |
+| `GET` | `/api/anexos/{anexoId}/download` | `SUPER_RESTRICAO` + `autorizacaoSaude=true` *(para laudos)* | **TA11.2 / TA3.2**: Valida permissão estrita de saúde, descriptografa em memória e retorna o binário original. |
 
 ## 14. Matriz de Validação dos Critérios de Aceite (Task #51)
 
@@ -761,8 +761,8 @@ Esta seção descreve a implementação da **Task #52**, que entregou a matriz d
 
 ```http
 GET /api/estudos-de-caso/{id}
-GET /api/v1/estudantes/{id}/prontuario
-GET /api/v1/estudantes/{id}/historico-socioemocional
+GET /api/alunos/{id}/prontuario
+GET /api/alunos/{id}/historico-socioemocional
 GET /api/peis/{id}/anexos-sensiveis
 ```
 
@@ -771,7 +771,7 @@ GET /api/peis/{id}/anexos-sensiveis
 | Critério de Aceite | Cenário Testado | Resultado |
 |---|---|---|
 | **CA 1 [TA11.3]** | Consulta ao Prontuário e Estudo de Caso com token de `PROFESSOR` omite completamente `historicoFamiliar` e `historicoSocioemocional` do payload JSON. | **APROVADO** (`doesNotExist()`) |
-| **CA 1.2 [TA11.3]** | Tentativa de acesso direto à rota `/api/v1/estudantes/{id}/historico-socioemocional` por `PROFESSOR` ou `ALUNO_APOIADOR` é bloqueada imediatamente com HTTP 403. | **APROVADO** (HTTP 403 Forbidden RFC 9457) |
+| **CA 1.2 [TA11.3]** | Tentativa de acesso direto à rota `/api/alunos/{id}/historico-socioemocional` por `PROFESSOR` ou `ALUNO_APOIADOR` é bloqueada imediatamente com HTTP 403. | **APROVADO** (HTTP 403 Forbidden RFC 9457) |
 | **CA 2 [TA11.3]** | Consulta com token de `CLAI_PSICOPEDAGOGO` (`RESTRICAO_MODERADA`) exibe integralmente os dados de histórico familiar e socioemocional em todas as rotas. | **APROVADO** (HTTP 200 OK com payload íntegro) |
 | **CA 2.2 [TA11.3]** | Perfis de `SUPER_RESTRICAO` (`COORDENADOR`, `ADMIN`) possuem acesso liberado em todas as rotas. | **APROVADO** (HTTP 200 OK) |
 | **Reforço TA3.2** | Bloqueio de anexos sensíveis do PEI para Professor e liberação para equipe CLAI via anotação declarativa `@PreAuthorize`. | **APROVADO** (HTTP 403 vs 200 OK) |
@@ -783,5 +783,6 @@ GET /api/peis/{id}/anexos-sensiveis
 - `MatrizAutorizacaoGranularIntegrationTest.java`: 5 testes ponta a ponta dos critérios de aceite.
 
 Total de **29 testes de segurança executados e aprovados** no backend (`mvn test`).
+
 
 

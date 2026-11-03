@@ -1,4 +1,4 @@
-{
+﻿{
   "info": {
     "_postman_id": "f8a92e10-9b41-4c12-a123-5e7b89d11011",
     "name": "SIGI - US 11 Autenticação JWT, RBAC, Revogação (Task #50) e Criptografia AES-256 (Task #51)",
@@ -52,9 +52,9 @@
               "raw": "{\n  \"email\": \"aluno.apoiador@sigi.ifpb.edu.br\",\n  \"senha\": \"senha123\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "raw": "{{baseUrl}}/api/auth/login",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
+              "path": ["api", "auth", "login"]
             }
           }
         },
@@ -91,9 +91,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "raw": "{{baseUrl}}/api/auth/me",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "me"]
+              "path": ["api", "auth", "me"]
             }
           }
         },
@@ -138,9 +138,9 @@
               "raw": "{\n  \"email\": \"admin@sigi.ifpb.edu.br\",\n  \"senha\": \"senha123\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "raw": "{{baseUrl}}/api/auth/login",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
+              "path": ["api", "auth", "login"]
             }
           }
         },
@@ -177,9 +177,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "raw": "{{baseUrl}}/api/auth/me",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "me"]
+              "path": ["api", "auth", "me"]
             }
           }
         }
@@ -217,9 +217,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/usuarios/{{alunoApoiadorId}}/revogar-acesso",
+              "raw": "{{baseUrl}}/api/admin/usuarios/{{alunoApoiadorId}}/revogar-acesso",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "admin", "usuarios", "{{alunoApoiadorId}}", "revogar-acesso"]
+              "path": ["api", "admin", "usuarios", "{{alunoApoiadorId}}", "revogar-acesso"]
             }
           }
         },
@@ -242,9 +242,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "raw": "{{baseUrl}}/api/auth/me",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "me"]
+              "path": ["api", "auth", "me"]
             }
           }
         }
@@ -283,9 +283,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/usuarios/{{alunoApoiadorId}}/revogar-acesso",
+              "raw": "{{baseUrl}}/api/admin/usuarios/{{alunoApoiadorId}}/revogar-acesso",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "admin", "usuarios", "{{alunoApoiadorId}}", "revogar-acesso"]
+              "path": ["api", "admin", "usuarios", "{{alunoApoiadorId}}", "revogar-acesso"]
             }
           }
         },
@@ -318,9 +318,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "raw": "{{baseUrl}}/api/auth/me",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "me"]
+              "path": ["api", "auth", "me"]
             }
           }
         },
@@ -352,9 +352,9 @@
               "raw": "{\n  \"email\": \"aluno.apoiador@sigi.ifpb.edu.br\",\n  \"senha\": \"senha123\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "raw": "{{baseUrl}}/api/auth/login",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
+              "path": ["api", "auth", "login"]
             }
           }
         }
@@ -413,9 +413,9 @@
               ]
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/estudantes/{{estudanteId}}/anexos",
+              "raw": "{{baseUrl}}/api/alunos/{{estudanteId}}/anexos",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "estudantes", "{{estudanteId}}", "anexos"]
+              "path": ["api", "alunos", "{{estudanteId}}", "anexos"]
             }
           }
         },
@@ -448,9 +448,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/estudantes/{{estudanteId}}/anexos",
+              "raw": "{{baseUrl}}/api/alunos/{{estudanteId}}/anexos",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "estudantes", "{{estudanteId}}", "anexos"]
+              "path": ["api", "alunos", "{{estudanteId}}", "anexos"]
             }
           }
         },
@@ -483,9 +483,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/anexos/{{anexoSensivelId}}/download",
+              "raw": "{{baseUrl}}/api/anexos/{{anexoSensivelId}}/download",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "anexos", "{{anexoSensivelId}}", "download"]
+              "path": ["api", "anexos", "{{anexoSensivelId}}", "download"]
             }
           }
         },
@@ -523,9 +523,9 @@
               "raw": "{\n  \"email\": \"coordenador@sigi.ifpb.edu.br\",\n  \"senha\": \"senha123\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "raw": "{{baseUrl}}/api/auth/login",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
+              "path": ["api", "auth", "login"]
             }
           }
         },
@@ -557,9 +557,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/anexos/{{anexoSensivelId}}/download",
+              "raw": "{{baseUrl}}/api/anexos/{{anexoSensivelId}}/download",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "anexos", "{{anexoSensivelId}}", "download"]
+              "path": ["api", "anexos", "{{anexoSensivelId}}", "download"]
             }
           }
         },
@@ -593,9 +593,9 @@
               "raw": "{\n  \"email\": \"professor@sigi.ifpb.edu.br\",\n  \"senha\": \"senha123\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "raw": "{{baseUrl}}/api/auth/login",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
+              "path": ["api", "auth", "login"]
             }
           }
         },
@@ -623,9 +623,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/anexos/{{anexoSensivelId}}/download",
+              "raw": "{{baseUrl}}/api/anexos/{{anexoSensivelId}}/download",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "anexos", "{{anexoSensivelId}}", "download"]
+              "path": ["api", "anexos", "{{anexoSensivelId}}", "download"]
             }
           }
         },
@@ -659,9 +659,9 @@
               "raw": "{\n  \"email\": \"psicopedagogo@sigi.ifpb.edu.br\",\n  \"senha\": \"senha123\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "raw": "{{baseUrl}}/api/auth/login",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
+              "path": ["api", "auth", "login"]
             }
           }
         },
@@ -689,9 +689,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/anexos/{{anexoSensivelId}}/download",
+              "raw": "{{baseUrl}}/api/anexos/{{anexoSensivelId}}/download",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "anexos", "{{anexoSensivelId}}", "download"]
+              "path": ["api", "anexos", "{{anexoSensivelId}}", "download"]
             }
           }
         }
@@ -730,9 +730,9 @@
               "raw": "{\n  \"email\": \"professor@sigi.ifpb.edu.br\",\n  \"senha\": \"senha123\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "raw": "{{baseUrl}}/api/auth/login",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
+              "path": ["api", "auth", "login"]
             }
           }
         },
@@ -765,9 +765,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/estudantes/{{estudanteId}}/prontuario",
+              "raw": "{{baseUrl}}/api/alunos/{{estudanteId}}/prontuario",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "estudantes", "{{estudanteId}}", "prontuario"]
+              "path": ["api", "alunos", "{{estudanteId}}", "prontuario"]
             }
           }
         },
@@ -800,9 +800,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/estudantes/{{estudanteId}}/historico-socioemocional",
+              "raw": "{{baseUrl}}/api/alunos/{{estudanteId}}/historico-socioemocional",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "estudantes", "{{estudanteId}}", "historico-socioemocional"]
+              "path": ["api", "alunos", "{{estudanteId}}", "historico-socioemocional"]
             }
           }
         },
@@ -835,9 +835,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/estudantes/{{estudanteId}}/prontuario",
+              "raw": "{{baseUrl}}/api/alunos/{{estudanteId}}/prontuario",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "estudantes", "{{estudanteId}}", "prontuario"]
+              "path": ["api", "alunos", "{{estudanteId}}", "prontuario"]
             }
           }
         },
@@ -870,9 +870,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/estudantes/{{estudanteId}}/historico-socioemocional",
+              "raw": "{{baseUrl}}/api/alunos/{{estudanteId}}/historico-socioemocional",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "estudantes", "{{estudanteId}}", "historico-socioemocional"]
+              "path": ["api", "alunos", "{{estudanteId}}", "historico-socioemocional"]
             }
           }
         },
@@ -940,3 +940,4 @@
     }
   ]
 }
+

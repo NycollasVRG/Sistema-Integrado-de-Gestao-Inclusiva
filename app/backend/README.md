@@ -76,7 +76,7 @@ A API centraliza o acompanhamento pedagógico de estudantes com necessidades esp
 
 **Login e token**
 
-1. `POST /api/v1/auth/login` com `email` e `senha` (BCrypt). Retorna `token`, `tipoToken = "Bearer"` e dados do usuário.
+1. `POST /api/auth/login` com `email` e `senha` (BCrypt). Retorna `token`, `tipoToken = "Bearer"` e dados do usuário.
 2. Todas as demais rotas exigem o header:
    ```http
    Authorization: Bearer <token>
@@ -84,14 +84,14 @@ A API centraliza o acompanhamento pedagógico de estudantes com necessidades esp
 3. O JWT (HS256) tem `subject = email` e as claims `role`, `nivelRestricao`, `autorizacaoSaude`, `tokenVersion`, `nome`, `userId`. Expiração padrão: **8 h** (`sigi.security.jwt-expiration-ms`, padrão `28800000`).
 4. A sessão é **stateless** (`SessionCreationPolicy.STATELESS`, CSRF desabilitado).
 5. O `JwtAuthenticationFilter` valida a cada requisição: assinatura/expiração, existência do usuário, `acessoAtivo = true` e `tokenVersion` do token == `tokenVersion` do banco. O usuário autenticado vira o *principal* (`Usuario`), e **o ID do auditor (`criadoPor`/`atualizadoPor`) vem sempre do token** — o header `X-User-Id` **não é lido** pelo back-end.
-6. **Revogação imediata (TA11.4):** `PATCH /api/v1/admin/usuarios/{id}/revogar-acesso` define `acessoAtivo = false` e incrementa `tokenVersion`; tokens anteriores passam a receber `401`.
+6. **Revogação imediata (TA11.4):** `PATCH /api/admin/usuarios/{id}/revogar-acesso` define `acessoAtivo = false` e incrementa `tokenVersion`; tokens anteriores passam a receber `401`.
 
 **Regras do `SecurityFilterChain`** ([`SecurityConfig`](src/main/java/com/br/CLAI/security/SecurityConfig.java))
 
 | Rota | Regra |
 | :--- | :--- |
-| `POST /api/v1/auth/login`, `/actuator/**` | Pública |
-| `/api/v1/admin/**` | `hasRole('ADMIN')` |
+| `POST /api/auth/login`, `/actuator/**` | Pública |
+| `/api/admin/**` | `hasRole('ADMIN')` |
 | Qualquer outra | Autenticada |
 
 **Perfis e níveis** (enums de `domain.enums`)
@@ -160,7 +160,7 @@ Além disso, `autorizacaoSaude = true` gera a authority `AUTH_SAUDE`.
 
 **Prontuário e Timeline**
 
-- `GET /api/v1/estudantes/{id}/prontuario`: usa o estudo `ATIVO` (ou o último, se não houver ativo) e retorna `totalPeis`, `totalPeas`, `totalAnexos`; históricos sensíveis só para `RESTRICAO_MODERADA`+.
+- `GET /api/alunos/{id}/prontuario`: usa o estudo `ATIVO` (ou o último, se não houver ativo) e retorna `totalPeis`, `totalPeas`, `totalAnexos`; históricos sensíveis só para `RESTRICAO_MODERADA`+.
 - `GET /api/alunos/{alunoId}/timeline`: agrega eventos `ESTUDO_DE_CASO`, `PEI` e `PEA` (`id`, `tipo`, `dataCriacao`), ordenados por `dataCriacao` **crescente** (desempate por `id`). Registros excluídos logicamente não aparecem. Aluno sem registros retorna `[]`.
 
 ---
@@ -303,9 +303,9 @@ mvn spring-boot:run        # sobe a API em http://localhost:8080
 
 | Método | Rota | Descrição | Roles / Permissão | Request | Sucesso / Response |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/auth/login` | Autentica e emite o JWT | **Pública** | Body `LoginRequestDTO` | `200` · `LoginResponseDTO` |
-| `GET` | `/api/v1/auth/me` | Dados da sessão atual e authorities | Autenticado | — | `200` · `UsuarioSessaoDTO` |
-| `PATCH` | `/api/v1/admin/usuarios/{id}/revogar-acesso` | Revoga acesso e invalida todos os tokens do usuário (TA11.4) | `ADMIN` | Path `id` | `200` · `UsuarioRevogadoResponseDTO` |
+| `POST` | `/api/auth/login` | Autentica e emite o JWT | **Pública** | Body `LoginRequestDTO` | `200` · `LoginResponseDTO` |
+| `GET` | `/api/auth/me` | Dados da sessão atual e authorities | Autenticado | — | `200` · `UsuarioSessaoDTO` |
+| `PATCH` | `/api/admin/usuarios/{id}/revogar-acesso` | Revoga acesso e invalida todos os tokens do usuário (TA11.4) | `ADMIN` | Path `id` | `200` · `UsuarioRevogadoResponseDTO` |
 
 **DTOs**
 
@@ -332,12 +332,12 @@ mvn spring-boot:run        # sobe a API em http://localhost:8080
 - **`EstudoDeCasoUpdateDTO`** — igual ao anterior, **sem `alunoId`**; `status` `@NotNull`.
 - **`EstudoDeCasoResponseDTO`** (`NON_NULL`) — `id`; `alunoId`; `status`; `diagnosticoInicial`; `historicoFamiliar`\*; `historicoSocioemocional`\*; `indicadoresIds` *List\<UUID\>*; `criadoEm`, `atualizadoEm` *LocalDateTime* (\* omitidos sem permissão).
 
-### 4.3 Prontuário Unificado (`/api/v1/estudantes`)
+### 4.3 Prontuário Unificado (`/api/alunos`)
 
 | Método | Rota | Descrição | Roles / Permissão | Request | Sucesso / Response |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/estudantes/{estudanteId}/prontuario` | Prontuário consolidado do estudante (TA11.3) | Autenticado¹ | Path `estudanteId` | `200` · `ProntuarioResponseDTO` |
-| `GET` | `/api/v1/estudantes/{estudanteId}/historico-socioemocional` | Histórico familiar e socioemocional completo | `RESTRICAO_MODERADA`+ (`@PreAuthorize("@rbacGuard.temRestricaoModeradaOuSuperior()")`) | Path `estudanteId` | `200` · `HistoricoSocioemocionalResponseDTO` |
+| `GET` | `/api/alunos/{estudanteId}/prontuario` | Prontuário consolidado do estudante (TA11.3) | Autenticado¹ | Path `estudanteId` | `200` · `ProntuarioResponseDTO` |
+| `GET` | `/api/alunos/{estudanteId}/historico-socioemocional` | Histórico familiar e socioemocional completo | `RESTRICAO_MODERADA`+ (`@PreAuthorize("@rbacGuard.temRestricaoModeradaOuSuperior()")`) | Path `estudanteId` | `200` · `HistoricoSocioemocionalResponseDTO` |
 
 ¹ Projeção condicional dos campos sensíveis.
 
@@ -380,13 +380,13 @@ mvn spring-boot:run        # sobe a API em http://localhost:8080
 - **`PeaUpdateDTO`** — `disciplinaId` *UUID*, `objetivoGeral`, `metodologia`, `avaliacao` *String* (sem validação; `null` = não altera).
 - **`PeaResponseDTO`** — `id`; `acompanhamentoId`; `alunoId`; `disciplinaId`; `objetivoGeral`; `metodologia`; `avaliacao`; `criadoEm`; `atualizadoEm`.
 
-### 4.6 Anexos do Estudante (`/api/v1`)
+### 4.6 Anexos do Estudante (`/api`)
 
 | Método | Rota | Descrição | Roles / Permissão | Request | Sucesso / Response |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/estudantes/{id}/anexos` | Upload de anexo (cifra laudos/diagnósticos — TA11.1) | Autenticado | Path `id` + `multipart/form-data`: `arquivo` (ou `file`) *MultipartFile*, `classificacao` *TipoClassificacaoAnexo* | `201` · `AnexoEstudanteResponseDTO` |
-| `GET` | `/api/v1/estudantes/{id}/anexos` | Lista metadados dos anexos do estudante | Autenticado | Path `id` | `200` · `List<AnexoEstudanteResponseDTO>` |
-| `GET` | `/api/v1/anexos/{anexoId}/download` | Baixa o arquivo (decifra em memória — TA11.2) | Anexo sensível: `SUPER_RESTRICAO` **+** `autorizacaoSaude=true`. Não sensível: Autenticado | Path `anexoId` | `200` · bytes (`Content-Type` original, `Content-Disposition: attachment`) |
+| `POST` | `/api/alunos/{id}/anexos` | Upload de anexo (cifra laudos/diagnósticos — TA11.1) | Autenticado | Path `id` + `multipart/form-data`: `arquivo` (ou `file`) *MultipartFile*, `classificacao` *TipoClassificacaoAnexo* | `201` · `AnexoEstudanteResponseDTO` |
+| `GET` | `/api/alunos/{id}/anexos` | Lista metadados dos anexos do estudante | Autenticado | Path `id` | `200` · `List<AnexoEstudanteResponseDTO>` |
+| `GET` | `/api/anexos/{anexoId}/download` | Baixa o arquivo (decifra em memória — TA11.2) | Anexo sensível: `SUPER_RESTRICAO` **+** `autorizacaoSaude=true`. Não sensível: Autenticado | Path `anexoId` | `200` · bytes (`Content-Type` original, `Content-Disposition: attachment`) |
 
 **DTO**
 
@@ -468,7 +468,7 @@ Gerados na cadeia de filtros (antes dos controllers), também em `application/pr
 | `JwtAuthenticationFilter` — usuário do token não existe | **401** | `Usuário associado ao token não encontrado.` |
 | `JwtAuthenticationFilter` — `acesso_ativo = false` | **401** | `Acesso revogado: o vínculo do usuário está desativado.` |
 | `JwtAuthenticationFilter` — `tokenVersion` divergente (após revogação) | **401** | `Sessão revogada ou versão do token inválida.` |
-| `AccessDeniedHandler` (ex.: não-`ADMIN` em `/api/v1/admin/**`) | **403** `Acesso Negado` | `Seu perfil não possui permissão para acessar este recurso.` |
+| `AccessDeniedHandler` (ex.: não-`ADMIN` em `/api/admin/**`) | **403** `Acesso Negado` | `Seu perfil não possui permissão para acessar este recurso.` |
 
 > [!NOTE]
 > **Não mapeados explicitamente** (sem handler customizado, portanto sem o formato `ProblemDetail` do projeto): JSON malformado ou valor de enum inválido no corpo, UUID inválido no path, parte multipart ausente, upload acima de 1 MB (limite padrão do Spring) e falhas internas de criptografia (`SecurityException`/`IllegalArgumentException` em `CryptoStorageService`, ex.: adulteração do arquivo cifrado), que resultam no tratamento padrão do Spring (4xx/5xx).
@@ -512,7 +512,7 @@ Rodar os três seeds na ordem (automático no Docker) atende a todas as coleçõ
 IDs fixos de seed: alunos `11111111-1111-1111-1111-111111111111` (`MAT-TEST-001`) e `22222222-2222-2222-2222-222222222222` (`MAT-TEST-002`); acompanhamentos `33333333-…` (aluno 1) e `44444444-…` (aluno 2).
 
 > [!WARNING]
-> **As coleções US02 e US03 estão desatualizadas em relação à segurança atual.** Elas enviam o header `X-User-Id` (ignorado pelo back-end) e **não possuem login/`Authorization`**; como `anyRequest().authenticated()` está ativo, suas requisições recebem `401`. Para executá-las: faça `POST /api/v1/auth/login` (ex.: `psicopedagogo@sigi.ifpb.edu.br`) e configure a aba **Authorization → Bearer Token** na coleção com o `token` retornado. Use um perfil `RESTRICAO_MODERADA`+ para enxergar os campos sensíveis do Estudo de Caso. Além disso, os comandos Newman do `README.md` da US02 usam caminhos sem a subpasta `US02/`.
+> **As coleções US02 e US03 estão desatualizadas em relação à segurança atual.** Elas enviam o header `X-User-Id` (ignorado pelo back-end) e **não possuem login/`Authorization`**; como `anyRequest().authenticated()` está ativo, suas requisições recebem `401`. Para executá-las: faça `POST /api/auth/login` (ex.: `psicopedagogo@sigi.ifpb.edu.br`) e configure a aba **Authorization → Bearer Token** na coleção com o `token` retornado. Use um perfil `RESTRICAO_MODERADA`+ para enxergar os campos sensíveis do Estudo de Caso. Além disso, os comandos Newman do `README.md` da US02 usam caminhos sem a subpasta `US02/`.
 
 ---
 

@@ -16,7 +16,7 @@ function Autenticar-Usuario($email, $senha) {
     } | ConvertTo-Json
 
     try {
-        $resp = Invoke-RestMethod -Uri "$BaseUrl/api/v1/auth/login" -Method Post -Body $body -ContentType "application/json"
+        $resp = Invoke-RestMethod -Uri "$BaseUrl/api/auth/login" -Method Post -Body $body -ContentType "application/json"
         return $resp.token
     } catch {
         Write-Host "Falha ao autenticar $email : $_" -ForegroundColor Red
@@ -51,7 +51,7 @@ $EstudanteId = "99999999-8888-7777-6666-555555555555"
 # 3. [CA 1 - TA11.3]: Professor consultando Prontuário Unificado
 Write-Host "`n[Passo 3 - CA 1] Professor consultando Prontuário Unificado (omissão de dados sensíveis)..." -ForegroundColor Yellow
 try {
-    $respProfProntuario = Invoke-RestMethod -Uri "$BaseUrl/api/v1/estudantes/$EstudanteId/prontuario" -Method Get -Headers $HeadersProf
+    $respProfProntuario = Invoke-RestMethod -Uri "$BaseUrl/api/alunos/$EstudanteId/prontuario" -Method Get -Headers $HeadersProf
     if ($null -eq $respProfProntuario.historicoFamiliar -and $null -eq $respProfProntuario.historicoSocioemocional) {
         Write-Host " APROVADO [CA 1]: Campos historicoFamiliar e historicoSocioemocional foram OMITIDOS para o Professor." -ForegroundColor Green
     } else {
@@ -64,7 +64,7 @@ try {
 # 4. [CA 1.2 - TA11.3]: Professor tentando acesso direto à rota exclusiva
 Write-Host "`n[Passo 4 - CA 1.2] Professor tentando rota direta /historico-socioemocional (expectativa: 403 Forbidden)..." -ForegroundColor Yellow
 try {
-    $respDirect = Invoke-RestMethod -Uri "$BaseUrl/api/v1/estudantes/$EstudanteId/historico-socioemocional" -Method Get -Headers $HeadersProf
+    $respDirect = Invoke-RestMethod -Uri "$BaseUrl/api/alunos/$EstudanteId/historico-socioemocional" -Method Get -Headers $HeadersProf
     Write-Host " FALHA [CA 1.2]: Professor conseguiu acessar rota restrita!" -ForegroundColor Red
 } catch {
     if ($_.Exception.Response.StatusCode.value__ -eq 403) {
@@ -77,7 +77,7 @@ try {
 # 5. [CA 2 - TA11.3]: Psicopedagoga CLAI consultando rota exclusiva e Prontuário
 Write-Host "`n[Passo 5 - CA 2] Psicopedagoga CLAI consultando rota direta /historico-socioemocional..." -ForegroundColor Yellow
 try {
-    $respPsiDirect = Invoke-RestMethod -Uri "$BaseUrl/api/v1/estudantes/$EstudanteId/historico-socioemocional" -Method Get -Headers $HeadersPsi
+    $respPsiDirect = Invoke-RestMethod -Uri "$BaseUrl/api/alunos/$EstudanteId/historico-socioemocional" -Method Get -Headers $HeadersPsi
     Write-Host " APROVADO [CA 2]: HTTP 200 OK com acesso liberado para Psicopedagoga (RESTRICAO_MODERADA)." -ForegroundColor Green
 } catch {
     Write-Host " Erro na consulta da Psicopedagoga: $_" -ForegroundColor Red

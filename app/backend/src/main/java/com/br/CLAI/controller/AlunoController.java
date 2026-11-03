@@ -20,7 +20,7 @@ import java.util.UUID;
 
 /** US 12 - Gestão cadastral de alunos e tags de dificuldade. */
 @RestController
-@RequestMapping("/api/v1/alunos")
+@RequestMapping("/api/alunos")
 @CrossOrigin(origins = "*")
 public class AlunoController {
 

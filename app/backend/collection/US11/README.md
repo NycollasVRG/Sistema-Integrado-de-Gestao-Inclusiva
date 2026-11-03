@@ -20,14 +20,14 @@ Este diretório contém as coleções Postman e scripts de teste automatizado pa
 
 | Método | Rota | Perfil Requerido | Descrição |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/auth/login` | Público | Autentica e emite o token JWT com claims de RBAC, nível de restrição e `tokenVersion`. |
-| `GET` | `/api/v1/auth/me` | Autenticado | Retorna os dados do usuário e authorities ativas no `SecurityContextHolder`. |
-| `PATCH` | `/api/v1/admin/usuarios/{id}/revogar-acesso` | `ADMIN` | **TA11.4**: Invalida imediatamente qualquer JWT anterior (`token_version++`) e desativa o vínculo (`acesso_ativo=false`). |
-| `POST` | `/api/v1/estudantes/{id}/anexos` | Autenticado | **TA11.1**: Recebe `MultipartFile` e `classificacao`. Cifra automaticamente com `AES/GCM/NoPadding` (256 bits) anexos `LAUDO_MEDICO` e `DIAGNOSTICO_NEUROPSICOLOGICO`. |
-| `GET` | `/api/v1/estudantes/{id}/anexos` | Autenticado | Lista os metadados dos anexos do estudante (sem expor caminho físico ou IV). |
-| `GET` | `/api/v1/anexos/{anexoId}/download` | `SUPER_RESTRICAO` + `autorizacaoSaude=true` *(para laudos)* | **TA11.2 / TA3.2**: Valida permissão estrita de saúde, descriptografa exclusivamente em memória e retorna o arquivo original. |
-| `GET` | `/api/v1/estudantes/{id}/prontuario` | Autenticado | **TA11.3**: Prontuário unificado consolidado com omissão condicional (`@JsonInclude(NON_NULL)`) de histórico familiar/socioemocional para Professor. |
-| `GET` | `/api/v1/estudantes/{id}/historico-socioemocional` | `RESTRICAO_MODERADA` ou superior | **TA11.3**: Rota direta de detalhes socioemocionais protegida por `@PreAuthorize`. Bloqueia Professor com HTTP 403. |
+| `POST` | `/api/auth/login` | Público | Autentica e emite o token JWT com claims de RBAC, nível de restrição e `tokenVersion`. |
+| `GET` | `/api/auth/me` | Autenticado | Retorna os dados do usuário e authorities ativas no `SecurityContextHolder`. |
+| `PATCH` | `/api/admin/usuarios/{id}/revogar-acesso` | `ADMIN` | **TA11.4**: Invalida imediatamente qualquer JWT anterior (`token_version++`) e desativa o vínculo (`acesso_ativo=false`). |
+| `POST` | `/api/alunos/{id}/anexos` | Autenticado | **TA11.1**: Recebe `MultipartFile` e `classificacao`. Cifra automaticamente com `AES/GCM/NoPadding` (256 bits) anexos `LAUDO_MEDICO` e `DIAGNOSTICO_NEUROPSICOLOGICO`. |
+| `GET` | `/api/alunos/{id}/anexos` | Autenticado | Lista os metadados dos anexos do estudante (sem expor caminho físico ou IV). |
+| `GET` | `/api/anexos/{anexoId}/download` | `SUPER_RESTRICAO` + `autorizacaoSaude=true` *(para laudos)* | **TA11.2 / TA3.2**: Valida permissão estrita de saúde, descriptografa exclusivamente em memória e retorna o arquivo original. |
+| `GET` | `/api/alunos/{id}/prontuario` | Autenticado | **TA11.3**: Prontuário unificado consolidado com omissão condicional (`@JsonInclude(NON_NULL)`) de histórico familiar/socioemocional para Professor. |
+| `GET` | `/api/alunos/{id}/historico-socioemocional` | `RESTRICAO_MODERADA` ou superior | **TA11.3**: Rota direta de detalhes socioemocionais protegida por `@PreAuthorize`. Bloqueia Professor com HTTP 403. |
 | `GET` | `/api/peis/{id}/anexos-sensiveis` | `RESTRICAO_MODERADA` ou superior | **TA3.2**: Anexos sensíveis do PEI protegidos por `@PreAuthorize`. Bloqueia Professor com HTTP 403. |
 
 ---
