@@ -26,6 +26,8 @@ A API centraliza o acompanhamento pedagógico de estudantes com necessidades esp
 
 | Módulo | O que faz |
 | :--- | :--- |
+| **Gestão de Alunos (US 12)** | Cadastro de estudantes, filtros multicritério combinados (termo em nome/matrícula, curso, turma, tag/tagAcessibilidade, status ativo), atualização cadastral, inativação lógica com preservação de vínculos históricos (`INATIVO` / `EVADIDO`) e vínculo a tags de dificuldade. |
+| **Catálogo de Indicadores** | Consulta do catálogo de tags/indicadores reutilizáveis ativos para formulários e filtros. |
 | **Estudo de Caso** | Registro do diagnóstico inicial, indicadores reutilizáveis (barreiras/necessidades) e **histórico familiar/socioemocional (dados sensíveis)**. Ciclo `RASCUNHO` → `ATIVO` → `ENCERRADO`. |
 | **Planejamento Pedagógico (PEI / PEA)** | **PEI** (Plano de Ensino Individualizado) e **PEA** (Plano de Ensino Adaptado, por disciplina), ambos vinculados a um *Acompanhamento* do aluno. |
 | **Timeline** | Linha do tempo cronológica unificada (Estudo de Caso, PEI e PEA) do aluno. |
@@ -39,12 +41,12 @@ A API centraliza o acompanhamento pedagógico de estudantes com necessidades esp
 | :--- | :--- |
 | **Java** | 21 (`java.version`; imagem `eclipse-temurin:21`) |
 | **Spring Boot** | 4.1.1 (`spring-boot-starter-parent`) |
-| **Spring WebMVC** | `spring-boot-starter-webmvc` |
-| **Spring Security** | `spring-boot-starter-security` (stateless, filtro JWT, `@EnableMethodSecurity`) |
-| **Spring Data JPA / Hibernate** | `spring-boot-starter-data-jpa` (`ddl-auto: none`, `@SoftDelete`, JPA Auditing) |
+| **Spring WebMVC** | `spring-boot-starter-webmvc` (CORS configurado para `http://localhost:5173`) |
+| **Spring Security** | `spring-boot-starter-security` + `spring-boot-starter-security-oauth2-resource-server` (stateless, Resource Server nativo, `@EnableMethodSecurity`) |
+| **Spring Data JPA / Hibernate** | `spring-boot-starter-data-jpa` (`ddl-auto: none`, `@SoftDelete`, JPA Auditing, `open-in-view: false`, `@EntityGraph`) |
 | **Bean Validation** | `spring-boot-starter-validation` |
 | **Actuator** | `spring-boot-starter-actuator` (health check do container) |
-| **JWT** | `io.jsonwebtoken` `jjwt-api` / `jjwt-impl` / `jjwt-jackson` **0.12.6** (HS256 via `Keys.hmacShaKeyFor`) |
+| **JWT** | Spring Security OAuth2 Resource Server + Nimbus JOSE/JWT (HS256 via `NimbusJwtEncoder` / `NimbusJwtDecoder` com chave HMAC-SHA256) |
 | **Senhas** | `BCryptPasswordEncoder` |
 | **Banco de dados** | **PostgreSQL 16** (`postgres:16-alpine`; scripts compatíveis com 14+) + driver `org.postgresql:postgresql` |
 | **DevTools** | `spring-boot-devtools` (runtime, opcional) |
@@ -60,15 +62,15 @@ A API centraliza o acompanhamento pedagógico de estudantes com necessidades esp
 
 | Pacote | Papel |
 | :--- | :--- |
-| `controller` | Endpoints REST: `AuthController`, `UsuarioAdminController`, `EstudoDeCasoController`, `ProntuarioController`, `PeiController`, `PeaController`, `AnexoEstudanteController`, `TimelineController`. |
-| `domain` | Entidades JPA (`schema = sigi`) que herdam de `BaseEntity`: `Usuario`, `Aluno`, `Acompanhamento`, `EstudoDeCaso`, `IndicadorReutilizavel`, `PlanoAcao`, `Pei`, `Pea`, `AnexoEstudante`. Subpacote `domain.enums`: `Role`, `NivelRestricao`, `StatusEstudoCaso`, `TipoClassificacaoAnexo`. |
-| `dto` | Contratos da API como `record`s Java. `dto.request` (entrada + Bean Validation) e `dto.response` (saída). |
-| `exception` | Exceções de negócio: `NaoEncontradoException`, `RegraDeNegocioException`, `AcessoNegadoException`. |
-| `handler` | `GlobalExceptionHandler` (`@RestControllerAdvice`) → converte exceções em `ProblemDetail`. |
-| `mapper` | Conversão manual Entidade ↔ DTO (`EstudoDeCasoMapper`, `PeaMapper`, `PeiMapper`). O `EstudoDeCasoMapper` aplica a omissão de dados sensíveis. |
-| `repository` | Interfaces Spring Data JPA (um por entidade). |
-| `security` | `SecurityConfig`, `JwtAuthenticationFilter`, `JwtService`, `RbacGuard`, `UserDetailsServiceImpl`. |
-| `service` | Regras de negócio e orquestração (`EstudoDeCasoService`, `PeiService`, `PeaService`, `ProntuarioService`, `TimelineService`, `AnexoEstudanteService`, `CryptoStorageService`, `AuthService`, `UsuarioAdminService`). Subpacote `service.validator` → `EstudoDeCasoValidator`. |
+| `controller` | Endpoints REST: `AuthController`, `UsuarioAdminController`, `AlunoController`, `IndicadorReutilizavelController`, `EstudoDeCasoController`, `ProntuarioController`, `PeiController`, `PeaController`, `AnexoEstudanteController`, `TimelineController`. |
+| `domain` | Entidades JPA (`schema = sigi`) que herdam de `BaseEntity`: `Usuario`, `Aluno`, `Acompanhamento`, `EstudoDeCaso`, `IndicadorReutilizavel`, `PlanoAcao`, `Pei`, `Pea`, `AnexoEstudante`. Subpacote `domain.enums`: `Role`, `NivelRestricao`, `StatusAluno`, `StatusEstudoCaso`, `TipoClassificacaoAnexo`. |
+| `dto` | Contratos da API como `record`s Java. `dto.request` (`AlunoRequestDTO`, `EstudoDeCasoRequestDTO`, etc.) e `dto.response` (`AlunoResponseDTO`, etc.). |
+| `exception` | Exceções de negócio: `NaoEncontradoException`, `RegraDeNegocioException`, `AcessoNegadoException`, `ConflitoException`. |
+| `handler` | `GlobalExceptionHandler` (`@RestControllerAdvice`) → converte exceções em `ProblemDetail` (RFC 9457). |
+| `mapper` | Conversão manual Entidade ↔ DTO (`AlunoMapper`, `EstudoDeCasoMapper`, `PeaMapper`, `PeiMapper`). O `EstudoDeCasoMapper` e `ProntuarioService` aplicam a omissão de dados sensíveis. |
+| `repository` | Interfaces Spring Data JPA com `@EntityGraph` para prevenção de *N+1 queries*. |
+| `security` | `SecurityConfig`, `JwtService`, `RbacGuard`, `UserDetailsServiceImpl`. |
+| `service` | Regras de negócio e orquestração (`AlunoService`, `IndicadorReutilizavelService`, `EstudoDeCasoService`, `PeiService`, `PeaService`, `ProntuarioService`, `TimelineService`, `AnexoEstudanteService`, `CryptoStorageService`, `AuthService`, `UsuarioAdminService`). Subpacote `service.validator` → `EstudoDeCasoValidator`. |
 
 ### Comportamentos padrão da API
 
@@ -76,23 +78,30 @@ A API centraliza o acompanhamento pedagógico de estudantes com necessidades esp
 
 **Login e token**
 
-1. `POST /api/auth/login` com `email` e `senha` (BCrypt). Retorna `token`, `tipoToken = "Bearer"` e dados do usuário.
-2. Todas as demais rotas exigem o header:
+1. `POST /api/auth/login` com `email` e `senha` (BCrypt). Retorna `token`, `tipoToken = "Bearer"` e dados do usuário (`LoginResponseDTO`).
+2. Todas as demais rotas de negócio exigem o header:
    ```http
    Authorization: Bearer <token>
    ```
 3. O JWT (HS256) tem `subject = email` e as claims `role`, `nivelRestricao`, `autorizacaoSaude`, `tokenVersion`, `nome`, `userId`. Expiração padrão: **8 h** (`sigi.security.jwt-expiration-ms`, padrão `28800000`).
 4. A sessão é **stateless** (`SessionCreationPolicy.STATELESS`, CSRF desabilitado).
-5. O `JwtAuthenticationFilter` valida a cada requisição: assinatura/expiração, existência do usuário, `acessoAtivo = true` e `tokenVersion` do token == `tokenVersion` do banco. O usuário autenticado vira o *principal* (`Usuario`), e **o ID do auditor (`criadoPor`/`atualizadoPor`) vem sempre do token** — o header `X-User-Id` **não é lido** pelo back-end.
+5. O **Spring Security OAuth2 Resource Server** valida o token JWT a cada requisição via `NimbusJwtDecoder`. Um validador customizado (`sessionValidator`) assegura a existência do usuário, que seu vínculo está ativo (`acessoAtivo = true`) e que o `tokenVersion` da claim é idêntico ao registrado no banco. O usuário autenticado é injetado como `@AuthenticationPrincipal Jwt` nos controllers, e o ID do auditor (`criadoPor`/`atualizadoPor`) é extraído confiavelmente da claim `userId` pelo `RbacGuard.exigirUsuarioAutenticadoId(...)` — o header `X-User-Id` **não é lido** pelo back-end.
 6. **Revogação imediata (TA11.4):** `PATCH /api/admin/usuarios/{id}/revogar-acesso` define `acessoAtivo = false` e incrementa `tokenVersion`; tokens anteriores passam a receber `401`.
 
 **Regras do `SecurityFilterChain`** ([`SecurityConfig`](src/main/java/com/br/CLAI/security/SecurityConfig.java))
 
 | Rota | Regra |
 | :--- | :--- |
-| `POST /api/auth/login`, `/actuator/**` | Pública |
+| `POST /api/auth/login`, `/actuator/**`, `/v3/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html` | Pública |
 | `/api/admin/**` | `hasRole('ADMIN')` |
-| Qualquer outra | Autenticada |
+| Qualquer outra (`/api/**`) | Autenticada |
+
+**CORS (Cross-Origin Resource Sharing)**
+
+A API possui `CorsConfigurationSource` configurado em `SecurityConfig` liberando:
+- Origem permitida: `http://localhost:5173` (SPA Frontend)
+- Métodos permitidos: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`
+- Cabeçalhos permitidos: `Authorization`, `Content-Type`, `Accept`
 
 **Perfis e níveis** (enums de `domain.enums`)
 
@@ -114,16 +123,29 @@ Além disso, `autorizacaoSaude = true` gera a authority `AUTH_SAUDE`.
 - **Download de anexo sensível (TA11.2):** exige `nivelRestricao = SUPER_RESTRICAO` **e** `autorizacaoSaude = true` (conferido em `AnexoEstudanteService`). Nos dados de seed, só o `ADMIN` atende a ambos.
 - As demais rotas não possuem `@PreAuthorize`: basta estar autenticado (ver coluna "Roles" nas tabelas da seção 4).
 
-#### 2.2 Soft Delete (Exclusão Lógica)
+#### 2.2 Soft Delete e Inativação Lógica
 
-- `BaseEntity` (`@MappedSuperclass`) é anotada com `@SoftDelete` do Hibernate: **todas** as entidades herdam a coluna `deleted BOOLEAN NOT NULL DEFAULT FALSE`.
-- `repository.delete(entidade)` é interceptado e vira `UPDATE ... SET deleted = true`; o registro **permanece fisicamente no banco**.
-- Consultas (`findById`, `findAll`, derivadas) **ignoram automaticamente** registros excluídos — um recurso excluído passa a responder `404`, e não aparece na Timeline, no Prontuário nem nas listagens.
-- Antes de excluir, os services gravam `atualizadoPor` (auditoria). A `BaseEntity` também traz `criadoEm`/`atualizadoEm` (JPA Auditing, `@EnableJpaAuditing`) e `criadoPor`/`atualizadoPor`.
-- O índice único parcial `idx_estudo_caso_ativo` considera apenas `deleted = FALSE`.
-- Rotas `DELETE`: Estudo de Caso (somente `RASCUNHO`), PEA e PEI (`204 No Content`).
+- **Soft Delete de Entidades do Domínio (`@SoftDelete`):** `BaseEntity` (`@MappedSuperclass`) é anotada com `@SoftDelete` do Hibernate: as entidades herdam a coluna `deleted BOOLEAN NOT NULL DEFAULT FALSE`. O `repository.delete(entidade)` vira `UPDATE ... SET deleted = true`; o registro permanece fisicamente no banco, mas consultas JPA ignoram automaticamente os excluídos.
+- **Inativação Lógica de Negócio em Aluno (US 12):** O endpoint `DELETE /api/alunos/{id}` **não** chama `repository.delete()`, para que a coluna `deleted` não esconda o aluno das consultas e não quebre a integridade histórica dos Estudos de Caso, PEIs, PEAs e Prontuários vinculados. Em vez disso, altera `ativo = false`, define `status = INATIVO` (ou `EVADIDO` se informado via parâmetro) e atualiza `atualizadoPor` e `atualizadoEm` (`204 No Content`).
+- **Rotas DELETE:**
+  - `DELETE /api/alunos/{id}`: inativação lógica de negócio (`ativo = false`, `204 No Content`).
+  - `DELETE /api/estudos-de-caso/{id}`: soft delete via Hibernate (somente status `RASCUNHO`, `204 No Content`).
+  - `DELETE /api/peis/{id}` e `DELETE /api/peas/{id}`: soft delete via Hibernate (`204 No Content`).
 
 #### 2.3 Regras de domínio relevantes
+
+**Gestão de Alunos (US 12)** (`AlunoService` + `AlunoRepository`)
+
+- **Cadastro e atualização (`POST /api/alunos`, `PUT /api/alunos/{id}`):** Exigem `nomeCompleto`, `matricula`, `curso`, `turma`, `status` (`StatusAluno`) e ao menos uma tag em `tagsDificuldadeIds`.
+- **Unicidade de matrícula:** A tentativa de cadastrar ou alterar para uma matrícula já pertencente a outro aluno dispara `ConflitoException` (`409 Conflict`).
+- **Invariante de status e ativação:** Status `INATIVO` e `EVADIDO` definem automaticamente `ativo = false`. Status `ATIVO` e `EM_TRIAGEM` definem `ativo = true`.
+- **Tags de acessibilidade e dificuldade:** Relacionamento N:M com `IndicadorReutilizavel` via `sigi.aluno_tag_dificuldade`. Se qualquer tag informada em `tagsDificuldadeIds` não for encontrada, lança `400 Bad Request` (`RegraDeNegocioException`).
+- **Busca paginada com filtros combinados (`GET /api/alunos`):** Suporta `termo` (pesquisa parcial insensível a maiúsculas em nome ou matrícula), `curso`, `turma`, `tag` (ou `tagAcessibilidade`), `ativo` (padrão `true`) e paginação Spring Data (`page`, `size`, `sort`).
+- **Inativação lógica de negócio:** `DELETE /api/alunos/{id}` aceita opcionalmente `?status=EVADIDO` (padrão: `INATIVO`), garantindo que o histórico do prontuário, PEIs e PEAs permaneça íntegro.
+
+**Catálogo de Indicadores e Tags** (`IndicadorReutilizavelService`)
+
+- `GET /api/indicadores`: Devolve a lista de tags ativas no sistema (`id`, `nome`, `descricao`) para popular seletores e filtros na interface gráfica.
 
 **Estudo de Caso** (`EstudoDeCasoService` + `EstudoDeCasoValidator`)
 
@@ -173,38 +195,52 @@ Além disso, `autorizacaoSaude = true` gera a authority `AUTH_SAUDE`.
 - **Docker + Docker Compose** (Opção A) **ou** PostgreSQL 14+ instalado (Opção B)
 - Maven (ou use o wrapper `mvnw` / `mvnw.cmd` em `app/backend`)
 
-### Credenciais e variáveis (padrões do projeto)
+### Perfis de Execução (`application.yaml`, `application-dev.yaml`, `application-prd.yaml`)
 
-| Variável | Padrão | Uso |
+O back-end possui segregação formal de configurações em perfis do Spring Boot:
+- **`dev` (padrão):** Ativado por padrão (`SPRING_PROFILES_ACTIVE=dev`). Habilita logs detalhados, exibição de SQL formatado (`show-sql: true`) e credenciais padrão para desenvolvimento local.
+- **`prd`:** Desativa logs verbosos e formatação de SQL (`show-sql: false`), e exige obrigatoriamente a definição de `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET` e `AES_KEY` sem valores padrão inseguros.
+
+### Credenciais e variáveis de ambiente
+
+| Variável | Padrão (dev) | Uso |
 | :--- | :--- | :--- |
-| `POSTGRES_DB` | `sigi_clai` | Nome do banco |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` | `postgres` / `postgres` | Credenciais (container) |
-| `GROUP_DB_USER` / `GROUP_DB_PASSWORD` | `postgres` / `postgres` | Credenciais lidas pelo `application.yaml` em execução local |
-| `DB_HOST` / `DB_PORT` | `localhost` / `5432` | Host/porta do banco |
-| `DB_SCHEMA` | `sigi` | Schema Hibernate (`default_schema`) |
-| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | derivados dos itens acima | Sobrescrevem a conexão (usados no `docker-compose`) |
-| `SERVER_PORT` | `8080` | Porta da API |
-| `JWT_SECRET` | `dev-only-jwt-secret-key-change-in-production-minimum-256-bits` (`application.yaml`); o `docker-compose` injeta `sigi-clai-dev-jwt-secret-key-2026-ifpb-change-in-prod` | Chave HMAC do JWT (≥ 32 caracteres) |
-| `AES_KEY` | `0123456789abcdef0123456789abcdef` | Chave AES-256 dos anexos sensíveis (**trocar em produção**) |
-| `ATTACHMENTS_STORAGE_PATH` | `/app/storage/anexos` | Diretório dos anexos |
+| `SPRING_PROFILES_ACTIVE` | `dev` | Perfil ativo do Spring Boot (`dev` ou `prd`) |
+| `POSTGRES_DB` | `sigi_clai` | Nome do banco de dados |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` | `postgres` / `postgres` | Credenciais do PostgreSQL (container ou local) |
+| `DB_HOST` / `DB_PORT` | `localhost` / `5432` | Host e porta do banco |
+| `DB_SCHEMA` | `sigi` | Schema padrão do Hibernate (`default_schema`) |
+| `SPRING_DATASOURCE_URL` | derivado (`jdbc:postgresql://${DB_HOST}:${DB_PORT}/${POSTGRES_DB}`) | URL JDBC de conexão |
+| `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | derivados de `POSTGRES_USER` / `_PASSWORD` | Credenciais lidas pelo Spring Boot |
+| `SERVER_PORT` | `8080` | Porta HTTP da API |
+| `JWT_SECRET` | `sigi-clai-dev-jwt-secret-key-2026-ifpb-change-in-prod` | Chave HMAC-SHA256 do JWT (mínimo de 256 bits / 32 bytes) |
+| `AES_KEY` | `0123456789abcdef0123456789abcdef` | Chave AES-256 para anexos sensíveis (**trocar em produção**) |
+| `ATTACHMENTS_STORAGE_PATH` | `/app/storage/anexos` (container) / `./storage/anexos` (local) | Diretório físico dos anexos |
 
 > [!WARNING]
-> `JWT_SECRET` e `AES_KEY` padrão servem **apenas para desenvolvimento**. Trocar a `AES_KEY` torna ilegíveis os anexos já cifrados.
+> `JWT_SECRET` e `AES_KEY` padrão servem **exclusivamente para desenvolvimento**. Trocar a `AES_KEY` torna ilegíveis os anexos previamente criptografados.
 
 > [!NOTE]
-> O `application.yaml` usa `ddl-auto: none`: **o banco precisa ter o schema criado** (via scripts de `database/`). A aplicação não cria tabelas.
+> O projeto utiliza `open-in-view: false` (OSIV desativado) e `ddl-auto: none`: **o banco de dados precisa ter o schema criado previamente** (via scripts de `database/schema/`). A aplicação não cria tabelas em tempo de execução.
 
 ### Opção A — Via Docker (Recomendado)
 
-O serviço `db` do [`docker-compose.yml`](../../docker-compose.yml) é o container **`sigi-db`** (`postgres:16-alpine`), com porta **`5432:5432`** (configurável por `DB_PORT`), volume persistente `sigi_postgres_data` e healthcheck (`pg_isready`).
+O projeto dispõe de configurações modulares de Docker Compose na raiz:
 
 ```bash
-# 1. (opcional) copie o modelo de variáveis; sem .env valem os padrões acima
+# 1. (opcional) Copie o modelo de variáveis
 cp .env.example .env            # PowerShell: Copy-Item .env.example .env
 
-# 2. suba somente o banco
-docker compose up -d db
+# 2. Subir o ambiente de desenvolvimento completo (banco + backend + frontend)
+docker compose -f docker-compose.dev.yml up -d --build
+
+# Ou, se desejar subir apenas o banco de dados de desenvolvimento:
+docker compose -f docker-compose.dev.yml up -d db
 ```
+
+> [!TIP]
+> - **Desenvolvimento:** O [`docker-compose.dev.yml`](../../docker-compose.dev.yml) sobe os containers `sigi-db-dev`, `sigi-backend-dev` e `sigi-frontend`, aplicando automaticamente o schema e todos os seeds de teste.
+> - **Produção:** O [`docker-compose.prd.yml`](../../docker-compose.prd.yml) isola o ambiente com portas restritas, sem sementes de mock e exige variáveis obrigatórias via `.env`.
 
 Na **primeira inicialização** (volume vazio) o PostgreSQL executa automaticamente, em ordem alfabética, os scripts montados em `/docker-entrypoint-initdb.d/`:
 
@@ -216,22 +252,17 @@ Na **primeira inicialização** (volume vazio) o PostgreSQL executa automaticame
 | 4 | `app/backend/database/inserts/02_seed_us02_estudo_caso.sql` | `04-seed-us02-estudo-caso.sql` |
 | 5 | `app/backend/database/inserts/03_seed_us03_planejamento_pedagogico.sql` | `05-seed-us03-planejamento-pedagogico.sql` |
 
-> [!NOTE]
-> **Verificação do `docker-compose.yml`:** os cinco volumes já apontam corretamente para `database/schema/` e `database/inserts/` (todos os arquivos existem) e a ordem de execução está correta — nenhum ajuste foi necessário.
-
 > [!IMPORTANT]
-> Os scripts só rodam quando o volume de dados está vazio. Para recriar o banco do zero (apaga os dados): `docker compose down -v && docker compose up -d db`.
+> Os scripts de inicialização só rodam quando o volume de dados está vazio. Para recriar o banco do zero: `docker compose down -v && docker compose up -d db`.
 
-Para subir também API e front-end em containers: `docker compose up -d --build` (veja o [`DOCKER_GUIDE.md`](../../DOCKER_GUIDE.md)).
-
-Verificação rápida:
+Verificação rápida de integridade:
 ```bash
 docker exec -it sigi-db psql -U postgres -d sigi_clai -c "SELECT email, role FROM sigi.usuario;"
 ```
 
 ### Opção B — PostgreSQL Nativo / Clientes Externos (DBeaver, pgAdmin)
 
-1. **Conexão** (também vale para o container da Opção A):
+1. **Parâmetros de Conexão:**
 
    | Parâmetro | Valor |
    | :--- | :--- |
@@ -241,8 +272,6 @@ docker exec -it sigi-db psql -U postgres -d sigi_clai -c "SELECT email, role FRO
    | Usuário / Senha | `postgres` / `postgres` |
    | Schema | `sigi` |
 
-   > Se já houver um PostgreSQL local usando a `5432`, pare-o ou defina `DB_PORT` (ex.: `5433`) para o container e use a mesma porta em `DB_PORT`/`SPRING_DATASOURCE_URL` da aplicação.
-
 2. Crie o banco (caso não exista):
    ```sql
    CREATE DATABASE sigi_clai;
@@ -251,11 +280,11 @@ docker exec -it sigi-db psql -U postgres -d sigi_clai -c "SELECT email, role FRO
 
    | # | Script | Função |
    | :---: | :--- | :--- |
-   | 1 | `app/backend/database/schema/01_create_tables.sql` | Schema `sigi` + 10 tabelas |
-   | 2 | `app/backend/database/schema/02_alter_tables_constraints.sql` | Colunas sensíveis, índice único `idx_estudo_caso_ativo`, índices, comentários |
+   | 1 | `app/backend/database/schema/01_create_tables.sql` | Schema `sigi` + 11 tabelas (incluindo US 12) |
+   | 2 | `app/backend/database/schema/02_alter_tables_constraints.sql` | Colunas sensíveis, colunas US 12, constraints, índices e comentários |
    | 3 | `app/backend/database/inserts/01_seed_us11_rbac.sql` | 5 usuários RBAC (senha `senha123`) |
-   | 4 | `app/backend/database/inserts/02_seed_us02_estudo_caso.sql` | 2 alunos + 3 indicadores |
-   | 5 | `app/backend/database/inserts/03_seed_us03_planejamento_pedagogico.sql` | 2 acompanhamentos |
+   | 4 | `app/backend/database/inserts/02_seed_us02_estudo_caso.sql` | 2 alunos + dados US 12 + 3 indicadores |
+   | 5 | `app/backend/database/inserts/03_seed_us03_planejamento_pedagogico.sql` | 2 acompanhamentos base |
 
    Via `psql` (a partir de `app/backend`):
    ```bash
@@ -265,27 +294,24 @@ docker exec -it sigi-db psql -U postgres -d sigi_clai -c "SELECT email, role FRO
    psql -U postgres -d sigi_clai -f database/inserts/02_seed_us02_estudo_caso.sql
    psql -U postgres -d sigi_clai -f database/inserts/03_seed_us03_planejamento_pedagogico.sql
    ```
-   Os seeds usam `ON CONFLICT DO NOTHING` (idempotentes). A ordem importa: seeds dependem das tabelas, e o seed 03 depende de `aluno`/`acompanhamento`. O DDL usa `gen_random_uuid()` (nativo no PostgreSQL 13+).
 
-### Executando a aplicação Spring Boot
+### Executando a aplicação Spring Boot localmente
 
 ```bash
 cd app/backend
 
-# Variáveis só são necessárias se diferirem dos padrões (PowerShell: $env:NOME="valor")
-export GROUP_DB_USER=postgres
-export GROUP_DB_PASSWORD=postgres
-export ATTACHMENTS_STORAGE_PATH=./storage/anexos     # recomendado fora do Docker
+# Configurar diretório de armazenamento local de anexos fora do container
+export ATTACHMENTS_STORAGE_PATH=./storage/anexos     # PowerShell: $env:ATTACHMENTS_STORAGE_PATH="./storage/anexos"
 
-mvn clean install          # compila e roda os testes (precisam do PostgreSQL acessível)
-mvn spring-boot:run        # sobe a API em http://localhost:8080
+# Compilar e executar
+./mvnw clean package -DskipTests
+./mvnw spring-boot:run
 ```
 
-- Sem Maven instalado: `./mvnw spring-boot:run` (Linux/macOS) ou `.\mvnw.cmd spring-boot:run` (Windows).
-- Para pular os testes: `mvn clean install -DskipTests`.
+- A API subirá em `http://localhost:8080`.
 - Health check: `GET http://localhost:8080/actuator/health`.
-- Fora do Docker, o padrão `/app/storage/anexos` não é adequado: defina `ATTACHMENTS_STORAGE_PATH` para uma pasta local.
-- Limite de upload: não há configuração `spring.servlet.multipart.*` no projeto — vale o padrão do Spring (**1 MB por arquivo**).
+- Documentação OpenAPI / Swagger UI: `http://localhost:8080/swagger-ui.html`.
+- Limite de upload: vale o padrão do Spring Boot (**1 MB por arquivo**).
 
 ---
 
@@ -314,7 +340,32 @@ mvn spring-boot:run        # sobe a API em http://localhost:8080
 - **`UsuarioSessaoDTO`** — `id`; `nome`; `email`; `role`; `nivelRestricao`; `autorizacaoSaude`; `acessoAtivo` *Boolean*; `tokenVersion`; `authorities` *List\<String\>* (ex.: `ROLE_ADMIN`, `REST_SUPER_RESTRICAO`, `AUTH_SAUDE`).
 - **`UsuarioRevogadoResponseDTO`** — `id`; `email`; `nome`; `acessoAtivo` *Boolean* (`false`); `tokenVersion` *Integer* (incrementado); `mensagem` *String*.
 
-### 4.2 Estudo de Caso (`/api/estudos-de-caso`)
+### 4.2 Gestão de Alunos (`/api/alunos`)
+
+| Método | Rota | Descrição | Roles / Permissão | Request | Sucesso / Response |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/alunos` | Cadastra novo estudante vinculado a tags | Autenticado | Body `AlunoRequestDTO` | `201` · `AlunoResponseDTO` |
+| `GET` | `/api/alunos/{id}` | Busca estudante cadastrado por ID | Autenticado | Path `id` | `200` · `AlunoResponseDTO` |
+| `GET` | `/api/alunos` | Consulta paginada com filtros combinados | Autenticado | Query: `termo`, `curso`, `turma`, `tag`/`tagAcessibilidade`, `ativo`, `page`, `size`, `sort` | `200` · `Page<AlunoResponseDTO>` |
+| `PUT` | `/api/alunos/{id}` | Atualiza dados e tags do estudante | Autenticado | Path `id` + Body `AlunoRequestDTO` | `200` · `AlunoResponseDTO` |
+| `DELETE` | `/api/alunos/{id}` | Inativação lógica (`ativo = false`) | Autenticado | Path `id` + Query opcional `status` (`INATIVO` ou `EVADIDO`) | `204` · sem corpo |
+
+**DTOs**
+
+- **`AlunoRequestDTO`** — `nomeCompleto` *String* `@NotBlank` `@Size(max = 255)`; `matricula` *String* `@NotBlank` `@Size(max = 50)`; `curso` *String* `@NotBlank` `@Size(max = 100)`; `turma` *String* `@NotBlank` `@Size(max = 50)`; `status` *StatusAluno* `@NotNull`; `tagsDificuldadeIds` *List<UUID>* `@NotEmpty`.
+- **`AlunoResponseDTO`** — `id` *UUID*; `nomeCompleto` *String*; `matricula` *String*; `curso` *String*; `turma` *String*; `status` *StatusAluno*; `ativo` *Boolean*; `tagsDificuldade` *List<String>*; `tagsDificuldadeIds` *List<UUID>*; `criadoEm`, `atualizadoEm` *LocalDateTime*.
+
+### 4.3 Catálogo de Indicadores e Tags (`/api/indicadores`)
+
+| Método | Rota | Descrição | Roles / Permissão | Request | Sucesso / Response |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/api/indicadores` | Catálogo de tags reutilizáveis ativas | Autenticado | — | `200` · `List<IndicadorResposta>` |
+
+**DTO**
+
+- **`IndicadorResposta`** — `id` *UUID*; `nome` *String*; `descricao` *String*.
+
+### 4.4 Estudo de Caso (`/api/estudos-de-caso`)
 
 | Método | Rota | Descrição | Roles / Permissão | Request | Sucesso / Response |
 | :---: | :--- | :--- | :--- | :--- | :--- |
@@ -332,7 +383,7 @@ mvn spring-boot:run        # sobe a API em http://localhost:8080
 - **`EstudoDeCasoUpdateDTO`** — igual ao anterior, **sem `alunoId`**; `status` `@NotNull`.
 - **`EstudoDeCasoResponseDTO`** (`NON_NULL`) — `id`; `alunoId`; `status`; `diagnosticoInicial`; `historicoFamiliar`\*; `historicoSocioemocional`\*; `indicadoresIds` *List\<UUID\>*; `criadoEm`, `atualizadoEm` *LocalDateTime* (\* omitidos sem permissão).
 
-### 4.3 Prontuário Unificado (`/api/alunos`)
+### 4.5 Prontuário Unificado (`/api/alunos`)
 
 | Método | Rota | Descrição | Roles / Permissão | Request | Sucesso / Response |
 | :---: | :--- | :--- | :--- | :--- | :--- |
@@ -346,7 +397,7 @@ mvn spring-boot:run        # sobe a API em http://localhost:8080
 - **`ProntuarioResponseDTO`** (`NON_NULL`) — `alunoId`; `nomeAluno`; `matricula`; `estudoDeCasoId`; `statusEstudoDeCaso`; `diagnosticoInicial`; `historicoFamiliar`\*; `historicoSocioemocional`\*; `totalPeis`, `totalPeas`, `totalAnexos` *int*; `atualizadoEm`.
 - **`HistoricoSocioemocionalResponseDTO`** — `alunoId`; `nomeAluno`; `matricula`; `estudoDeCasoId`; `historicoFamiliar`; `historicoSocioemocional`; `atualizadoEm`.
 
-### 4.4 Planejamento Pedagógico — PEI (`/api/peis`)
+### 4.6 Planejamento Pedagógico — PEI (`/api/peis`)
 
 | Método | Rota | Descrição | Roles / Permissão | Request | Sucesso / Response |
 | :---: | :--- | :--- | :--- | :--- | :--- |
@@ -359,7 +410,7 @@ mvn spring-boot:run        # sobe a API em http://localhost:8080
 | `PUT` | `/api/peis/{id}` | Atualização parcial do PEI | Autenticado | Path + Body `PeiUpdateDTO` | `200` · `PeiResponseDTO` |
 | `DELETE` | `/api/peis/{id}` | Inativa o PEI (soft delete — TA3.4) | Autenticado | Path `id` | `204` · sem corpo |
 
-### 4.5 Planejamento Pedagógico — PEA (`/api/peas`)
+### 4.7 Planejamento Pedagógico — PEA (`/api/peas`)
 
 | Método | Rota | Descrição | Roles / Permissão | Request | Sucesso / Response |
 | :---: | :--- | :--- | :--- | :--- | :--- |
@@ -380,7 +431,7 @@ mvn spring-boot:run        # sobe a API em http://localhost:8080
 - **`PeaUpdateDTO`** — `disciplinaId` *UUID*, `objetivoGeral`, `metodologia`, `avaliacao` *String* (sem validação; `null` = não altera).
 - **`PeaResponseDTO`** — `id`; `acompanhamentoId`; `alunoId`; `disciplinaId`; `objetivoGeral`; `metodologia`; `avaliacao`; `criadoEm`; `atualizadoEm`.
 
-### 4.6 Anexos do Estudante (`/api`)
+### 4.8 Anexos do Estudante (`/api`)
 
 | Método | Rota | Descrição | Roles / Permissão | Request | Sucesso / Response |
 | :---: | :--- | :--- | :--- | :--- | :--- |
@@ -393,7 +444,7 @@ mvn spring-boot:run        # sobe a API em http://localhost:8080
 - **`AnexoEstudanteResponseDTO`** — `id`; `alunoId`; `nomeOriginal`; `contentType`; `tamanhoBytes` *Long*; `classificacao` *LAUDO_MEDICO \| DIAGNOSTICO_NEUROPSICOLOGICO \| DOCUMENTO_PEDAGOGICO*; `criptografado` *Boolean*; `criadoEm`.
 - Parâmetros do upload: `classificacao` é obrigatória (`400` se ausente/inválida); arquivo vazio/ausente → `400`.
 
-### 4.7 Timeline (`/api/alunos`)
+### 4.9 Timeline (`/api/alunos`)
 
 | Método | Rota | Descrição | Roles / Permissão | Request | Sucesso / Response |
 | :---: | :--- | :--- | :--- | :--- | :--- |
@@ -403,11 +454,13 @@ mvn spring-boot:run        # sobe a API em http://localhost:8080
 
 - **`TimelineEventDTO`** — `id` *UUID*; `tipo` *String* (`ESTUDO_DE_CASO` \| `PEI` \| `PEA`); `dataCriacao` *LocalDateTime*.
 
-### 4.8 Monitoramento
+### 4.10 Monitoramento e Documentação
 
 | Método | Rota | Descrição | Roles | Sucesso |
 | :---: | :--- | :--- | :--- | :--- |
-| `GET` | `/actuator/health` | Health check (usado pelo `docker-compose`) | **Pública** | `200` |
+| `GET` | `/actuator/health` | Health check da aplicação | **Pública** | `200` |
+| `GET` | `/swagger-ui.html` | Interface Swagger UI para exploração interativa da API | **Pública** | `200` / `302` |
+| `GET` | `/v3/api-docs` | Especificação OpenAPI 3 em formato JSON | **Pública** | `200` |
 
 ---
 
@@ -431,7 +484,8 @@ O [`GlobalExceptionHandler`](src/main/java/com/br/CLAI/handler/GlobalExceptionHa
 | Exceção (`com.br.CLAI.exception` ou Spring) | Status HTTP | Título / `type` (`https://api.sigi.com/errors/...`) | Cenário em que ocorre na API |
 | :--- | :---: | :--- | :--- |
 | `NaoEncontradoException` | **404** | `Recurso Não Encontrado` · `nao-encontrado` | Estudo de Caso, PEA, PEI, Acompanhamento, Estudante, Anexo ou Usuário inexistente (ou excluído logicamente); `GET /estudos-de-caso/aluno/{id}` com aluno inexistente; `GET /prontuario` e anexos com estudante inexistente. |
-| `RegraDeNegocioException` | **400** | `Erro de Regra de Negócio` · `regra-de-negocio` | Estudo `ENCERRADO` sem diagnóstico ou sem indicador; 2º estudo `ATIVO` para o mesmo aluno; aluno ou indicador inexistente na criação de estudo; reverter estudo concluído para `RASCUNHO`; excluir estudo `ATIVO`/`ENCERRADO`; upload sem arquivo ou sem classificação; arquivo físico do anexo ausente no volume; falha de I/O no armazenamento. |
+| `ConflitoException` | **409** | `Conflito de Dados` · `conflito` | Matrícula duplicada ao cadastrar (`POST /api/alunos`) ou atualizar (`PUT /api/alunos/{id}`) um aluno (*"Já existe um aluno cadastrado com a matrícula informada."*). |
+| `RegraDeNegocioException` | **400** | `Erro de Regra de Negócio` · `regra-de-negocio` | Estudo `ENCERRADO` sem diagnóstico ou sem indicador; 2º estudo `ATIVO` para o mesmo aluno; tag inexistente em cadastro de aluno; aluno ou indicador inexistente na criação de estudo; reverter estudo concluído para `RASCUNHO`; excluir estudo `ATIVO`/`ENCERRADO`; status inválido na inativação de aluno; upload sem arquivo ou sem classificação; arquivo físico do anexo ausente no volume; falha de I/O no armazenamento. |
 | `AcessoNegadoException` | **403** | `Acesso Negado` · `acesso-negado` | Download de anexo sensível sem `SUPER_RESTRICAO` + `autorizacaoSaude`; download sem usuário autenticado resolvido. |
 | `AccessDeniedException` (Spring Security, `@PreAuthorize`) | **403** | `Acesso Negado` · `acesso-negado` | `PROFESSOR`/`ALUNO_APOIADOR` em `/historico-socioemocional` ou `/peis/{id}/anexos-sensiveis`; não-`ADMIN` em `/admin/**` com método protegido. Mensagem padrão: *"Seu perfil não possui permissão para acessar este recurso."* |
 | `DisabledException` / `LockedException` | **401** | `Sessão Revogada` · `sessao-revogada` | Login de usuário com `acesso_ativo = false`; uso do principal revogado. |
@@ -454,20 +508,19 @@ O `detail` concatena `campo: mensagem` de cada violação, separados por vírgul
 }
 ```
 
-Exemplos de mensagens: `alunoId: O ID do aluno é obrigatório`, `status: O status do estudo de caso é obrigatório`, `email: Formato de e-mail inválido`, `senha: A senha é obrigatória`, `acompanhamentoId: O ID do acompanhamento é obrigatório`.
+Exemplos de mensagens: `alunoId: O ID do aluno é obrigatório`, `matricula: A matrícula é obrigatória`, `nomeCompleto: O nome completo é obrigatório`, `status: O status do estudo de caso é obrigatório`, `email: Formato de e-mail inválido`, `senha: A senha é obrigatória`, `acompanhamentoId: O ID do acompanhamento é obrigatório`.
 
 ### Erros de segurança (`401` / `403`)
 
-Gerados na cadeia de filtros (antes dos controllers), também em `application/problem+json`:
+Gerados no fluxo de autenticação e autorização (OAuth2 Resource Server / Spring Security), padronizados em `application/problem+json`:
 
 | Origem | Status | `detail` |
 | :--- | :---: | :--- |
 | `AuthenticationEntryPoint` (sem header `Authorization`) | **401** `Não Autorizado` | `Autenticação obrigatória para acessar este recurso.` |
-| `JwtAuthenticationFilter` — token vazio | **401** | `Token JWT ausente no cabeçalho Authorization.` |
-| `JwtAuthenticationFilter` — assinatura inválida/expirado | **401** | `Token JWT inválido ou expirado.` |
-| `JwtAuthenticationFilter` — usuário do token não existe | **401** | `Usuário associado ao token não encontrado.` |
-| `JwtAuthenticationFilter` — `acesso_ativo = false` | **401** | `Acesso revogado: o vínculo do usuário está desativado.` |
-| `JwtAuthenticationFilter` — `tokenVersion` divergente (após revogação) | **401** | `Sessão revogada ou versão do token inválida.` |
+| `NimbusJwtDecoder` — token malformado ou expirado | **401** | `Token JWT inválido ou expirado.` |
+| `OAuth2TokenValidator` (`sessionValidator`) — usuário associado não encontrado | **401** | `Usuário associado ao token não encontrado.` |
+| `OAuth2TokenValidator` (`sessionValidator`) — `acesso_ativo = false` | **401** | `Acesso revogado: o vínculo do usuário está desativado.` |
+| `OAuth2TokenValidator` (`sessionValidator`) — `tokenVersion` divergente (após revogação) | **401** | `Sessão revogada ou versão do token inválida.` |
 | `AccessDeniedHandler` (ex.: não-`ADMIN` em `/api/admin/**`) | **403** `Acesso Negado` | `Seu perfil não possui permissão para acessar este recurso.` |
 
 > [!NOTE]
