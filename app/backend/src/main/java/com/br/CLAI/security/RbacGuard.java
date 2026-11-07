@@ -8,6 +8,8 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -43,7 +45,48 @@ public class RbacGuard {
     );
 
     /**
-     * Retorna a entidade Usuario atualmente autenticada no SecurityContextHolder, se presente.
+     * Converte um objeto Jwt do Spring Security OAuth2 Resource Server na representação de domínio Usuario.
+     */
+    public Usuario converterJwtParaUsuario(Jwt jwt) {
+        if (jwt == null) {
+            return null;
+        }
+        Usuario usuario = new Usuario();
+
+        String userIdStr = jwt.getClaimAsString("userId");
+        if (userIdStr != null && !userIdStr.isBlank()) {
+            usuario.setId(UUID.fromString(userIdStr));
+        }
+
+        usuario.setEmail(jwt.getSubject());
+        usuario.setNome(jwt.getClaimAsString("nome"));
+
+        String roleStr = jwt.getClaimAsString("role");
+        if (roleStr != null && !roleStr.isBlank()) {
+            usuario.setRole(Role.valueOf(roleStr));
+        }
+
+        String nivelStr = jwt.getClaimAsString("nivelRestricao");
+        if (nivelStr != null && !nivelStr.isBlank()) {
+            usuario.setNivelRestricao(NivelRestricao.valueOf(nivelStr));
+        }
+
+        Boolean authSaude = jwt.getClaimAsBoolean("autorizacaoSaude");
+        usuario.setAutorizacaoSaude(Boolean.TRUE.equals(authSaude));
+
+        Number tokenVersion = jwt.getClaim("tokenVersion");
+        if (tokenVersion != null) {
+            usuario.setTokenVersion(tokenVersion.intValue());
+        }
+
+        Boolean acessoAtivo = jwt.getClaimAsBoolean("acessoAtivo");
+        usuario.setAcessoAtivo(acessoAtivo != null ? acessoAtivo : true);
+
+        return usuario;
+    }
+
+    /**
+     * Retorna a entidade Usuario atualmente autenticada no SecurityContextHolder (seja via Jwt ou Usuario direto).
      */
     public Optional<Usuario> getUsuarioAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -54,12 +97,17 @@ public class RbacGuard {
         if (principal instanceof Usuario usuario) {
             return Optional.of(usuario);
         }
+        if (principal instanceof Jwt jwt) {
+            return Optional.ofNullable(converterJwtParaUsuario(jwt));
+        }
+        if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            return Optional.ofNullable(converterJwtParaUsuario(jwtAuth.getToken()));
+        }
         return Optional.empty();
     }
 
     /**
-     * Obtém e valida obrigatoriamente o usuário autenticado a partir do principal resolvido
-     * ou do SecurityContextHolder. Lança exceção de autenticação (HTTP 401) caso ausente ou inativo.
+     * Obtém e valida obrigatoriamente o usuário autenticado a partir do principal Usuario ou do SecurityContextHolder.
      */
     public Usuario exigirUsuarioAutenticado(Usuario usuarioPrincipal) {
         Usuario usuario = (usuarioPrincipal != null)
@@ -82,24 +130,41 @@ public class RbacGuard {
     }
 
     /**
-     * Obtém e valida obrigatoriamente o usuário autenticado a partir do SecurityContextHolder.
+     * Obtém e valida obrigatoriamente o usuário autenticado a partir do principal Jwt ou do SecurityContextHolder.
      */
-    public Usuario exigirUsuarioAutenticado() {
-        return exigirUsuarioAutenticado(null);
+    public Usuario exigirUsuarioAutenticado(Jwt jwtPrincipal) {
+        Usuario usuario = (jwtPrincipal != null)
+                ? converterJwtParaUsuario(jwtPrincipal)
+                : getUsuarioAutenticado().orElse(null);
+        return exigirUsuarioAutenticado(usuario);
     }
 
     /**
-     * Obtém o UUID confiável do usuário autenticado a partir do principal ou do contexto de segurança.
+     * Obtém e valida obrigatoriamente o usuário autenticado a partir do SecurityContextHolder.
+     */
+    public Usuario exigirUsuarioAutenticado() {
+        return exigirUsuarioAutenticado((Usuario) null);
+    }
+
+    /**
+     * Obtém o UUID confiável do usuário autenticado a partir do principal Usuario ou do contexto de segurança.
      */
     public UUID exigirUsuarioAutenticadoId(Usuario usuarioPrincipal) {
         return exigirUsuarioAutenticado(usuarioPrincipal).getId();
     }
 
     /**
+     * Obtém o UUID confiável do usuário autenticado a partir do principal Jwt ou do contexto de segurança.
+     */
+    public UUID exigirUsuarioAutenticadoId(Jwt jwtPrincipal) {
+        return exigirUsuarioAutenticado(jwtPrincipal).getId();
+    }
+
+    /**
      * Obtém o UUID confiável do usuário autenticado a partir do SecurityContextHolder.
      */
     public UUID exigirUsuarioAutenticadoId() {
-        return exigirUsuarioAutenticado(null).getId();
+        return exigirUsuarioAutenticado((Usuario) null).getId();
     }
 
     /**
@@ -112,7 +177,9 @@ public class RbacGuard {
             return false;
         }
 
-        if (auth.getPrincipal() instanceof Usuario usuario) {
+        Optional<Usuario> usuarioOpt = getUsuarioAutenticado();
+        if (usuarioOpt.isPresent()) {
+            Usuario usuario = usuarioOpt.get();
             if (!Boolean.TRUE.equals(usuario.getAcessoAtivo())) {
                 return false;
             }
@@ -139,7 +206,9 @@ public class RbacGuard {
             return false;
         }
 
-        if (auth.getPrincipal() instanceof Usuario usuario) {
+        Optional<Usuario> usuarioOpt = getUsuarioAutenticado();
+        if (usuarioOpt.isPresent()) {
+            Usuario usuario = usuarioOpt.get();
             if (!Boolean.TRUE.equals(usuario.getAcessoAtivo())) {
                 return false;
             }
@@ -165,7 +234,9 @@ public class RbacGuard {
             return false;
         }
 
-        if (auth.getPrincipal() instanceof Usuario usuario) {
+        Optional<Usuario> usuarioOpt = getUsuarioAutenticado();
+        if (usuarioOpt.isPresent()) {
+            Usuario usuario = usuarioOpt.get();
             return usuario.getNivelRestricao() == NivelRestricao.ACESSO_FUNCIONAL
                     || usuario.getRole() == Role.PROFESSOR
                     || usuario.getRole() == Role.ALUNO_APOIADOR;
@@ -191,8 +262,9 @@ public class RbacGuard {
             return false;
         }
 
-        if (auth.getPrincipal() instanceof Usuario usuario) {
-            return Boolean.TRUE.equals(usuario.getAutorizacaoSaude());
+        Optional<Usuario> usuarioOpt = getUsuarioAutenticado();
+        if (usuarioOpt.isPresent()) {
+            return Boolean.TRUE.equals(usuarioOpt.get().getAutorizacaoSaude());
         }
 
         return possuiAlgumaAuthority(auth.getAuthorities(), Set.of("AUTH_SAUDE"));

@@ -1,0 +1,105 @@
+services:
+  # ============================================================================
+  # Serviço 1: Banco de Dados Relacional (PostgreSQL 16) - PRODUÇÃO
+  # ============================================================================
+  db:
+    image: postgres:16-alpine
+    container_name: sigi-db-prd
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB environment variable is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER environment variable is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD environment variable is required}
+      TZ: America/Fortaleza
+    # Porta 5432 não é publicada para o host em produção por segurança (acesso restrito à rede interna)
+    volumes:
+      # Persistência isolada do banco de produção
+      - postgres_prd_data:/var/lib/postgresql/data
+      # Apenas criação estrutural das tabelas e constraints (SEM seeds de dados de teste/mock)
+      - ./app/backend/database/schema/01_create_tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
+      - ./app/backend/database/schema/02_alter_tables_constraints.sql:/docker-entrypoint-initdb.d/02-alter-tables-constraints.sql:ro
+    networks:
+      - sigi-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================================================
+  # Serviço 2: Backend API (Java 21 + Spring Boot) - PRODUÇÃO
+  # ============================================================================
+  backend:
+    build:
+      context: ./app/backend
+      dockerfile: Dockerfile
+    container_name: sigi-backend-prd
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prd
+      SERVER_PORT: 8080
+      DB_HOST: db
+      DB_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB environment variable is required}
+      DB_SCHEMA: ${DB_SCHEMA:-sigi}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:?POSTGRES_DB environment variable is required}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?POSTGRES_USER environment variable is required}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD environment variable is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET environment variable is required}
+      AES_KEY: ${AES_KEY:?AES_KEY environment variable is required}
+      ATTACHMENTS_STORAGE_PATH: ${ATTACHMENTS_STORAGE_PATH:-/app/storage/anexos}
+    # Porta 8080 mantida interna; o tráfego externo é canalizado pelo proxy reverso do frontend (Nginx)
+    volumes:
+      # Volume dedicado para anexos criptografados de produção
+      - attachments_prd_data:${ATTACHMENTS_STORAGE_PATH:-/app/storage/anexos}
+    networks:
+      - sigi-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ============================================================================
+  # Serviço 3: Frontend SPA (React 19 + Vite + Nginx) - PRODUÇÃO
+  # ============================================================================
+  frontend:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_USE_LOCAL_FALLBACK: "false"
+    container_name: sigi-frontend-prd
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8080}
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    networks:
+      - sigi-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  postgres_prd_data:
+    name: sigi_postgres_prd_data
+  attachments_prd_data:
+    name: sigi_attachments_prd_data
+
+networks:
+  sigi-network:
+    name: sigi-network
+    driver: bridge

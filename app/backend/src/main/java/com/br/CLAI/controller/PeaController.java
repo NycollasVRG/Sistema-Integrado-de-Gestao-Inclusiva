@@ -1,6 +1,5 @@
 package com.br.CLAI.controller;
 
-import com.br.CLAI.domain.Usuario;
 import com.br.CLAI.dto.request.PeaRequestDTO;
 import com.br.CLAI.dto.request.PeaUpdateDTO;
 import com.br.CLAI.dto.response.PeaResponseDTO;
@@ -11,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -71,9 +71,9 @@ public class PeaController {
     @PostMapping
     public ResponseEntity<PeaResponseDTO> criar(
             @Valid @RequestBody PeaRequestDTO dto,
-            @AuthenticationPrincipal Usuario usuarioAutenticado) {
+            @AuthenticationPrincipal Jwt jwtAutenticado) {
 
-        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(usuarioAutenticado);
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(jwtAutenticado);
         PeaResponseDTO response = service.criar(dto, usuarioId);
 
         return ResponseEntity
@@ -85,9 +85,9 @@ public class PeaController {
     public ResponseEntity<PeaResponseDTO> atualizar(
             @PathVariable UUID id,
             @Valid @RequestBody PeaUpdateDTO dto,
-            @AuthenticationPrincipal Usuario usuarioAutenticado) {
+            @AuthenticationPrincipal Jwt jwtAutenticado) {
 
-        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(usuarioAutenticado);
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(jwtAutenticado);
         return ResponseEntity.ok(
                 service.atualizar(id, dto, usuarioId)
         );
@@ -96,9 +96,9 @@ public class PeaController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluir(
             @PathVariable UUID id,
-            @AuthenticationPrincipal Usuario usuarioAutenticado) {
+            @AuthenticationPrincipal Jwt jwtAutenticado) {
 
-        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(usuarioAutenticado);
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(jwtAutenticado);
         service.excluir(id, usuarioId);
 
         return ResponseEntity.noContent().build();

@@ -1,6 +1,5 @@
 package com.br.CLAI.controller;
 
-import com.br.CLAI.domain.Usuario;
 import com.br.CLAI.domain.enums.TipoClassificacaoAnexo;
 import com.br.CLAI.dto.response.AnexoEstudanteResponseDTO;
 import com.br.CLAI.service.AnexoEstudanteService;
@@ -11,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -55,10 +55,10 @@ public class AnexoEstudanteController {
     @GetMapping("/anexos/{anexoId}/download")
     public ResponseEntity<byte[]> downloadAnexo(
             @PathVariable("anexoId") UUID anexoId,
-            @AuthenticationPrincipal Usuario usuarioAutenticado
+            @AuthenticationPrincipal Jwt jwtAutenticado
     ) {
         AnexoEstudanteService.AnexoDownloadPayload payload =
-                anexoEstudanteService.downloadAnexo(anexoId, usuarioAutenticado);
+                anexoEstudanteService.downloadAnexo(anexoId, jwtAutenticado);
 
         MediaType mediaType;
         try {
