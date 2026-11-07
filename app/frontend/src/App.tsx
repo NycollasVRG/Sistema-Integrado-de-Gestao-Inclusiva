@@ -42,6 +42,7 @@ import { Login } from './pages/Login';
 import { RotaProtegida } from './components/RotaProtegida';
 import { ModalAcessoNegadoLGPD } from './components/ModalAcessoNegadoLGPD';
 import { useAuth } from './contexts/AuthContext';
+import { PainelAdminUsuarios } from './pages/PainelAdminUsuarios';
 
 export const App: React.FC = () => {
   const navigate = useNavigate();
@@ -481,7 +482,9 @@ export const App: React.FC = () => {
         searchTerm={termoBusca}
         onSearch={setTermoBusca}
         subTitle={
-          location.pathname === '/login'
+          location.pathname.startsWith('/admin')
+            ? 'Gestão de Acessos e Usuários (RBAC)'
+            : location.pathname === '/login'
             ? 'Autenticação'
             : location.pathname === '/estudantes'
             ? 'Gestão de Estudantes'
@@ -500,10 +503,16 @@ export const App: React.FC = () => {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route element={<RotaProtegida />}>
-          <Route
+            <Route
+              path="/admin/usuarios"
+              element={<PainelAdminUsuarios onNotificar={adicionarToast} />}
+            />
+            <Route path="/admin" element={<Navigate to="/admin/usuarios" replace />} />
+            <Route
               path="/estudantes"
               element={<AreaGestaoEstudantes onAbrirProntuario={abrirProntuarioDaListagem} />}
             />
+
           <Route
             path="/"
             element={

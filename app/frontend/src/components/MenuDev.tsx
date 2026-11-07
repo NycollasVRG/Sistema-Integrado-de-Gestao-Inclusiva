@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutList, FileText, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutList, FileText, ClipboardList, ChevronLeft, ChevronRight, Users, Shield, LogIn } from 'lucide-react';
 
 const TELAS: { path: string; label: string; icon: React.ReactNode }[] = [
   { path: '/', label: 'Ficha do Aluno', icon: <LayoutList className="w-4 h-4" /> },
+  { path: '/estudantes', label: 'Gestão Estudantes', icon: <Users className="w-4 h-4" /> },
+  { path: '/admin/usuarios', label: 'Gestão de Acessos', icon: <Shield className="w-4 h-4" /> },
   { path: '/estudo-de-caso', label: 'Estudo de Caso', icon: <FileText className="w-4 h-4" /> },
   { path: '/pei', label: 'PEI', icon: <ClipboardList className="w-4 h-4" /> },
+  { path: '/login', label: 'Login', icon: <LogIn className="w-4 h-4" /> },
 ];
+
 
 export const MenuDev: React.FC = () => {
   const [aberto, setAberto] = useState(true);

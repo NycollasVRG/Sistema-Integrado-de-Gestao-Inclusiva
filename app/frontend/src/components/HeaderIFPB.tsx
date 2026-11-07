@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu, Shield } from 'lucide-react';
 import ifpbLogo from '../assets/imagens/ifpb.png';
 import { useAuth } from '../contexts/AuthContext';
 import { ROTULO_ROLE } from '../types/auth';
@@ -38,11 +38,21 @@ export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
                 <Menu className="w-7 h-7 text-[#0F6460]" strokeWidth={2.6} />
               </button>
             </div>
+      clear
           </div>
 
           {/* Usuário autenticado (RBAC) */}
           {sessao && (
             <div className="flex items-center gap-3 text-sm">
+              {sessao.role === 'ADMIN' && (
+                <Link
+                  to="/admin/usuarios"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-ifpb-teal hover:bg-ifpb-tealHover transition-colors shadow-2xs"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  Painel Admin
+                </Link>
+              )}
               <div className="text-right leading-tight">
                 <p className="font-semibold text-gray-800">{sessao.nome || sessao.email}</p>
                 <p className="text-xs text-ifpb-teal font-medium">{ROTULO_ROLE[sessao.role] ?? sessao.role}</p>
@@ -57,6 +67,7 @@ export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
               </button>
             </div>
           )}
+
         </div>
       </div>
       
