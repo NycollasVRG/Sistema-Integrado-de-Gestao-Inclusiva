@@ -43,6 +43,7 @@ import { RotaProtegida } from './components/RotaProtegida';
 import { ModalAcessoNegadoLGPD } from './components/ModalAcessoNegadoLGPD';
 import { useAuth } from './contexts/AuthContext';
 import { PainelAdminUsuarios } from './pages/PainelAdminUsuarios';
+import { SecaoProntuarioRbac } from './components/SecaoProntuarioRbac';
 
 export const App: React.FC = () => {
   const navigate = useNavigate();
@@ -555,6 +556,12 @@ export const App: React.FC = () => {
                   onAbrirFormularioPei={() => navigate('/pei')}
                   onAbrirFormularioPea={() => navigate('/pea')}
                 />
+
+                {/* US 09 / TA11.2 e TA11.3: históricos sensíveis e anexos com RBAC visual */}
+                <div className="mt-6">
+                  <SecaoProntuarioRbac key={alunoSelecionado.id} alunoId={alunoSelecionado.id} />
+                </div>
+
               </>
             }
           />

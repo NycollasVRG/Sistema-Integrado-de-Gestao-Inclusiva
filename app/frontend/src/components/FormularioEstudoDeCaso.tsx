@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Aluno, EstudoDeCasoResponseDTO, IndicadorReutilizavel } from '../types/estudoDeCaso';
 import { ConfirmModal } from './ConfirmModal';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Save,
   CheckCircle,
@@ -44,6 +45,12 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
   const [erroIndicadores, setErroIndicadores] = useState<string | null>(null);
   const [tentouConcluir, setTentouConcluir] = useState<boolean>(false);
   const [confirmarDescarte, setConfirmarDescarte] = useState<boolean>(false);
+
+  // TA11.3: só Restrição Moderada ou superior E campos presentes no JSON.
+  const { podeAcessarDadosSensiveis } = useAuth();
+  const mostrarHistoricos =
+    podeAcessarDadosSensiveis &&
+    !!(estudoExistente?.historicoFamiliar || estudoExistente?.historicoSocioemocional);
 
   // Inicializa dados do formulário a partir do estudo existente (se houver)
   useEffect(() => {
@@ -347,6 +354,33 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
             </p>
           )}
         </div>
+
+        {/* TA11.3: Históricos sensíveis. Ocultos por completo para ACESSO_FUNCIONAL
+            (perfil sem permissão OU chaves ausentes no JSON). */}
+        {mostrarHistoricos && (
+          <div className="space-y-4 border border-gray-200 rounded-lg p-4 bg-gray-50/60">
+            <div className="flex items-center text-sm font-bold text-ifpb-dark">
+              <Lock className="w-4 h-4 mr-1.5 text-ifpb-teal" />
+              Dados Sensíveis (acesso restrito)
+            </div>
+            {estudoExistente?.historicoFamiliar && (
+              <div>
+                <span className="text-xs font-semibold text-gray-500 uppercase">Histórico Familiar</span>
+                <p className="text-sm text-gray-800 bg-white border border-gray-200 rounded-lg p-3 mt-1 whitespace-pre-line">
+                  {estudoExistente.historicoFamiliar}
+                </p>
+              </div>
+            )}
+            {estudoExistente?.historicoSocioemocional && (
+              <div>
+                <span className="text-xs font-semibold text-gray-500 uppercase">Histórico Socioemocional</span>
+                <p className="text-sm text-gray-800 bg-white border border-gray-200 rounded-lg p-3 mt-1 whitespace-pre-line">
+                  {estudoExistente.historicoSocioemocional}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Barra Inferior de Ações e Botões */}
         <div className="pt-6 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
