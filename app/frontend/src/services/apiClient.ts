@@ -1,5 +1,6 @@
 import type { ProblemDetailRFC9457 } from '../types/estudoDeCaso';
 import { API_URL, USE_LOCAL_FALLBACK } from '../config/featureFlags';
+import { encerrarSessao, lerSessao, notificarAcessoNegado, obterToken } from './authSessao';
 
 /**
  * Cliente HTTP único para os serviços (Estudo de Caso, PEI, PEA, Timeline).
@@ -62,7 +63,12 @@ export function usarFallbackLocal(e: unknown): boolean {
   return USE_LOCAL_FALLBACK && isIndisponivel(e);
 }
 
-async function lerProblema(res: Response): Promise<ApiProblem> {
+/** Rota de login: 401 aqui significa credenciais inválidas, não sessão expirada. */
+function ehRotaLogin(input: string): boolean {
+  return input.split('?')[0].endsWith('/auth/login');
+}
+
+async function lerProblema(res: Response, input = ''): Promise<ApiProblem> {
   let corpo: Record<string, unknown> = {};
   try {
     const texto = await res.text();
@@ -70,7 +76,10 @@ async function lerProblema(res: Response): Promise<ApiProblem> {
   } catch {
     // Corpo vazio ou não-JSON: usa a mensagem padrão do status.
   }
-  const padrao = problemaPadrao(res.status);
+  const padrao =
+    res.status === 401 && ehRotaLogin(input)
+      ? { title: 'Falha na autenticação', detail: 'E-mail ou senha incorretos.' }
+      : problemaPadrao(res.status);
   return {
     title: (corpo.title as string) || padrao.title,
     status: res.status,
@@ -93,18 +102,43 @@ export function resolveApiUrl(input: string): string {
 }
 
 /**
+ * Tratamento global de status de segurança (compartilhado por todos os clientes HTTP):
+ * - 401 (exceto login): sessão revogada/expirada (TA11.4) -> limpa storage e avisa a UI.
+ * - 403: bloqueio por sigilo clínico/LGPD (TA11.2) -> abre o aviso de acesso negado.
+ */
+export function tratarStatusGlobal(status: number, problema: Pick<ApiProblem, 'detail'>, input = ''): void {
+  if (status === 401 && !ehRotaLogin(input)) {
+    // Só encerra se ainda há sessão: evita avisos duplicados em requisições paralelas.
+    if (lerSessao()) {
+      encerrarSessao(problema.detail || 'Sua sessão foi encerrada. Faça login novamente.');
+    }
+  } else if (status === 403) {
+    notificarAcessoNegado(problema.detail);
+  }
+}
+
+/**
  * fetch que lança ApiProblem para falha de rede e para qualquer resposta
- * não-2xx. Respostas 2xx são devolvidas ao chamador.
+ * não-2xx, injeta o Bearer token da sessão e aplica o tratamento global 401/403.
+ * Respostas 2xx são devolvidas ao chamador.
  */
 export async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers);
+  const token = obterToken();
+  if (token && !headers.has('Authorization') && !ehRotaLogin(input)) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   let res: Response;
   try {
-    res = await fetch(resolveApiUrl(input), init);
+    res = await fetch(resolveApiUrl(input), { ...init, headers });
   } catch {
     throw problemaRede();
   }
   if (!res.ok) {
-    throw await lerProblema(res);
+    const problema = await lerProblema(res, input);
+    tratarStatusGlobal(res.status, problema, input);
+    throw problema;
   }
   return res;
 }

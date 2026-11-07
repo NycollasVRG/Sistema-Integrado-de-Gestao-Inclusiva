@@ -1,4 +1,5 @@
 import { obterTokenGestao } from './authGestaoEstudantes';
+import { tratarStatusGlobal } from './apiClient';
 import type {
   DadosEstudanteFormulario,
   EstudanteResumo,
@@ -97,6 +98,7 @@ async function requisitar<T>(
         else if (typeof detalhes.title === 'string' && detalhes.title.trim()) mensagem = detalhes.title;
       }
     } catch { /* API pode responder sem JSON. */ }
+    tratarStatusGlobal(resposta.status, { detail: mensagem });
     throw new ErroApiAlunos(resposta.status, mensagem);
   }
 
