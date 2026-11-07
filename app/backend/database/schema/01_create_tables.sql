@@ -5,15 +5,16 @@
 -- =============================================================================
 -- Ordem lógica de criação respeitando integridade referencial (Foreign Keys):
 --   1. sigi.usuario                 (US 11 - Autenticação, RBAC e Sessão)
---   2. sigi.aluno                   (Base - Cadastro de Estudantes)
+--   2. sigi.aluno                   (US 12 - Cadastro de Estudantes)
 --   3. sigi.indicador_reutilizavel  (US 02 - Tags de Dificuldades/Necessidades)
---   4. sigi.estudo_de_caso          (US 02 / US 11 - Estudo de Caso e Histórico Sensível)
---   5. sigi.estudo_caso_indicador   (US 02 - Relacionamento N:M Estudo <-> Indicador)
---   6. sigi.acompanhamento          (US 03 - Ponte Aluno <-> Documentos Pedagógicos)
---   7. sigi.plano_acao              (US 03 - Plano de Ação)
---   8. sigi.pei                     (US 03 - Plano de Ensino Individualizado)
---   9. sigi.pea                     (US 03 - Plano de Ensino Adaptado)
---  10. sigi.anexo_estudante         (US 11 - Anexos e Laudos Criptografados AES-256-GCM)
+--   4. sigi.aluno_tag_dificuldade   (US 12 - Relacionamento N:M Aluno <-> Tags)
+--   5. sigi.estudo_de_caso          (US 02 / US 11 - Estudo de Caso e Histórico Sensível)
+--   6. sigi.estudo_caso_indicador   (US 02 - Relacionamento N:M Estudo <-> Indicador)
+--   7. sigi.acompanhamento          (US 03 - Ponte Aluno <-> Documentos Pedagógicos)
+--   8. sigi.plano_acao              (US 03 - Plano de Ação)
+--   9. sigi.pei                     (US 03 - Plano de Ensino Individualizado)
+--  10. sigi.pea                     (US 03 - Plano de Ensino Adaptado)
+--  11. sigi.anexo_estudante         (US 11 - Anexos e Laudos Criptografados AES-256-GCM)
 -- =============================================================================
 
 -- 0. Garantia do Schema
@@ -49,6 +50,10 @@ CREATE TABLE IF NOT EXISTS sigi.aluno (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nome VARCHAR(255) NOT NULL,
     matricula VARCHAR(50) UNIQUE NOT NULL,
+    curso VARCHAR(100),
+    turma VARCHAR(50),
+    status VARCHAR(20) NOT NULL DEFAULT 'ATIVO', -- Enum StatusAluno: ATIVO, EM_TRIAGEM, INATIVO, EVADIDO
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,         -- Inativação lógica de negócio (US 12)
     -- Campos herdados de BaseEntity (@SoftDelete e Auditoria JPA)
     deleted BOOLEAN NOT NULL DEFAULT FALSE,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -74,7 +79,17 @@ CREATE TABLE IF NOT EXISTS sigi.indicador_reutilizavel (
 );
 
 -- =============================================================================
--- 4. Entidade: EstudoDeCaso (com.br.CLAI.domain.EstudoDeCaso)
+-- 4. Tabela Associativa N:M: aluno_tag_dificuldade
+-- US 12: @ManyToMany entre Aluno e IndicadorReutilizavel (Tags de Dificuldade)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS sigi.aluno_tag_dificuldade (
+    aluno_id UUID NOT NULL REFERENCES sigi.aluno(id) ON DELETE CASCADE,
+    indicador_id UUID NOT NULL REFERENCES sigi.indicador_reutilizavel(id) ON DELETE CASCADE,
+    PRIMARY KEY (aluno_id, indicador_id)
+);
+
+-- =============================================================================
+-- 5. Entidade: EstudoDeCaso (com.br.CLAI.domain.EstudoDeCaso)
 -- US 02 / US 09 / US 11 (Task #52 - Matriz de Autorização Granular TA11.3)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS sigi.estudo_de_caso (
@@ -93,7 +108,7 @@ CREATE TABLE IF NOT EXISTS sigi.estudo_de_caso (
 );
 
 -- =============================================================================
--- 5. Tabela Associativa N:M: estudo_caso_indicador
+-- 6. Tabela Associativa N:M: estudo_caso_indicador
 -- US 02: @ManyToMany entre EstudoDeCaso e IndicadorReutilizavel
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS sigi.estudo_caso_indicador (
@@ -103,7 +118,7 @@ CREATE TABLE IF NOT EXISTS sigi.estudo_caso_indicador (
 );
 
 -- =============================================================================
--- 6. Entidade: Acompanhamento (com.br.CLAI.domain.Acompanhamento)
+-- 7. Entidade: Acompanhamento (com.br.CLAI.domain.Acompanhamento)
 -- US 03: Entidade ponte entre Aluno e os documentos pedagógicos (PlanoAcao, PEI, PEA)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS sigi.acompanhamento (
@@ -119,7 +134,7 @@ CREATE TABLE IF NOT EXISTS sigi.acompanhamento (
 );
 
 -- =============================================================================
--- 7. Entidade: PlanoAcao (com.br.CLAI.domain.PlanoAcao)
+-- 8. Entidade: PlanoAcao (com.br.CLAI.domain.PlanoAcao)
 -- US 03: Documento autônomo de Plano de Ação vinculado ao Acompanhamento
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS sigi.plano_acao (
@@ -136,7 +151,7 @@ CREATE TABLE IF NOT EXISTS sigi.plano_acao (
 );
 
 -- =============================================================================
--- 8. Entidade: Pei (com.br.CLAI.domain.Pei)
+-- 9. Entidade: Pei (com.br.CLAI.domain.Pei)
 -- US 03 / US 09: Plano de Ensino Individualizado
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS sigi.pei (
@@ -153,7 +168,7 @@ CREATE TABLE IF NOT EXISTS sigi.pei (
 );
 
 -- =============================================================================
--- 9. Entidade: Pea (com.br.CLAI.domain.Pea)
+-- 10. Entidade: Pea (com.br.CLAI.domain.Pea)
 -- US 03 / US 09: Plano de Ensino Adaptado (também compõe os anexos do PEI em TA3.2)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS sigi.pea (
@@ -172,7 +187,7 @@ CREATE TABLE IF NOT EXISTS sigi.pea (
 );
 
 -- =============================================================================
--- 10. Entidade: AnexoEstudante (com.br.CLAI.domain.AnexoEstudante)
+-- 11. Entidade: AnexoEstudante (com.br.CLAI.domain.AnexoEstudante)
 -- US 11 / Task #51: Criptografia em Repouso (AES-256-GCM) para Anexos Sensíveis
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS sigi.anexo_estudante (
