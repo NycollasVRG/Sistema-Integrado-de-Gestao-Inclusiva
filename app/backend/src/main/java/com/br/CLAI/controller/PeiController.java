@@ -1,6 +1,5 @@
 package com.br.CLAI.controller;
 
-import com.br.CLAI.domain.Usuario;
 import com.br.CLAI.dto.request.PeiRequestDTO;
 import com.br.CLAI.dto.request.PeiUpdateDTO;
 import com.br.CLAI.dto.response.PeaResponseDTO;
@@ -13,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -71,9 +71,9 @@ public class PeiController {
     @PostMapping
     public ResponseEntity<PeiResponseDTO> criar(
             @Valid @RequestBody PeiRequestDTO dto,
-            @AuthenticationPrincipal Usuario usuarioAutenticado) {
+            @AuthenticationPrincipal Jwt jwtAutenticado) {
 
-        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(usuarioAutenticado);
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(jwtAutenticado);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(service.criar(dto, usuarioId));
@@ -83,9 +83,9 @@ public class PeiController {
     public ResponseEntity<PeiResponseDTO> atualizar(
             @PathVariable UUID id,
             @Valid @RequestBody PeiUpdateDTO dto,
-            @AuthenticationPrincipal Usuario usuarioAutenticado) {
+            @AuthenticationPrincipal Jwt jwtAutenticado) {
 
-        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(usuarioAutenticado);
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(jwtAutenticado);
         return ResponseEntity.ok(service.atualizar(id, dto, usuarioId));
     }
 
@@ -93,9 +93,9 @@ public class PeiController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> inativar(
             @PathVariable UUID id,
-            @AuthenticationPrincipal Usuario usuarioAutenticado) {
+            @AuthenticationPrincipal Jwt jwtAutenticado) {
 
-        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(usuarioAutenticado);
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(jwtAutenticado);
         service.inativar(id, usuarioId);
 
         return ResponseEntity.noContent().build();

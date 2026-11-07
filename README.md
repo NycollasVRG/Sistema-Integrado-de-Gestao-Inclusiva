@@ -83,15 +83,16 @@ Todas as versões abaixo foram extraídas com precisão dos arquivos de configur
 
 > [!TIP]
 > **Execução Rápida com Docker (Recomendado — Task #46):**
-> Você pode subir todo o ambiente de forma 100% isolada e com um único comando na raiz do projeto:
+> Você pode subir o ambiente de forma 100% isolada e com um único comando na raiz do projeto:
 > ```bash
-> # Linux / macOS
-> cp .env.example .env && docker compose up -d --build
+> # Ambiente de Desenvolvimento (padrão):
+> cp .env.example .env && docker compose -f docker-compose.dev.yml up -d --build
+> # (ou simplesmente: docker compose up -d --build)
 >
-> # Windows (PowerShell)
-> Copy-Item .env.example .env; docker compose up -d --build
+> # Ambiente de Produção:
+> cp .env.example .env && docker compose -f docker-compose.prd.yml up -d --build
 > ```
-> Para instruções completas de arquitetura, conexão via DBeaver, comandos do dia a dia e *troubleshooting*, consulte o [**Guia de Execução com Docker (`DOCKER_GUIDE.md`)**](file:///DOCKER_GUIDE.md).
+> Para instruções completas de arquitetura, perfis Spring Boot (`dev` e `prd`), conexão via DBeaver e *troubleshooting*, consulte o [**Guia de Execução com Docker (`DOCKER_GUIDE.md`)**](file:///DOCKER_GUIDE.md).
 
 ### Pré-requisitos (Execução Tradicional / Local)
 Certifique-se de ter os seguintes componentes instalados no seu ambiente:

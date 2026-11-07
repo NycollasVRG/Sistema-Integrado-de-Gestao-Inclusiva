@@ -6,7 +6,7 @@ import com.br.CLAI.domain.enums.Role;
 import com.br.CLAI.dto.request.LoginRequestDTO;
 import com.br.CLAI.dto.response.LoginResponseDTO;
 import com.br.CLAI.repository.UsuarioRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -40,14 +41,22 @@ public class AuthRevocationIntegrationTest {
     @Autowired(required = false)
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    @Autowired
+    @MockitoBean
     private UsuarioRepository usuarioRepository;
+
+    @MockitoBean
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
     private JwtService jwtService;
+
+    @Autowired
+    private org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
+
+    private final java.util.Map<UUID, Usuario> bancoUsuarios = new java.util.concurrent.ConcurrentHashMap<>();
 
     private Usuario adminUser;
     private Usuario alunoApoiadorUser;
@@ -59,39 +68,54 @@ public class AuthRevocationIntegrationTest {
                 .apply(SecurityMockMvcConfigurers.springSecurity())
                 .build();
 
-        // Garantir que os usuários de teste estejam com estado limpo antes de cada teste
-        adminUser = usuarioRepository.findByEmail("admin.test@sigi.ifpb.edu.br")
-                .orElseGet(() -> {
-                    Usuario novo = new Usuario(
-                            "Admin Teste",
-                            "admin.test@sigi.ifpb.edu.br",
-                            passwordEncoder.encode("senha123"),
-                            Role.ADMIN,
-                            NivelRestricao.SUPER_RESTRICAO,
-                            true
-                    );
-                    novo.setAcessoAtivo(true);
-                    novo.setTokenVersion(1);
-                    return usuarioRepository.save(novo);
+        bancoUsuarios.clear();
+
+        org.mockito.Mockito.lenient().when(usuarioRepository.save(org.mockito.ArgumentMatchers.any(Usuario.class)))
+                .thenAnswer(inv -> {
+                    Usuario u = inv.getArgument(0);
+                    if (u.getId() == null) {
+                        u.setId(UUID.randomUUID());
+                    }
+                    bancoUsuarios.put(u.getId(), u);
+                    return u;
                 });
+
+        org.mockito.Mockito.lenient().when(usuarioRepository.findById(org.mockito.ArgumentMatchers.any(UUID.class)))
+                .thenAnswer(inv -> {
+                    UUID id = inv.getArgument(0);
+                    return java.util.Optional.ofNullable(bancoUsuarios.get(id));
+                });
+
+        org.mockito.Mockito.lenient().when(usuarioRepository.findByEmail(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(inv -> {
+                    String email = inv.getArgument(0);
+                    return bancoUsuarios.values().stream()
+                            .filter(u -> email.equals(u.getEmail()))
+                            .findFirst();
+                });
+
+        adminUser = new Usuario(
+                "Admin Teste",
+                "admin.test@sigi.ifpb.edu.br",
+                passwordEncoder.encode("senha123"),
+                Role.ADMIN,
+                NivelRestricao.SUPER_RESTRICAO,
+                true
+        );
+        adminUser.setId(UUID.randomUUID());
         adminUser.setAcessoAtivo(true);
         adminUser.setTokenVersion(1);
         usuarioRepository.save(adminUser);
 
-        alunoApoiadorUser = usuarioRepository.findByEmail("aluno.test@sigi.ifpb.edu.br")
-                .orElseGet(() -> {
-                    Usuario novo = new Usuario(
-                            "Aluno Apoiador Teste",
-                            "aluno.test@sigi.ifpb.edu.br",
-                            passwordEncoder.encode("senha123"),
-                            Role.ALUNO_APOIADOR,
-                            NivelRestricao.ACESSO_FUNCIONAL,
-                            false
-                    );
-                    novo.setAcessoAtivo(true);
-                    novo.setTokenVersion(1);
-                    return usuarioRepository.save(novo);
-                });
+        alunoApoiadorUser = new Usuario(
+                "Aluno Apoiador Teste",
+                "aluno.test@sigi.ifpb.edu.br",
+                passwordEncoder.encode("senha123"),
+                Role.ALUNO_APOIADOR,
+                NivelRestricao.ACESSO_FUNCIONAL,
+                false
+        );
+        alunoApoiadorUser.setId(UUID.randomUUID());
         alunoApoiadorUser.setAcessoAtivo(true);
         alunoApoiadorUser.setTokenVersion(1);
         usuarioRepository.save(alunoApoiadorUser);
@@ -120,12 +144,13 @@ public class AuthRevocationIntegrationTest {
 
         String token = loginResponse.token();
 
-        // Validar claims no payload do token JWT
-        assertEquals("ADMIN", jwtService.extrairRole(token));
-        assertEquals("SUPER_RESTRICAO", jwtService.extrairNivelRestricao(token));
-        assertTrue(jwtService.extrairAutorizacaoSaude(token));
-        assertEquals(1, jwtService.extrairTokenVersion(token));
-        assertEquals("admin.test@sigi.ifpb.edu.br", jwtService.extrairEmail(token));
+        // Validar claims no payload do token JWT via JwtDecoder do OAuth2 Resource Server
+        org.springframework.security.oauth2.jwt.Jwt jwt = jwtDecoder.decode(token);
+        assertEquals("ADMIN", jwt.getClaimAsString("role"));
+        assertEquals("SUPER_RESTRICAO", jwt.getClaimAsString("nivelRestricao"));
+        assertTrue(jwt.getClaimAsBoolean("autorizacaoSaude"));
+        assertEquals(1, ((Number) jwt.getClaim("tokenVersion")).intValue());
+        assertEquals("admin.test@sigi.ifpb.edu.br", jwt.getSubject());
 
         // Validar que o SecurityContextHolder carrega o usuário e as authorities correspondentes
         mockMvc.perform(get("/api/auth/me")

@@ -77,35 +77,54 @@ Abra o terminal na **raiz do repositório** e copie o modelo:
 > [!NOTE]
 > O arquivo `.env` contém valores padrão ideais para desenvolvimento local. Você só precisa alterá-lo caso queira mudar portas ou credenciais.
 
-### Passo 2 — Subir toda a aplicação com um único comando
-Na **raiz do repositório**, execute:
+### Passo 2 — Subir a aplicação conforme o ambiente desejado
+
+#### 💻 Ambiente de Desenvolvimento (`dev`)
+Utiliza `SPRING_PROFILES_ACTIVE=dev`, expõe as portas de banco (5432) e backend (8080) e carrega massas de dados de teste (seeds):
 
 ```bash
+# Execução direta com o compose de desenvolvimento:
+docker compose -f docker-compose.dev.yml up -d --build
+
+# Ou utilizando o compose padrão (retrocompatível):
 docker compose up -d --build
+```
+
+#### 🔒 Ambiente de Produção (`prd`)
+Utiliza `SPRING_PROFILES_ACTIVE=prd`, fail-fast estrito de segredos, isolamento total das portas de banco/API na rede interna e carrega apenas DDL estrutural:
+
+```bash
+# Certifique-se de preencher as variáveis obrigatórias no .env antes de executar:
+docker compose -f docker-compose.prd.yml up -d --build
 ```
 
 O Docker realizará:
 1. O download das imagens base (`postgres`, `eclipse-temurin`, `node`, `nginx`).
 2. O build multi-stage do Backend (Maven compila o `.jar` e gera imagem JRE enxuta).
 3. O build multi-stage do Frontend (TypeScript compila o bundle estático e Nginx é configurado).
-4. A inicialização automática do banco com criação do schema `sigi`, tabelas e dados iniciais de teste (seed).
+4. A inicialização automática do banco com criação do schema `sigi`, tabelas estruturais e (em dev) dados iniciais de teste (seeds).
 5. Os *healthchecks* aguardam a prontidão de cada dependência antes de liberar o próximo serviço.
 
 ### Passo 3 — Verificar a saúde dos containers
 ```bash
-docker compose ps
+# Para desenvolvimento:
+docker compose -f docker-compose.dev.yml ps
+
+# Para produção:
+docker compose -f docker-compose.prd.yml ps
 ```
 Você verá os 3 serviços com status **`Up (healthy)`**:
 ```text
-NAME            IMAGE               STATUS
-sigi-backend    ...-backend:latest  Up (healthy)
-sigi-db         postgres:16-alpine  Up (healthy)
-sigi-frontend   ...-frontend:latest Up (healthy)
+NAME                IMAGE               STATUS
+sigi-backend-dev    ...-backend:latest  Up (healthy)
+sigi-db-dev         postgres:16-alpine  Up (healthy)
+sigi-frontend-dev   ...-frontend:latest Up (healthy)
 ```
 
 Pronto! Acesse:
-* 🌐 **Frontend:** [http://localhost:5173](http://localhost:5173)
-* ⚙️ **API REST / Actuator:** [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+* 🌐 **Frontend:** [http://localhost:5173](http://localhost:5173) (ou porta 80 em produção)
+* ⚙️ **API REST / Actuator (DEV):** [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+
 
 ---
 

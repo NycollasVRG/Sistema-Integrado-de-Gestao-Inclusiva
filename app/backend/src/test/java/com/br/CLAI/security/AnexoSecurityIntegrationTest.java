@@ -93,9 +93,8 @@ class AnexoSecurityIntegrationTest {
         bancoAnexosSimulado.clear();
         bancoUsuariosSimulado.clear();
 
-        jwtService = new JwtService();
-        ReflectionTestUtils.setField(jwtService, "jwtSecret", TEST_JWT_SECRET);
-        ReflectionTestUtils.setField(jwtService, "jwtExpirationMs", 28800000L);
+        SecurityConfig securityConfig = new SecurityConfig(TEST_JWT_SECRET);
+        jwtService = new JwtService(securityConfig.jwtEncoder(), 28800000L);
 
         cryptoStorageService = new CryptoStorageService(TEST_AES_KEY, tempVolumeDir.toString());
         anexoEstudanteService = new AnexoEstudanteService(
@@ -104,13 +103,23 @@ class AnexoSecurityIntegrationTest {
                 cryptoStorageService
         );
 
-        JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
+        org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider jwtAuthProvider =
+                new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider(
+                        securityConfig.jwtDecoder(usuarioRepository)
+                );
+        jwtAuthProvider.setJwtAuthenticationConverter(securityConfig.jwtAuthenticationConverter());
+        org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter bearerFilter =
+                new org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter(
+                        new org.springframework.security.authentication.ProviderManager(jwtAuthProvider)
+                );
+        bearerFilter.setAuthenticationEntryPoint(securityConfig.authenticationEntryPoint());
+
         AnexoEstudanteController controller = new AnexoEstudanteController(anexoEstudanteService);
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
-                .addFilters(jwtAuthenticationFilter)
+                .addFilters(bearerFilter)
                 .build();
 
         estudanteId = UUID.fromString("99999999-8888-7777-6666-555555555555");

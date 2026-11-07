@@ -85,9 +85,8 @@ class ProjecaoSensivelJsonIntegrationTest {
         SecurityContextHolder.clearContext();
         bancoUsuariosSimulado.clear();
 
-        jwtService = new JwtService();
-        ReflectionTestUtils.setField(jwtService, "jwtSecret", TEST_JWT_SECRET);
-        ReflectionTestUtils.setField(jwtService, "jwtExpirationMs", 28800000L);
+        SecurityConfig securityConfig = new SecurityConfig(TEST_JWT_SECRET);
+        jwtService = new JwtService(securityConfig.jwtEncoder(), 28800000L);
 
         rbacGuard = new RbacGuard();
 
@@ -114,12 +113,21 @@ class ProjecaoSensivelJsonIntegrationTest {
         EstudoDeCasoController estudoController = new EstudoDeCasoController(estudoDeCasoService);
         ProntuarioController prontuarioController = new ProntuarioController(prontuarioService);
 
-        JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService, usuarioRepository);
+        org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider jwtAuthProvider =
+                new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider(
+                        securityConfig.jwtDecoder(usuarioRepository)
+                );
+        jwtAuthProvider.setJwtAuthenticationConverter(securityConfig.jwtAuthenticationConverter());
+        org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter bearerFilter =
+                new org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter(
+                        new org.springframework.security.authentication.ProviderManager(jwtAuthProvider)
+                );
+        bearerFilter.setAuthenticationEntryPoint(securityConfig.authenticationEntryPoint());
 
         mockMvc = MockMvcBuilders.standaloneSetup(estudoController, prontuarioController)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
-                .addFilters(jwtFilter)
+                .addFilters(bearerFilter)
                 .build();
 
         alunoId = UUID.fromString("11111111-2222-3333-4444-555555555555");

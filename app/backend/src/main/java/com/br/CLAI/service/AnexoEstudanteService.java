@@ -11,8 +11,7 @@ import com.br.CLAI.exception.NaoEncontradoException;
 import com.br.CLAI.exception.RegraDeNegocioException;
 import com.br.CLAI.repository.AlunoRepository;
 import com.br.CLAI.repository.AnexoEstudanteRepository;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.br.CLAI.security.RbacGuard;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,6 +33,7 @@ public class AnexoEstudanteService {
     private final AnexoEstudanteRepository anexoEstudanteRepository;
     private final AlunoRepository alunoRepository;
     private final CryptoStorageService cryptoStorageService;
+    private final RbacGuard rbacGuard = new RbacGuard();
 
     public AnexoEstudanteService(
             AnexoEstudanteRepository anexoEstudanteRepository,
@@ -112,6 +112,12 @@ public class AnexoEstudanteService {
      * e executando a descriptografia exclusivamente em memória (RAM).
      */
     @Transactional(readOnly = true)
+    public AnexoDownloadPayload downloadAnexo(UUID anexoId, org.springframework.security.oauth2.jwt.Jwt jwtAutenticado) {
+        Usuario usuario = jwtAutenticado != null ? rbacGuard.converterJwtParaUsuario(jwtAutenticado) : null;
+        return downloadAnexo(anexoId, usuario);
+    }
+
+    @Transactional(readOnly = true)
     public AnexoDownloadPayload downloadAnexo(UUID anexoId, Usuario usuarioAutenticado) {
         AnexoEstudante anexo = anexoEstudanteRepository.findById(anexoId)
                 .orElseThrow(() -> new NaoEncontradoException("Anexo não encontrado com o ID: " + anexoId));
@@ -156,11 +162,7 @@ public class AnexoEstudanteService {
         if (usuarioParametro != null) {
             return usuarioParametro;
         }
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof Usuario u) {
-            return u;
-        }
-        return null;
+        return rbacGuard.getUsuarioAutenticado().orElse(null);
     }
 
     @Transactional(readOnly = true)
