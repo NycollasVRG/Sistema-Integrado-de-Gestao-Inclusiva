@@ -163,7 +163,7 @@ export const PainelAdminUsuarios: React.FC<PainelAdminUsuariosProps> = ({ onNoti
       {/* Cards de Resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs flex items-center space-x-4">
-          <div className="p-3 bg-blue-50 text-blue-700 rounded-lg">
+          <div className="p-3 bg-ifpb-tealLight text-ifpb-teal rounded-lg">
             <Users className="w-6 h-6" />
           </div>
           <div>
@@ -407,8 +407,17 @@ export const PainelAdminUsuarios: React.FC<PainelAdminUsuariosProps> = ({ onNoti
                           <button
                             type="button"
                             onClick={() => setUsuarioParaRevogar(usuario)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 shadow-2xs transition-colors cursor-pointer"
-                            title="Revogar credenciais e invalidar sessões"
+                            disabled={ehProprioUsuario}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                              ehProprioUsuario
+                                ? 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed opacity-60'
+                                : 'text-red-700 bg-red-50 hover:bg-red-100 border-red-200 shadow-xs cursor-pointer'
+                            }`}
+                            title={
+                              ehProprioUsuario
+                                ? 'Não é permitido revogar o próprio acesso'
+                                : 'Revogar credenciais e invalidar sessões'
+                            }
                           >
                             <UserX className="w-3.5 h-3.5 text-red-600" />
                             Revogar Acesso

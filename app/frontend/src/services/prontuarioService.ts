@@ -63,8 +63,7 @@ export class ProntuarioService {
    * Utiliza a API real (/api/estudos-de-caso) com fallback local já configurado em EstudoDeCasoService.
    */
   static async criarEstudoRapido(
-    dto: NovoEstudoRapidoRequestDTO,
-    usuarioId?: string
+    dto: NovoEstudoRapidoRequestDTO
   ): Promise<EstudoDeCasoResponseDTO> {
     if (!dto.alunoId) {
       const problem: ProblemDetailRFC9457 = {
@@ -75,15 +74,12 @@ export class ProntuarioService {
       throw problem;
     }
 
-    return EstudoDeCasoService.criar(
-      {
-        alunoId: dto.alunoId,
-        status: dto.status,
-        diagnosticoInicial: dto.diagnosticoInicial,
-        indicadoresIds: dto.indicadoresIds,
-      },
-      usuarioId
-    );
+    return EstudoDeCasoService.criar({
+      alunoId: dto.alunoId,
+      status: dto.status,
+      diagnosticoInicial: dto.diagnosticoInicial,
+      indicadoresIds: dto.indicadoresIds,
+    });
   }
 
   /**

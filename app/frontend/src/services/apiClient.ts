@@ -94,11 +94,24 @@ async function lerProblema(res: Response, input = ''): Promise<ApiProblem> {
  */
 export function resolveApiUrl(input: string): string {
   if (/^https?:\/\//i.test(input)) return input;
-  if (!API_URL || API_URL === '/api') return input;
-  if (API_URL.endsWith('/api') && input.startsWith('/api/')) {
-    return `${API_URL}${input.slice(4)}`;
+  const cleanInput = input.startsWith('/') ? input : `/${input}`;
+
+  if (!API_URL || API_URL === '/api') {
+    return cleanInput.startsWith('/api/') || cleanInput === '/api'
+      ? cleanInput
+      : `/api${cleanInput}`;
   }
-  return `${API_URL}${input.startsWith('/') ? input : `/${input}`}`;
+
+  const base = API_URL.replace(/\/+$/, '');
+  if (base.endsWith('/api')) {
+    return cleanInput.startsWith('/api/')
+      ? `${base}${cleanInput.slice(4)}`
+      : `${base}${cleanInput}`;
+  }
+
+  return cleanInput.startsWith('/api/')
+    ? `${base}${cleanInput}`
+    : `${base}/api${cleanInput}`;
 }
 
 /**

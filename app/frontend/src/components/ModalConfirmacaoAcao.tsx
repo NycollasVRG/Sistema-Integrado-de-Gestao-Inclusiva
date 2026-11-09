@@ -4,6 +4,7 @@ import {
   FileDown,
   FileSpreadsheet,
   Info,
+  RotateCw,
 } from 'lucide-react';
 import { ModalBase } from './ModalBase';
 import { ModalAlunoHeader } from './ModalAlunoHeader';
@@ -115,7 +116,11 @@ export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
             disabled={isSubmitting}
             className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-lg text-xs font-bold text-white bg-ifpb-teal hover:bg-ifpb-tealHover shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <CheckCircle2 className="w-4 h-4" />
+            {isSubmitting ? (
+              <RotateCw className="w-4 h-4 animate-spin text-white" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4" />
+            )}
             <span>
               {isSubmitting
                 ? 'Gerando documento...'
@@ -135,9 +140,9 @@ export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
         onSubmit={handleConfirmar}
         className="space-y-4"
       >
-        <div className="bg-blue-50/70 border border-blue-200 rounded-lg p-3.5 flex items-start space-x-2.5">
-          <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-900 leading-relaxed">
+        <div className="bg-ifpb-tealLight/60 border border-ifpb-teal/20 rounded-lg p-3.5 flex items-start space-x-2.5">
+          <Info className="w-4 h-4 text-ifpb-teal shrink-0 mt-0.5" />
+          <p className="text-xs text-ifpb-dark leading-relaxed">
             {isRae
               ? 'O RAE consolida os atendimentos realizados pela equipe multidisciplinar no período selecionado para fins de registro pedagógico institucional.'
               : 'O Dossiê reúne em documento único a Linha do Tempo completa, o Estudo de Caso, o PEI e os registros de atendimento do estudante.'}

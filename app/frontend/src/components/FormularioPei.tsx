@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import type { Aluno, IndicadorReutilizavel } from '../types/estudoDeCaso';
 import type { PeiResponseDTO } from '../types/pei';
-import { ArrowLeft, Save, Lock, Info, AlertTriangle, ClipboardList, Tag } from 'lucide-react';
+import { ArrowLeft, Save, Lock, Info, AlertTriangle, ClipboardList, Tag, RotateCw } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface FormularioPeiProps {
   aluno: Aluno;
@@ -53,6 +54,7 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
   const [erroHabilidades, setErroHabilidades] = useState<string | null>(null);
   const [erroPropostas, setErroPropostas] = useState<string | null>(null);
   const [tentouSalvar, setTentouSalvar] = useState<boolean>(false);
+  const [confirmarSaida, setConfirmarSaida] = useState<boolean>(false);
 
   useEffect(() => {
     setHabilidades(peiExistente?.habilidadesInteresses || '');
@@ -98,10 +100,8 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
 
   const handleVoltar = () => {
     if (isDirty) {
-      const confirmar = window.confirm(
-        'Existem alterações não salvas no PEI. Deseja realmente sair e descartar as alterações?'
-      );
-      if (!confirmar) return;
+      setConfirmarSaida(true);
+      return;
     }
     onVoltar();
   };
@@ -264,11 +264,30 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
             disabled={isLoading}
             className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg text-xs font-bold text-white bg-ifpb-teal hover:bg-ifpb-tealHover focus:outline-none focus:ring-2 focus:ring-ifpb-teal/40 shadow-sm transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4 mr-1.5 text-green-300" />
-            {peiExistente ? 'Atualizar PEI' : 'Salvar PEI'}
+            {isLoading ? (
+              <RotateCw className="w-4 h-4 mr-1.5 text-green-300 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-1.5 text-green-300" />
+            )}
+            {isLoading ? 'Salvando...' : peiExistente ? 'Atualizar PEI' : 'Salvar PEI'}
           </button>
         </div>
       </form>
+
+      {confirmarSaida && (
+        <ConfirmModal
+          titulo="Descartar alterações?"
+          mensagem="Existem alterações não salvas no PEI. Deseja realmente sair e descartar as alterações?"
+          textoConfirmar="Descartar e Sair"
+          textoCancelar="Continuar Editando"
+          variante="perigo"
+          onConfirmar={() => {
+            setConfirmarSaida(false);
+            onVoltar();
+          }}
+          onCancelar={() => setConfirmarSaida(false)}
+        />
+      )}
     </div>
   );
 };

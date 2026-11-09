@@ -48,6 +48,25 @@ export function ModalEstudante({ aberto, estudante, tagsDisponiveis, carregandoT
     setErro('');
   }, [aberto, estudante, tagsDisponiveis]);
 
+  useEffect(() => {
+    if (!aberto) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !salvando) {
+        aoFechar();
+      }
+    };
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [aberto, salvando, aoFechar]);
+
   if (!aberto) return null;
 
   const titulo = estudante ? 'Editar estudante' : 'Novo estudante';
@@ -110,35 +129,42 @@ export function ModalEstudante({ aberto, estudante, tagsDisponiveis, carregandoT
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="presentation">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-[1px] transition-opacity"
+        onClick={() => {
+          if (!salvando) aoFechar();
+        }}
+        aria-hidden="true"
+      />
       <section role="dialog" aria-modal="true" aria-labelledby="titulo-modal-estudante"
-        className="w-full max-w-xl max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-xl p-6 space-y-5">
+        className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-xl p-6 space-y-5 z-10">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 id="titulo-modal-estudante" className="text-xl font-bold text-[#0F6460]">{titulo}</h2>
+            <h2 id="titulo-modal-estudante" className="text-xl font-bold text-ifpb-teal">{titulo}</h2>
             <p className="text-sm text-gray-600 mt-1">Campos marcados com * são obrigatórios.</p>
           </div>
           <button type="button" onClick={aoFechar} disabled={salvando} aria-label="Fechar formulário"
-            className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50"><X className="w-5 h-5" /></button>
+            className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 cursor-pointer"><X className="w-5 h-5" /></button>
         </div>
 
         <form className="space-y-4" onSubmit={salvar} noValidate>
           <label className="block text-sm font-medium text-gray-700">Nome completo *
             <input value={dados.nomeCompleto} required maxLength={255} onChange={(e) => alterarCampo('nomeCompleto', e.target.value)}
-              className="block mt-1 w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Nome do estudante" />
+              className="block mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal" placeholder="Nome do estudante" />
           </label>
           <label className="block text-sm font-medium text-gray-700">Matrícula *
             <input value={dados.matricula} required maxLength={50} onChange={(e) => alterarCampo('matricula', e.target.value)}
-              className="block mt-1 w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Ex.: 20260001" />
+              className="block mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal" placeholder="Ex.: 20260001" />
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block text-sm font-medium text-gray-700">Curso *
               <input value={dados.curso} required maxLength={100} onChange={(e) => alterarCampo('curso', e.target.value)}
-                className="block mt-1 w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Ex.: Informática" />
+                className="block mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal" placeholder="Ex.: Informática" />
             </label>
             <label className="block text-sm font-medium text-gray-700">Turma *
               <input value={dados.turma} required maxLength={50} onChange={(e) => alterarCampo('turma', e.target.value)}
-                className="block mt-1 w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Ex.: 2026.1" />
+                className="block mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal" placeholder="Ex.: 2026.1" />
             </label>
           </div>
           {estudante && (
@@ -153,7 +179,7 @@ export function ModalEstudante({ aberto, estudante, tagsDisponiveis, carregandoT
                   }));
                   if (erro) setErro('');
                 }}
-                className="block mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
+                className="block mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal"
               >
                 <option value="ATIVO">Ativo</option>
                 <option value="INATIVO">Inativo</option>
@@ -187,9 +213,9 @@ export function ModalEstudante({ aberto, estudante, tagsDisponiveis, carregandoT
           {erro && <p role="alert" className="rounded-lg bg-red-50 text-red-700 p-3 text-sm">{erro}</p>}
           <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
             <button type="button" onClick={aoFechar} disabled={salvando}
-              className="border border-gray-300 rounded-lg px-4 py-2 text-sm disabled:opacity-50">Cancelar</button>
+              className="border border-gray-300 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50 cursor-pointer">Cancelar</button>
             <button type="submit" disabled={salvando || carregandoTags || tagsValidas.length === 0}
-              className="bg-[#0F6460] text-white font-semibold rounded-lg px-5 py-2 text-sm disabled:opacity-50">
+              className="bg-ifpb-teal hover:bg-ifpb-tealHover text-white font-semibold rounded-lg px-5 py-2 text-sm disabled:opacity-50 cursor-pointer transition-colors">
               {salvando ? 'Salvando...' : 'Salvar'}
             </button>
           </div>

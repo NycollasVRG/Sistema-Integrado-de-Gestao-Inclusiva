@@ -9,7 +9,7 @@ interface TimelineProps {
 }
 
 function getEventIcon(tipo: TimelineEventType) {
-  const baseClasses = "w-5 h-5 text-blue-600";
+  const baseClasses = "w-5 h-5 text-ifpb-teal";
 
   switch (tipo) {
     case "ESTUDO_DE_CASO":
@@ -33,7 +33,7 @@ export function Timeline({ events, loading = false, error = null }: TimelineProp
           Linha do Tempo
         </h2>
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ifpb-teal"></div>
           <span className="ml-3 text-sm text-gray-600">
             Carregando linha do tempo...
           </span>
@@ -89,7 +89,7 @@ export function Timeline({ events, loading = false, error = null }: TimelineProp
         <ul className="space-y-6">
           {events.map((event) => (
             <li key={event.id} className="relative flex items-start">
-              <div className="relative flex items-center justify-center w-10 h-10 bg-blue-50 rounded-full border-2 border-blue-200 z-10">
+              <div className="relative flex items-center justify-center w-10 h-10 bg-ifpb-tealLight rounded-full border-2 border-ifpb-teal/30 z-10">
                 {getEventIcon(event.tipo)}
               </div>
               <TimelineItem event={event} />

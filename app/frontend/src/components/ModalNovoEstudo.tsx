@@ -4,6 +4,7 @@ import {
   Check,
   CheckCircle,
   FilePlus2,
+  RotateCw,
   Save,
   Tag,
 } from 'lucide-react';
@@ -52,6 +53,7 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
   const [erroDiagnostico, setErroDiagnostico] = useState<string | null>(null);
   const [erroIndicadores, setErroIndicadores] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [modoEnvio, setModoEnvio] = useState<'RASCUNHO' | 'ENCERRADO' | null>(null);
 
   const handleFechar = () => {
     if (isSubmitting) return;
@@ -100,6 +102,7 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
       setErroIndicadores(null);
     }
 
+    setModoEnvio(modo);
     setIsSubmitting(true);
     try {
       let resultado: EstudoDeCasoResponseDTO;
@@ -131,6 +134,7 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
       }
     } finally {
       setIsSubmitting(false);
+      setModoEnvio(null);
     }
   };
 
@@ -159,8 +163,12 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
             disabled={isSubmitting}
             className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg text-xs font-bold border border-ifpb-teal text-ifpb-teal bg-white hover:bg-ifpb-tealLight transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4" />
-            <span>Salvar Rascunho</span>
+            {isSubmitting && modoEnvio === 'RASCUNHO' ? (
+              <RotateCw className="w-4 h-4 animate-spin text-ifpb-teal" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            <span>{isSubmitting && modoEnvio === 'RASCUNHO' ? 'Salvando...' : 'Salvar Rascunho'}</span>
           </button>
 
           <button
@@ -169,8 +177,12 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
             disabled={isSubmitting}
             className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-lg text-xs font-bold text-white bg-ifpb-teal hover:bg-ifpb-tealHover shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <CheckCircle className="w-4 h-4" />
-            <span>{isSubmitting ? 'Processando...' : 'Concluir Estudo'}</span>
+            {isSubmitting && modoEnvio === 'ENCERRADO' ? (
+              <RotateCw className="w-4 h-4 animate-spin text-white" />
+            ) : (
+              <CheckCircle className="w-4 h-4" />
+            )}
+            <span>{isSubmitting && modoEnvio === 'ENCERRADO' ? 'Processando...' : 'Concluir Estudo'}</span>
           </button>
         </>
       }

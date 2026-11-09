@@ -226,14 +226,14 @@ poluir o terminal e permitindo que o fallback local do service seja acionado.
 
 | Método | Rota | Método do Service | Cabeçalhos |
 |---|---|---|---|
-| GET | `/api/estudos-de-caso/{id}` | `buscarPorId(id)` | — |
-| GET | `/api/estudos-de-caso/aluno/{alunoId}` | `listarPorAluno(alunoId)` | — |
-| POST | `/api/estudos-de-caso` | `criar(dto, usuarioId?)` | `Content-Type`, `X-User-Id` |
-| PUT | `/api/estudos-de-caso/{id}` | `atualizar(id, dto, usuarioId?)` | `Content-Type`, `X-User-Id` |
-| DELETE | `/api/estudos-de-caso/{id}` | `excluir(id, usuarioId?)` | `X-User-Id` |
+| GET | `/api/estudos-de-caso/{id}` | `buscarPorId(id)` | `Authorization: Bearer <token>` |
+| GET | `/api/estudos-de-caso/aluno/{alunoId}` | `listarPorAluno(alunoId)` | `Authorization: Bearer <token>` |
+| POST | `/api/estudos-de-caso` | `criar(dto)` | `Content-Type`, `Authorization: Bearer <token>` |
+| PUT | `/api/estudos-de-caso/{id}` | `atualizar(id, dto)` | `Content-Type`, `Authorization: Bearer <token>` |
+| DELETE | `/api/estudos-de-caso/{id}` | `excluir(id)` | `Authorization: Bearer <token>` |
 
-Essas rotas espelham o `EstudoDeCasoController` do backend Spring Boot (`@RequestMapping("/api/estudos-de-caso")`,
-`@CrossOrigin(origins = "*")`). O header `X-User-Id` é opcional no backend (`required = false`).
+Essas rotas espelham o `EstudoDeCasoController` do backend Spring Boot (`@RequestMapping("/api/estudos-de-caso")`).
+A autenticação e identificação do usuário responsável são feitas exclusivamente via token JWT Bearer (`@AuthenticationPrincipal Jwt`).
 
 ### 6.4 Contratos de dados (`src/types/estudoDeCaso.ts`)
 

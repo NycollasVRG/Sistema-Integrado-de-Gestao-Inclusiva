@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { AlertTriangle, CheckCircle2, RotateCw } from 'lucide-react';
 
 export interface ConfirmModalProps {
   titulo: string;
@@ -24,6 +24,23 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 }) => {
   const isPerigo = variante === 'perigo';
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isLoading) {
+        onCancelar();
+      }
+    };
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isLoading, onCancelar]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -31,9 +48,15 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       aria-modal="true"
       aria-labelledby="confirm-modal-title"
     >
-      <div className="absolute inset-0 bg-black/50" />
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-[1px] transition-opacity"
+        onClick={() => {
+          if (!isLoading) onCancelar();
+        }}
+        aria-hidden="true"
+      />
 
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden z-10">
         <div className="px-6 pt-6 pb-4 flex items-start space-x-3">
           <div
             className={`p-2.5 rounded-full shrink-0 ${
@@ -67,13 +90,14 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             type="button"
             onClick={onConfirmar}
             disabled={isLoading}
-            className={`inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-xs font-bold text-white shadow-sm focus:outline-none focus:ring-2 transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+            className={`inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-lg text-xs font-bold text-white shadow-sm focus:outline-none focus:ring-2 transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
               isPerigo
                 ? 'bg-ifpb-red hover:brightness-110 focus:ring-red-300'
                 : 'bg-ifpb-teal hover:bg-ifpb-tealHover focus:ring-ifpb-teal/40'
             }`}
           >
-            {textoConfirmar}
+            {isLoading && <RotateCw className="w-3.5 h-3.5 animate-spin" />}
+            {isLoading ? 'Processando...' : textoConfirmar}
           </button>
         </div>
       </div>
