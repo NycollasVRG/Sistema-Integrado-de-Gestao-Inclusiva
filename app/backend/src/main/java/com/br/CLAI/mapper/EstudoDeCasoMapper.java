@@ -3,52 +3,75 @@ package com.br.CLAI.mapper;
 import com.br.CLAI.domain.EstudoDeCaso;
 import com.br.CLAI.domain.IndicadorReutilizavel;
 import com.br.CLAI.domain.BaseEntity;
+import com.br.CLAI.dto.request.EstudoDeCasoRequestDTO;
+import com.br.CLAI.dto.request.EstudoDeCasoUpdateDTO;
 import com.br.CLAI.dto.response.EstudoDeCasoResponseDTO;
+import com.br.CLAI.security.RbacGuard;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
 public class EstudoDeCasoMapper {
+
+    private final RbacGuard rbacGuard;
+
+    public EstudoDeCasoMapper(RbacGuard rbacGuard) {
+        this.rbacGuard = rbacGuard;
+    }
+
+    public EstudoDeCasoMapper() {
+        this.rbacGuard = new RbacGuard();
+    }
 
     public EstudoDeCasoResponseDTO toResponse(EstudoDeCaso entity) {
         if (entity == null) {
             return null;
         }
 
-        EstudoDeCasoResponseDTO dto = new EstudoDeCasoResponseDTO();
-        dto.setId(entity.getId());
-        
-        if (entity.getAluno() != null) {
-            dto.setAlunoId(entity.getAluno().getId());
-        }
-        
-        dto.setStatus(entity.getStatus());
-        dto.setDiagnosticoInicial(entity.getDiagnosticoInicial());
-        
+        List<java.util.UUID> indicadoresIds = null;
         if (entity.getIndicadores() != null) {
-            dto.setIndicadoresIds(entity.getIndicadores().stream()
+            indicadoresIds = entity.getIndicadores().stream()
                     .map(BaseEntity::getId)
-                    .collect(Collectors.toList()));
+                    .collect(Collectors.toList());
         }
 
-        dto.setCriadoEm(entity.getCriadoEm());
-        dto.setAtualizadoEm(entity.getAtualizadoEm());
+        String historicoFamiliar = null;
+        String historicoSocioemocional = null;
 
-        return dto;
+        // TA11.3: Apenas perfis com Restrição Moderada ou superior visualizam dados socioemocionais/familiares
+        if (rbacGuard != null && rbacGuard.podeAcessarDadosSensiveis()) {
+            historicoFamiliar = entity.getHistoricoFamiliar();
+            historicoSocioemocional = entity.getHistoricoSocioemocional();
+        }
+
+        return new EstudoDeCasoResponseDTO(
+                entity.getId(),
+                entity.getAluno() != null ? entity.getAluno().getId() : null,
+                entity.getStatus(),
+                entity.getDiagnosticoInicial(),
+                historicoFamiliar,
+                historicoSocioemocional,
+                indicadoresIds,
+                entity.getCriadoEm(),
+                entity.getAtualizadoEm()
+        );
     }
 
-    public EstudoDeCaso toEntity(com.br.CLAI.dto.request.EstudoDeCasoRequestDTO dto, 
-                                com.br.CLAI.domain.Aluno aluno, 
-                                java.util.List<IndicadorReutilizavel> indicadores) {
+    public EstudoDeCaso toEntity(EstudoDeCasoRequestDTO dto, 
+                                 com.br.CLAI.domain.Aluno aluno, 
+                                 List<IndicadorReutilizavel> indicadores) {
         if (dto == null) {
             return null;
         }
 
         EstudoDeCaso entidade = new EstudoDeCaso();
         entidade.setAluno(aluno);
-        entidade.setStatus(dto.getStatus());
-        entidade.setDiagnosticoInicial(dto.getDiagnosticoInicial());
+        entidade.setStatus(dto.status());
+        entidade.setDiagnosticoInicial(dto.diagnosticoInicial());
+        entidade.setHistoricoFamiliar(dto.historicoFamiliar());
+        entidade.setHistoricoSocioemocional(dto.historicoSocioemocional());
         if (indicadores != null) {
             entidade.setIndicadores(new java.util.ArrayList<>(indicadores));
         }
@@ -57,14 +80,20 @@ public class EstudoDeCasoMapper {
     }
 
     public void updateEntityFromDto(EstudoDeCaso entidade, 
-                                    com.br.CLAI.dto.request.EstudoDeCasoUpdateDTO dto, 
-                                    java.util.List<IndicadorReutilizavel> indicadores) {
+                                    EstudoDeCasoUpdateDTO dto, 
+                                    List<IndicadorReutilizavel> indicadores) {
         if (entidade == null || dto == null) {
             return;
         }
 
-        entidade.setStatus(dto.getStatus());
-        entidade.setDiagnosticoInicial(dto.getDiagnosticoInicial());
+        entidade.setStatus(dto.status());
+        entidade.setDiagnosticoInicial(dto.diagnosticoInicial());
+        if (dto.historicoFamiliar() != null) {
+            entidade.setHistoricoFamiliar(dto.historicoFamiliar());
+        }
+        if (dto.historicoSocioemocional() != null) {
+            entidade.setHistoricoSocioemocional(dto.historicoSocioemocional());
+        }
         if (indicadores != null) {
             entidade.setIndicadores(new java.util.ArrayList<>(indicadores));
         }

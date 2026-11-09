@@ -2,6 +2,7 @@ package com.br.CLAI.domain;
 
 import com.br.CLAI.domain.enums.StatusEstudoCaso;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +22,12 @@ public class EstudoDeCaso extends BaseEntity {
     @Column(name = "diagnostico_inicial", columnDefinition = "TEXT")
     private String diagnosticoInicial;
 
+    @Column(name = "historico_familiar", columnDefinition = "TEXT")
+    private String historicoFamiliar;
+
+    @Column(name = "historico_socioemocional", columnDefinition = "TEXT")
+    private String historicoSocioemocional;
+
     @ManyToMany
     @JoinTable(
             name = "estudo_caso_indicador",
@@ -28,6 +35,7 @@ public class EstudoDeCaso extends BaseEntity {
             joinColumns = @JoinColumn(name = "estudo_de_caso_id"),
             inverseJoinColumns = @JoinColumn(name = "indicador_id")
     )
+    @BatchSize(size = 50)
     private List<IndicadorReutilizavel> indicadores = new ArrayList<>();
 
     public EstudoDeCaso() {
@@ -69,5 +77,21 @@ public class EstudoDeCaso extends BaseEntity {
 
     public void setIndicadores(List<IndicadorReutilizavel> indicadores) {
         this.indicadores = indicadores;
+    }
+
+    public String getHistoricoFamiliar() {
+        return historicoFamiliar;
+    }
+
+    public void setHistoricoFamiliar(String historicoFamiliar) {
+        this.historicoFamiliar = historicoFamiliar;
+    }
+
+    public String getHistoricoSocioemocional() {
+        return historicoSocioemocional;
+    }
+
+    public void setHistoricoSocioemocional(String historicoSocioemocional) {
+        this.historicoSocioemocional = historicoSocioemocional;
     }
 }

@@ -26,4 +26,3 @@ export interface PeaResponseDTO {
   atualizadoEm?: string;
 }
 
-export type PerfilUsuario = 'Professor' | 'Coordenador';

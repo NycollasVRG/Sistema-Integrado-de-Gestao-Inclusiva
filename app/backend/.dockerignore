@@ -1,0 +1,33 @@
+# Diretórios de build e artefatos locais
+target/
+build/
+out/
+*.jar
+*.war
+*.class
+
+# Logs e arquivos temporários
+*.log
+tmp/
+
+# Configurações de IDEs e Sistema Operacional
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.settings/
+.classpath
+.project
+.DS_Store
+Thumbs.db
+
+# Git e coleções de teste/documentação que não entram na imagem
+.git/
+.gitignore
+collection/
+database/
+HELP.md
+README.md
+.env
+.env.*

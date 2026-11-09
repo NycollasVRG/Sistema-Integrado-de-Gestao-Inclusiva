@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Users } from 'lucide-react';
 import { HeaderIFPB } from './components/HeaderIFPB';
 import { TelaAluno } from './components/TelaAluno';
 import { FormularioEstudoDeCaso } from './components/FormularioEstudoDeCaso';
@@ -7,18 +8,17 @@ import { FormularioPei } from './components/FormularioPei';
 import { ToastAlert, type ToastMessage } from './components/ToastAlert';
 import { StudentHeader } from './components/StudentHeader';
 import { Timeline } from './components/Timeline';
-import { MenuDev } from './components/MenuDev';
 import { ProntuarioQuickActions } from './components/ProntuarioQuickActions';
 import { ModalNovoAtendimento } from './components/ModalNovoAtendimento';
 import { ModalNovoEstudo } from './components/ModalNovoEstudo';
 import { ModalConfirmacaoAcao } from './components/ModalConfirmacaoAcao';
 import {
-  ALUNOS_PADRAO,
-  INDICADORES_PADRAO,
   EstudoDeCasoService,
 } from './services/estudoDeCasoService';
-import { ACOMPANHAMENTO_POR_ALUNO, PeiService } from './services/peiService';
+import { PeiService } from './services/peiService';
+import { GestaoEstudantesService } from './services/gestaoEstudantesService';
 import { getAlunoHeader } from './services/alunoService';
+import type { EstudanteResumo } from './types/gestaoEstudantes';
 import { getTimeline } from './services/timelineService';
 import { FormularioPea } from './components/FormularioPea';
 import { PeaService } from './services/peaService';
@@ -36,12 +36,21 @@ import type {
   IndicadorReutilizavel,
   ProblemDetailRFC9457,
 } from './types/estudoDeCaso';
+import { AreaGestaoEstudantes } from './components/AreaGestaoEstudantes';
+import { Login } from './pages/Login';
+import { RotaProtegida } from './components/RotaProtegida';
+import { ModalAcessoNegadoLGPD } from './components/ModalAcessoNegadoLGPD';
+import { useAuth } from './contexts/AuthContext';
+import { PainelAdminUsuarios } from './pages/PainelAdminUsuarios';
+import { SecaoProntuarioRbac } from './components/SecaoProntuarioRbac';
 
 export const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [alunoSelecionado] = useState<Aluno>(ALUNOS_PADRAO[0]);
-  const [indicadores] = useState<IndicadorReutilizavel[]>(INDICADORES_PADRAO);
+  const { autenticado } = useAuth();
+  const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
+  const [indicadores, setIndicadores] = useState<IndicadorReutilizavel[]>([]);
+  const [carregandoEstudantes, setCarregandoEstudantes] = useState<boolean>(true);
   const [estudoAtual, setEstudoAtual] = useState<EstudoDeCasoResponseDTO | null>(null);
   const [peiAtual, setPeiAtual] = useState<PeiResponseDTO | null>(null);
   const [peaAtual, setPeaAtual] = useState<PeaResponseDTO | null>(null);
@@ -174,15 +183,71 @@ export const App: React.FC = () => {
     }
   };
 
+  // Carrega os indicadores e estudantes reais do banco de dados ao autenticar
   useEffect(() => {
+    if (!autenticado) return;
+
+    let ativo = true;
+    setCarregandoEstudantes(true);
+
+    Promise.all([
+      GestaoEstudantesService.listarTags().catch((e) => {
+        console.error('Erro ao listar tags de indicadores do banco:', e);
+        return [];
+      }),
+      GestaoEstudantesService.listar({
+        page: 0,
+        size: 50,
+        ativo: true,
+        termo: '',
+        curso: '',
+        turma: '',
+        tag: '',
+      }).catch((e) => {
+        console.error('Erro ao listar estudantes do banco:', e);
+        return { content: [] };
+      }),
+    ]).then(([tags, pagina]) => {
+      if (!ativo) return;
+      setIndicadores(
+        tags.map((t) => ({
+          id: t.id ?? '',
+          nome: t.nome,
+          descricao: '',
+        }))
+      );
+      if (pagina.content && pagina.content.length > 0) {
+        setAlunoSelecionado((atual) => {
+          if (atual) return atual;
+          const primeiro = pagina.content[0];
+          return {
+            id: primeiro.id,
+            nome: primeiro.nomeCompleto,
+            matricula: primeiro.matricula,
+            curso: primeiro.curso,
+            turma: primeiro.turma,
+          };
+        });
+      }
+      setCarregandoEstudantes(false);
+    });
+
+    return () => {
+      ativo = false;
+    };
+  }, [autenticado]);
+
+  useEffect(() => {
+    if (!autenticado || !alunoSelecionado) return;
     carregarEstudosDoAluno(alunoSelecionado.id);
     carregarPeiDoAluno(alunoSelecionado.id);
     carregarPeaDoAluno(alunoSelecionado.id);
     carregarHeader(alunoSelecionado.id);
     carregarTimeline(alunoSelecionado.id);
-  }, [alunoSelecionado]);
+  }, [alunoSelecionado?.id, autenticado]);
 
   const handleSalvarPei = async (habilidadesInteresses: string, propostasAdaptacoes: string) => {
+    if (!alunoSelecionado) return;
     setIsLoading(true);
     try {
       const hab = habilidadesInteresses.trim();
@@ -191,14 +256,12 @@ export const App: React.FC = () => {
       if (peiAtual) {
         resultado = await PeiService.atualizar(peiAtual.id, { habilidadesInteresses: hab, propostasAdaptacoes: prop });
       } else {
-        resultado = await PeiService.criar(
-          {
-            acompanhamentoId: ACOMPANHAMENTO_POR_ALUNO[alunoSelecionado.id],
-            habilidadesInteresses: hab,
-            propostasAdaptacoes: prop,
-          },
-          alunoSelecionado.id
-        );
+        const acomp = await PeiService.buscarAcompanhamentoPorAluno(alunoSelecionado.id);
+        resultado = await PeiService.criar({
+          acompanhamentoId: acomp.id,
+          habilidadesInteresses: hab,
+          propostasAdaptacoes: prop,
+        });
       }
       setPeiAtual(resultado);
       await carregarTimeline(alunoSelecionado.id);
@@ -218,6 +281,7 @@ export const App: React.FC = () => {
     avaliacao: string;
     disciplinaId: string | null;
   }) => {
+    if (!alunoSelecionado) return;
     setIsLoading(true);
 
     try {
@@ -240,15 +304,18 @@ export const App: React.FC = () => {
           }
         );
       } else {
-        // Cria um novo PEA
-        const acompanhamentoId =
-          ACOMPANHAMENTO_POR_ALUNO[alunoSelecionado.id];
+        // Cria um novo PEA obtendo acompanhamento real do banco
+        let acompanhamentoId = peiAtual?.acompanhamentoId || peasDoAluno[0]?.acompanhamentoId;
+        if (!acompanhamentoId) {
+          const acomp = await PeiService.buscarAcompanhamentoPorAluno(alunoSelecionado.id);
+          acompanhamentoId = acomp.id;
+        }
 
         if (!acompanhamentoId) {
           adicionarToast(
             'erro',
             'Acompanhamento não encontrado',
-            'Não foi identificado um acompanhamento para este aluno.'
+            'Não foi identificado um acompanhamento para este aluno no banco de dados.'
           );
           return;
         }
@@ -293,6 +360,7 @@ export const App: React.FC = () => {
 
   // Ação: Salvar Rascunho
   const handleSalvarRascunho = async (diagnostico: string, indicadoresIds: string[]) => {
+    if (!alunoSelecionado) return;
     // Proteção contra edição de estudo concluído via código
     if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
       adicionarToast(
@@ -342,6 +410,7 @@ export const App: React.FC = () => {
 
   // Ação: Concluir Estudo de Caso (Após validação de front TA2.3)
   const handleConcluir = async (diagnostico: string, indicadoresIds: string[]) => {
+    if (!alunoSelecionado) return;
     // Proteção contra alteração de estudo concluído
     if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
       adicionarToast(
@@ -392,7 +461,7 @@ export const App: React.FC = () => {
 
   // Ação: Descartar Rascunho (DELETE)
   const handleExcluirRascunho = async () => {
-    if (!estudoAtual) return;
+    if (!estudoAtual || !alunoSelecionado) return;
 
     setIsLoading(true);
     try {
@@ -418,6 +487,7 @@ export const App: React.FC = () => {
   };
 
   const handleCriarPlanoAcao = () => {
+    if (!alunoSelecionado) return;
     adicionarToast(
       'sucesso',
       'Iniciando Plano de Ação (US 03)',
@@ -431,129 +501,225 @@ export const App: React.FC = () => {
 
   // Dados pré-carregados do aluno em foco para os modais (Ref. TA9.3)
   const alunoEmFoco: AlunoModalData = {
-    id: alunoSelecionado.id,
-    nome: header?.nome || alunoSelecionado.nome,
-    matricula: header?.matricula || alunoSelecionado.matricula,
-    curso: header?.curso || alunoSelecionado.curso || 'Não informado',
-    turma: alunoSelecionado.turma,
+    id: alunoSelecionado?.id || '',
+    nome: header?.nome || alunoSelecionado?.nome || 'Estudante',
+    matricula: header?.matricula || alunoSelecionado?.matricula || '',
+    curso: header?.curso || alunoSelecionado?.curso || 'Não informado',
+    turma: alunoSelecionado?.turma || '',
+  };
+
+  // US12: seleciona o aluno real na listagem e recarrega os dados do prontuário.
+  const abrirProntuarioDaListagem = (estudante: EstudanteResumo) => {
+    setEstudoAtual(null);
+    setPeiAtual(null);
+    setPeaAtual(null);
+    setPeasDoAluno([]);
+    setHeader(null);
+    setTimeline([]);
+    setAlunoSelecionado({
+      id: estudante.id,
+      nome: estudante.nomeCompleto,
+      matricula: estudante.matricula,
+      curso: estudante.curso,
+      turma: estudante.turma,
+    });
+    navigate('/');
   };
 
   return (
     <div className="min-h-screen bg-[#F8FAF8] flex flex-col justify-between selection:bg-ifpb-teal selection:text-white">
-      {/* Menu de desenvolvimento para testar telas */}
-      <MenuDev />
-
       {/* Alertas Toasts flutuantes */}
       <ToastAlert toasts={toasts} onFechar={removerToast} />
 
-      {/* Cabeçalho Oficial do IFPB */}
-      <HeaderIFPB
-        searchTerm={termoBusca}
-        onSearch={setTermoBusca}
-        subTitle={
-          location.pathname === '/estudo-de-caso'
-            ? 'Formulário de Estudo de Caso'
-            : location.pathname === '/pei'
-              ? 'Plano Educacional Individualizado (PEI)'
-              : location.pathname === '/pea'
-                ? 'Plano de Ensino Adaptado (PEA)'
-                : 'Ficha do Estudante'
-        }
-      />
+      {/* Modal global de sigilo clínico/LGPD (403) */}
+      <ModalAcessoNegadoLGPD />
+
+      {/* Cabeçalho Oficial do IFPB (totalmente ocultado na tela de login) */}
+      {location.pathname !== '/login' && (
+        <HeaderIFPB
+          searchTerm={termoBusca}
+          onSearch={setTermoBusca}
+          subTitle={
+            location.pathname.startsWith('/admin')
+              ? 'Gestão de Acessos e Usuários (RBAC)'
+              : location.pathname === '/estudantes'
+              ? 'Gestão de Estudantes'
+              : location.pathname === '/estudo-de-caso'
+              ? 'Formulário de Estudo de Caso'
+              : location.pathname === '/pei'
+                ? 'Plano Educacional Individualizado (PEI)'
+                : location.pathname === '/pea'
+                  ? 'Plano de Ensino Adaptado (PEA)'
+                  : 'Ficha do Estudante'
+          }
+        />
+      )}
 
       {/* Conteúdo Principal */}
-      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
+      <main
+        className={`w-full flex-1 ${
+          location.pathname === '/login'
+            ? 'flex items-center justify-center p-4'
+            : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
+        }`}
+      >
         <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route element={<RotaProtegida />}>
+            <Route
+              path="/admin/usuarios"
+              element={<PainelAdminUsuarios onNotificar={adicionarToast} />}
+            />
+            <Route path="/admin" element={<Navigate to="/admin/usuarios" replace />} />
+            <Route
+              path="/estudantes"
+              element={<AreaGestaoEstudantes onAbrirProntuario={abrirProntuarioDaListagem} />}
+            />
+
           <Route
             path="/"
             element={
-              <>
-                {header && <StudentHeader header={header} />}
-                {!header && (loadingHeader || errorHeader) && (
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                    {loadingHeader && (
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                        <span className="ml-3 text-sm text-gray-600">Carregando cabeçalho...</span>
-                      </div>
-                    )}
-                    {errorHeader && !loadingHeader && (
-                      <p className="text-sm text-red-700">Erro ao carregar cabeçalho: {errorHeader}</p>
-                    )}
-                  </div>
-                )}
-
-                {/* Barra de Atalhos Rápidos do Prontuário (Task #13 / US 09) */}
-                <ProntuarioQuickActions
-                  alunoNome={alunoEmFoco.nome}
-                  onNovoAtendimento={() => setModalAtivo('ATENDIMENTO')}
-                  onNovoEstudo={() => setModalAtivo('ESTUDO')}
-                  onEmitirRae={() => setModalAtivo('EMITIR_RAE')}
-                  onGerarDossie={() => setModalAtivo('GERAR_DOSSIE')}
-                />
-
-                <div className="mb-6">
-                  <Timeline events={timeline} loading={loadingTimeline} error={errorTimeline} />
+              carregandoEstudantes ? (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center my-6">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-ifpb-teal mb-4"></div>
+                  <p className="text-sm font-medium text-gray-600">Carregando dados dos estudantes...</p>
                 </div>
+              ) : !alunoSelecionado ? (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center max-w-lg mx-auto my-6">
+                  <div className="p-3 bg-gray-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3 text-gray-500">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-base font-bold text-gray-900 mb-1">Nenhum estudante selecionado</h3>
+                  <p className="text-sm text-gray-500 mb-6">
+                    Selecione um estudante na listagem ou cadastre um novo registro para visualizar o prontuário.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/estudantes')}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-ifpb-teal hover:bg-ifpb-tealHover rounded-md shadow-sm transition-colors cursor-pointer"
+                  >
+                    <Users className="w-4 h-4" />
+                    Acessar Gestão de Estudantes
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-4">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/estudantes')}
+                      className="inline-flex items-center gap-2 text-xs font-semibold text-ifpb-teal hover:text-ifpb-tealHover cursor-pointer transition-colors px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200 shadow-2xs"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      Voltar para Gestão de Estudantes
+                    </button>
+                  </div>
 
-                <TelaAluno
-                  alunoSelecionado={alunoSelecionado}
-                  estudoAtual={estudoAtual}
-                  indicadores={indicadores}
-                  onAbrirFormularioEstudo={() => navigate('/estudo-de-caso')}
-                  onCriarPlanoAcao={handleCriarPlanoAcao}
-                  peiAtual={peiAtual}
-                  onAbrirFormularioPei={() => navigate('/pei')}
-                  onAbrirFormularioPea={() => navigate('/pea')}
-                />
-              </>
+                  {header && <StudentHeader header={header} />}
+                  {!header && (loadingHeader || errorHeader) && (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                      {loadingHeader && (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-ifpb-teal"></div>
+                          <span className="ml-3 text-sm text-gray-600">Carregando cabeçalho...</span>
+                        </div>
+                      )}
+                      {errorHeader && !loadingHeader && (
+                        <p className="text-sm text-red-700">Erro ao carregar cabeçalho: {errorHeader}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Barra de Atalhos Rápidos do Prontuário (Task #13 / US 09) */}
+                  <ProntuarioQuickActions
+                    alunoNome={alunoEmFoco.nome}
+                    onNovoAtendimento={() => setModalAtivo('ATENDIMENTO')}
+                    onNovoEstudo={() => setModalAtivo('ESTUDO')}
+                    onEmitirRae={() => setModalAtivo('EMITIR_RAE')}
+                    onGerarDossie={() => setModalAtivo('GERAR_DOSSIE')}
+                  />
+
+                  <div className="mb-6">
+                    <Timeline events={timeline} loading={loadingTimeline} error={errorTimeline} />
+                  </div>
+
+                  <TelaAluno
+                    alunoSelecionado={alunoSelecionado}
+                    estudoAtual={estudoAtual}
+                    indicadores={indicadores}
+                    onAbrirFormularioEstudo={() => navigate('/estudo-de-caso')}
+                    onCriarPlanoAcao={handleCriarPlanoAcao}
+                    peiAtual={peiAtual}
+                    onAbrirFormularioPei={() => navigate('/pei')}
+                    onAbrirFormularioPea={() => navigate('/pea')}
+                  />
+
+                  {/* US 09 / TA11.2 e TA11.3: históricos sensíveis e anexos com RBAC visual */}
+                  <div className="mt-6">
+                    <SecaoProntuarioRbac key={alunoSelecionado.id} alunoId={alunoSelecionado.id} />
+                  </div>
+                </>
+              )
             }
           />
           <Route
             path="/pei"
             element={
-              <FormularioPei
-                aluno={alunoSelecionado}
-                peiExistente={peiAtual}
-                dificuldades={dificuldadesDoEstudo}
-                onSalvar={handleSalvarPei}
-                onVoltar={() => navigate('/')}
-                isLoading={isLoading || loadingPei}
-              />
+              alunoSelecionado ? (
+                <FormularioPei
+                  aluno={alunoSelecionado}
+                  peiExistente={peiAtual}
+                  dificuldades={dificuldadesDoEstudo}
+                  onSalvar={handleSalvarPei}
+                  onVoltar={() => navigate('/')}
+                  isLoading={isLoading || loadingPei}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
             }
           />
           <Route
             path="/pea"
             element={
-              <FormularioPea
-                aluno={alunoSelecionado}
-                peaExistente={peaAtual}
-                peasExistentes={peasDoAluno}
-                onSelecionarPea={(pea) => setPeaAtual(pea)}
-                onNovoPea={() => setPeaAtual(null)}
-                peiId={peiAtual?.id}
-                onSalvar={handleSalvarPea}
-                onVoltar={() => navigate('/')}
-                isLoading={isLoading || loadingPea}
-              />
+              alunoSelecionado ? (
+                <FormularioPea
+                  aluno={alunoSelecionado}
+                  peaExistente={peaAtual}
+                  peasExistentes={peasDoAluno}
+                  onSelecionarPea={(pea) => setPeaAtual(pea)}
+                  onNovoPea={() => setPeaAtual(null)}
+                  peiId={peiAtual?.id}
+                  onSalvar={handleSalvarPea}
+                  onVoltar={() => navigate('/')}
+                  isLoading={isLoading || loadingPea}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
             }
           />
           <Route
             path="/estudo-de-caso"
             element={
-              <FormularioEstudoDeCaso
-                aluno={alunoSelecionado}
-                estudoExistente={estudoAtual}
-                indicadoresDisponiveis={indicadores}
-                onSalvarRascunho={handleSalvarRascunho}
-                onConcluir={handleConcluir}
-                onExcluirRascunho={estudoAtual?.status === 'RASCUNHO' ? handleExcluirRascunho : undefined}
-                onVoltar={() => navigate('/')}
-                isLoading={isLoading}
-              />
+              alunoSelecionado ? (
+                <FormularioEstudoDeCaso
+                  aluno={alunoSelecionado}
+                  estudoExistente={estudoAtual}
+                  indicadoresDisponiveis={indicadores}
+                  onSalvarRascunho={handleSalvarRascunho}
+                  onConcluir={handleConcluir}
+                  onExcluirRascunho={estudoAtual?.status === 'RASCUNHO' ? handleExcluirRascunho : undefined}
+                  onVoltar={() => navigate('/')}
+                  isLoading={isLoading}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
         </Routes>
       </main>
 
@@ -563,7 +729,7 @@ export const App: React.FC = () => {
         onClose={() => setModalAtivo(null)}
         aluno={alunoEmFoco}
         onSuccess={async () => {
-          await carregarTimeline(alunoSelecionado.id);
+          if (alunoSelecionado) await carregarTimeline(alunoSelecionado.id);
           adicionarToast(
             'sucesso',
             'Atendimento Registrado',
@@ -582,7 +748,9 @@ export const App: React.FC = () => {
         estudoExistente={estudoAtual}
         onSuccess={async (estudo, modo) => {
           setEstudoAtual(estudo);
-          await carregarTimeline(alunoSelecionado.id);
+          if (alunoSelecionado) {
+            await carregarTimeline(alunoSelecionado.id);
+          }
           adicionarToast(
             'sucesso',
             modo === 'RASCUNHO' ? 'Rascunho de Estudo Salvo' : 'Estudo de Caso Concluído!',
@@ -600,7 +768,9 @@ export const App: React.FC = () => {
         aluno={alunoEmFoco}
         tipoDocumento={modalAtivo === 'EMITIR_RAE' ? 'RAE' : 'DOSSIE'}
         onSuccess={async (doc) => {
-          await carregarTimeline(alunoSelecionado.id);
+          if (alunoSelecionado) {
+            await carregarTimeline(alunoSelecionado.id);
+          }
           adicionarToast(
             'sucesso',
             doc.tipoDocumento === 'RAE' ? 'RAE Emitido com Sucesso' : 'Dossiê Gerado com Sucesso',

@@ -32,6 +32,9 @@ export interface EstudoDeCasoResponseDTO {
   alunoId: string;
   status: StatusEstudoCaso;
   diagnosticoInicial: string | null;
+  /** TA11.3: ausentes no JSON para perfis ACESSO_FUNCIONAL. */
+  historicoFamiliar?: string | null;
+  historicoSocioemocional?: string | null;
   indicadoresIds: string[];
   criadoEm?: string;
   atualizadoEm?: string;

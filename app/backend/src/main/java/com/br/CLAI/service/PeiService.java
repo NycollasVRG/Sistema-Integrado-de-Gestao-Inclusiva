@@ -13,6 +13,7 @@ import com.br.CLAI.mapper.PeiMapper;
 import com.br.CLAI.repository.AcompanhamentoRepository;
 import com.br.CLAI.repository.PeaRepository;
 import com.br.CLAI.repository.PeiRepository;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -82,6 +83,11 @@ public class PeiService {
      * Anexo III). O perfil 'Professor' não pode acessar: retorna HTTP 403.
      */
     @Transactional(readOnly = true)
+    public List<PeaResponseDTO> listarAnexosSensiveis(UUID id) {
+        return listarAnexosSensiveis(id, null);
+    }
+
+    @Transactional(readOnly = true)
     public List<PeaResponseDTO> listarAnexosSensiveis(UUID id, String perfil) {
 
         if (perfil != null && PERFIL_PROFESSOR.equalsIgnoreCase(perfil.trim())) {
@@ -101,9 +107,10 @@ public class PeiService {
 
     @Transactional
     public PeiResponseDTO criar(PeiRequestDTO dto, UUID usuarioId) {
+        validarUsuarioResponsavel(usuarioId);
 
         Acompanhamento acompanhamento = acompanhamentoRepository
-                .findById(dto.getAcompanhamentoId())
+                .findById(dto.acompanhamentoId())
                 .orElseThrow(() ->
                         new NaoEncontradoException("Acompanhamento não encontrado."));
 
@@ -117,6 +124,7 @@ public class PeiService {
 
     @Transactional
     public PeiResponseDTO atualizar(UUID id, PeiUpdateDTO dto, UUID usuarioId) {
+        validarUsuarioResponsavel(usuarioId);
 
         Pei pei = buscarEntidade(id);
 
@@ -134,6 +142,7 @@ public class PeiService {
      */
     @Transactional
     public void inativar(UUID id, UUID usuarioId) {
+        validarUsuarioResponsavel(usuarioId);
 
         Pei pei = buscarEntidade(id);
 
@@ -141,6 +150,14 @@ public class PeiService {
         repository.save(pei);
 
         repository.delete(pei);
+    }
+
+    private void validarUsuarioResponsavel(UUID usuarioId) {
+        if (usuarioId == null) {
+            throw new AuthenticationCredentialsNotFoundException(
+                    "Autenticação obrigatória para acessar este recurso."
+            );
+        }
     }
 
     private Pei buscarEntidade(UUID id) {

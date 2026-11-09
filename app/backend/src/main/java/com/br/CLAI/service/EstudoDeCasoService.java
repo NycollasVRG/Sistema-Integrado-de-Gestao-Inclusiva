@@ -5,6 +5,7 @@ import com.br.CLAI.domain.EstudoDeCaso;
 import com.br.CLAI.domain.IndicadorReutilizavel;
 import com.br.CLAI.domain.enums.StatusEstudoCaso;
 import com.br.CLAI.dto.request.EstudoDeCasoRequestDTO;
+import com.br.CLAI.dto.request.EstudoDeCasoUpdateDTO;
 import com.br.CLAI.dto.response.EstudoDeCasoResponseDTO;
 import com.br.CLAI.exception.RegraDeNegocioException;
 import com.br.CLAI.mapper.EstudoDeCasoMapper;
@@ -12,6 +13,7 @@ import com.br.CLAI.repository.AlunoRepository;
 import com.br.CLAI.repository.EstudoDeCasoRepository;
 import com.br.CLAI.repository.IndicadorReutilizavelRepository;
 import com.br.CLAI.service.validator.EstudoDeCasoValidator;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,18 +43,20 @@ public class EstudoDeCasoService {
 
     @Transactional
     public EstudoDeCasoResponseDTO criar(EstudoDeCasoRequestDTO dto, UUID usuarioId) {
+        validarUsuarioResponsavel(usuarioId);
+
         // Validação TA2.3
         validator.validarConclusao(dto);
 
         // Validação TA2.4
-        if (repository.existsByAlunoIdAndStatus(dto.getAlunoId(), StatusEstudoCaso.ATIVO)) {
+        if (repository.existsByAlunoIdAndStatus(dto.alunoId(), StatusEstudoCaso.ATIVO)) {
             throw new RegraDeNegocioException("Já existe um Estudo de Caso ATIVO para este aluno.");
         }
 
-        Aluno aluno = alunoRepository.findById(dto.getAlunoId())
+        Aluno aluno = alunoRepository.findById(dto.alunoId())
                 .orElseThrow(() -> new RegraDeNegocioException("Aluno não encontrado."));
 
-        List<IndicadorReutilizavel> indicadores = buscarEValidarIndicadores(dto.getIndicadoresIds());
+        List<IndicadorReutilizavel> indicadores = buscarEValidarIndicadores(dto.indicadoresIds());
 
         // Utilizando o toEntity do Mapper
         EstudoDeCaso entidade = mapper.toEntity(dto, aluno, indicadores);
@@ -82,14 +86,16 @@ public class EstudoDeCasoService {
     }
 
     @Transactional
-    public EstudoDeCasoResponseDTO atualizar(UUID id, com.br.CLAI.dto.request.EstudoDeCasoUpdateDTO dto, UUID usuarioId) {
+    public EstudoDeCasoResponseDTO atualizar(UUID id, EstudoDeCasoUpdateDTO dto, UUID usuarioId) {
+        validarUsuarioResponsavel(usuarioId);
+
         EstudoDeCaso estudo = repository.findById(id)
                 .orElseThrow(() -> new com.br.CLAI.exception.NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
 
         // Regra de Proteção: estudo concluído (ENCERRADO/ATIVO) não pode voltar para RASCUNHO (ref. TA2.1)
         if ((StatusEstudoCaso.ENCERRADO.equals(estudo.getStatus())
                 || StatusEstudoCaso.ATIVO.equals(estudo.getStatus()))
-                && StatusEstudoCaso.RASCUNHO.equals(dto.getStatus())) {
+                && StatusEstudoCaso.RASCUNHO.equals(dto.status())) {
             throw new RegraDeNegocioException("Não é permitido reverter um Estudo de Caso concluído para Rascunho.");
         }
 
@@ -97,14 +103,14 @@ public class EstudoDeCasoService {
         validator.validarConclusao(dto);
 
         // Validação TA2.4: Se estiver alterando para ATIVO, bloqueia se já existir outro ativo para o mesmo aluno
-        if (StatusEstudoCaso.ATIVO.equals(dto.getStatus()) 
+        if (StatusEstudoCaso.ATIVO.equals(dto.status()) 
                 && repository.existsByAlunoIdAndStatusAndIdNot(estudo.getAluno().getId(), StatusEstudoCaso.ATIVO, id)) {
             throw new RegraDeNegocioException("Já existe outro Estudo de Caso ATIVO para este aluno.");
         }
 
         List<IndicadorReutilizavel> novosIndicadores = null;
-        if (dto.getIndicadoresIds() != null) {
-            novosIndicadores = buscarEValidarIndicadores(dto.getIndicadoresIds());
+        if (dto.indicadoresIds() != null) {
+            novosIndicadores = buscarEValidarIndicadores(dto.indicadoresIds());
         }
 
         // Utilizando o Mapper para atualizar o estado da entidade
@@ -119,6 +125,8 @@ public class EstudoDeCasoService {
 
     @Transactional
     public void excluir(UUID id, UUID usuarioId) {
+        validarUsuarioResponsavel(usuarioId);
+
         EstudoDeCaso estudo = repository.findById(id)
                 .orElseThrow(() -> new com.br.CLAI.exception.NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
 
@@ -134,6 +142,14 @@ public class EstudoDeCasoService {
 
         // Hibernate SoftDelete intercepta e faz UPDATE set deleted = true
         repository.delete(estudo);
+    }
+
+    private void validarUsuarioResponsavel(UUID usuarioId) {
+        if (usuarioId == null) {
+            throw new AuthenticationCredentialsNotFoundException(
+                    "Autenticação obrigatória para acessar este recurso."
+            );
+        }
     }
 
     private List<IndicadorReutilizavel> buscarEValidarIndicadores(List<UUID> indicadoresIds) {

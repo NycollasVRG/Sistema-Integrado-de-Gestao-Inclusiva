@@ -6,8 +6,8 @@ Esta pasta contém a coleção completa de testes de API e massa de dados para v
 
 * `SIGI_EstudoDeCaso.postman_collection.json`: Coleção no formato Postman Collection v2.1 com requisições e scripts de asserção automática.
 * `SIGI_Environment.postman_environment.json`: Variáveis de ambiente (`baseUrl`, `alunoId`, `indicadorId1`, `usuarioId`, etc.).
-* `seed_test_data.sql`: Script SQL para carregar alunos e indicadores de teste no PostgreSQL local com os mesmos UUIDs configurados no ambiente.
 * `README.md`: Este guia de instruções.
+* *(Seed SQL consolidado em [`database/inserts/02_seed_us02_estudo_caso.sql`](../../database/inserts/02_seed_us02_estudo_caso.sql)):* Script SQL para carregar alunos e indicadores de teste no PostgreSQL local com os mesmos UUIDs configurados no ambiente.
 
 ---
 
@@ -17,10 +17,10 @@ Esta pasta contém a coleção completa de testes de API e massa de dados para v
 Antes de iniciar a suíte, certifique-se de que o banco de dados PostgreSQL está em execução e execute o script de carga inicial:
 
 ```bash
-# Exemplo via psql:
-psql -U postgres -d sigi_clai -f collection/seed_test_data.sql
+# Exemplo via psql (a partir de app/backend):
+psql -U postgres -d sigi_clai -f database/inserts/02_seed_us02_estudo_caso.sql
 ```
-*(Ou execute o conteúdo do arquivo `collection/seed_test_data.sql` no seu cliente de banco de dados, como DBeaver, pgAdmin ou IntelliJ Database Tools).*
+*(Ou execute o conteúdo do arquivo `database/inserts/02_seed_us02_estudo_caso.sql` no seu cliente de banco de dados, como DBeaver, pgAdmin ou IntelliJ Database Tools).*
 
 ### 2. Iniciar a Aplicação Spring Boot
 Inicie a aplicação localmente:

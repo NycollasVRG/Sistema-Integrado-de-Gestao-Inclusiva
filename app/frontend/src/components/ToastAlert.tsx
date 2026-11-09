@@ -17,7 +17,7 @@ export const ToastAlert: React.FC<ToastAlertProps> = ({ toasts, onFechar }) => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col space-y-3 max-w-md w-full px-4 sm:px-0">
+    <div className="fixed bottom-5 right-5 z-[70] flex flex-col space-y-3 max-w-md w-full px-4 sm:px-0">
       {toasts.map((toast) => (
         <div
           key={toast.id}

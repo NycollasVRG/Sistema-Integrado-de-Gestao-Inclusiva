@@ -2,27 +2,21 @@ import type {
   PeaRequestDTO,
   PeaResponseDTO,
   PeaUpdateDTO,
-  PerfilUsuario,
 } from '../types/pea';
 import { apiFetch } from './apiClient';
 
 export class PeaService {
   private static baseUrl = '/api/peas';
 
-  private static defaultUserId =
-    '99999999-9999-9999-9999-999999999999';
-
   static async listarPorAluno(
     alunoId: string
   ): Promise<PeaResponseDTO[]> {
-    const response = await apiFetch(`${this.baseUrl}/aluno/${alunoId}`);
-
+    const response = await apiFetch(`${this.baseUrl}/aluno/${encodeURIComponent(alunoId)}`);
     return response.json();
   }
 
   static async criar(
-    dto: PeaRequestDTO,
-    usuarioId = this.defaultUserId
+    dto: PeaRequestDTO
   ): Promise<PeaResponseDTO> {
     const payload: PeaRequestDTO = {
       acompanhamentoId: dto.acompanhamentoId,
@@ -36,7 +30,6 @@ export class PeaService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-User-Id': usuarioId,
       },
       body: JSON.stringify(payload),
     });
@@ -46,8 +39,7 @@ export class PeaService {
 
   static async atualizar(
     id: string,
-    dto: PeaUpdateDTO,
-    usuarioId = this.defaultUserId
+    dto: PeaUpdateDTO
   ): Promise<PeaResponseDTO> {
     const payload: PeaUpdateDTO = {
       disciplinaId: dto.disciplinaId !== undefined ? (dto.disciplinaId ? dto.disciplinaId.trim() : null) : undefined,
@@ -56,11 +48,10 @@ export class PeaService {
       avaliacao: dto.avaliacao !== undefined ? dto.avaliacao.trim() : undefined,
     };
 
-    const response = await apiFetch(`${this.baseUrl}/${id}`, {
+    const response = await apiFetch(`${this.baseUrl}/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'X-User-Id': usuarioId,
       },
       body: JSON.stringify(payload),
     });
@@ -68,21 +59,12 @@ export class PeaService {
     return response.json();
   }
 
-  // TA3.2: Consulta protegida aos anexos do PEI.
-  // Recebe o ID de um PEI, nunca o ID de um PEA.
-  // A autorização é decidida pelo Backend (deny by default): o front sempre
-  // faz a requisição real com X-User-Perfil e exibe o 403 recebido.
+  // TA3.2 e TA11.3: Consulta protegida aos anexos do PEI via Bearer JWT do usuário autenticado.
   static async listarAnexosSensiveis(
-    peiId: string,
-    perfil: PerfilUsuario
+    peiId: string
   ): Promise<PeaResponseDTO[]> {
     const response = await apiFetch(
-      `/api/peis/${peiId}/anexos-sensiveis`,
-      {
-        headers: {
-          'X-User-Perfil': perfil,
-        },
-      }
+      `/api/peis/${encodeURIComponent(peiId)}/anexos-sensiveis`
     );
 
     return response.json();

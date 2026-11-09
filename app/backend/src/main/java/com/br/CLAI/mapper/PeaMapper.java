@@ -16,10 +16,10 @@ public class PeaMapper {
 
         return new Pea(
                 acompanhamento,
-                dto.getDisciplinaId(),
-                dto.getObjetivoGeral(),
-                dto.getMetodologia(),
-                dto.getAvaliacao()
+                dto.disciplinaId(),
+                dto.objetivoGeral(),
+                dto.metodologia(),
+                dto.avaliacao()
         );
     }
 
@@ -27,47 +27,40 @@ public class PeaMapper {
             Pea pea,
             PeaUpdateDTO dto) {
 
-        if (dto.getDisciplinaId() != null) {
-            pea.setDisciplinaId(dto.getDisciplinaId());
+        if (dto.disciplinaId() != null) {
+            pea.setDisciplinaId(dto.disciplinaId());
         }
 
-        if (dto.getObjetivoGeral() != null) {
-            pea.setObjetivoGeral(dto.getObjetivoGeral());
+        if (dto.objetivoGeral() != null) {
+            pea.setObjetivoGeral(dto.objetivoGeral());
         }
 
-        if (dto.getMetodologia() != null) {
-            pea.setMetodologia(dto.getMetodologia());
+        if (dto.metodologia() != null) {
+            pea.setMetodologia(dto.metodologia());
         }
 
-        if (dto.getAvaliacao() != null) {
-            pea.setAvaliacao(dto.getAvaliacao());
+        if (dto.avaliacao() != null) {
+            pea.setAvaliacao(dto.avaliacao());
         }
     }
 
     public PeaResponseDTO toResponse(Pea pea) {
+        if (pea == null) {
+            return null;
+        }
 
-        PeaResponseDTO dto = new PeaResponseDTO();
-
-        dto.setId(pea.getId());
-
-        dto.setAcompanhamentoId(
-                pea.getAcompanhamento().getId()
+        return new PeaResponseDTO(
+                pea.getId(),
+                pea.getAcompanhamento() != null ? pea.getAcompanhamento().getId() : null,
+                pea.getAcompanhamento() != null && pea.getAcompanhamento().getAluno() != null
+                        ? pea.getAcompanhamento().getAluno().getId()
+                        : null,
+                pea.getDisciplinaId(),
+                pea.getObjetivoGeral(),
+                pea.getMetodologia(),
+                pea.getAvaliacao(),
+                pea.getCriadoEm(),
+                pea.getAtualizadoEm()
         );
-
-        dto.setAlunoId(
-                pea.getAcompanhamento()
-                        .getAluno()
-                        .getId()
-        );
-
-        dto.setDisciplinaId(pea.getDisciplinaId());
-        dto.setObjetivoGeral(pea.getObjetivoGeral());
-        dto.setMetodologia(pea.getMetodologia());
-        dto.setAvaliacao(pea.getAvaliacao());
-
-        dto.setCriadoEm(pea.getCriadoEm());
-        dto.setAtualizadoEm(pea.getAtualizadoEm());
-
-        return dto;
     }
 }
