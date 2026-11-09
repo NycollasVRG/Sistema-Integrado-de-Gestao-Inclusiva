@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Eye, Search, UserRoundX, Pencil, Users, UserRoundPlus } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { ModalEstudante } from '../components/ModalEstudante';
 import { ModalInativarEstudante } from '../components/ModalInativarEstudante';
 import { GestaoEstudantesService } from '../services/gestaoEstudantesService';
@@ -15,6 +16,7 @@ const paginaVazia: PaginaEstudantes = {
 };
 
 export function GestaoEstudantes({ onAbrirProntuario }: Props) {
+  const { isAcessoFuncional } = useAuth();
   const [busca, setBusca] = useState('');
   const [buscaDebounced, setBuscaDebounced] = useState('');
   const [curso, setCurso] = useState('');
@@ -127,10 +129,12 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
         </div>
         <div className="flex flex-wrap gap-3 items-center">
           <span className="inline-flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4 text-ifpb-teal" /> {dados.totalElements} estudantes no filtro</span>
-          <button type="button" onClick={() => { setModalCadastroAberto(true); setMensagem(''); }}
-            className="inline-flex items-center gap-2 rounded-lg bg-ifpb-teal hover:bg-ifpb-tealHover px-4 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors shadow-xs">
-            <UserRoundPlus className="w-4 h-4" /> Novo estudante
-          </button>
+          {!isAcessoFuncional && (
+            <button type="button" onClick={() => { setModalCadastroAberto(true); setMensagem(''); }}
+              className="inline-flex items-center gap-2 rounded-lg bg-ifpb-teal hover:bg-ifpb-tealHover px-4 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors shadow-xs">
+              <UserRoundPlus className="w-4 h-4" /> Novo estudante
+            </button>
+          )}
         </div>
       </div>
 
@@ -198,7 +202,16 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
               {dados.content.map((estudante) => (
                 <tr key={estudante.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-mono text-xs">{estudante.matricula}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900 max-w-xs truncate" title={estudante.nomeCompleto}>{estudante.nomeCompleto}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900 max-w-xs truncate" title={estudante.nomeCompleto}>
+                    <button
+                      type="button"
+                      onClick={() => onAbrirProntuario(estudante)}
+                      className="font-medium text-gray-900 hover:text-ifpb-teal hover:underline text-left cursor-pointer transition-colors truncate block max-w-full"
+                      title={`Abrir prontuário e detalhes de ${estudante.nomeCompleto}`}
+                    >
+                      {estudante.nomeCompleto}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{estudante.curso || '—'} / {estudante.turma || '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 flex-wrap min-w-32">
@@ -214,22 +227,41 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => onAbrirProntuario(estudante)} title="Ver prontuário"
-                        aria-label={`Ver prontuário de ${estudante.nomeCompleto}`} className="rounded p-2 text-ifpb-teal hover:bg-emerald-50 cursor-pointer">
-                        <Eye className="w-4 h-4" />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onAbrirProntuario(estudante)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-ifpb-teal hover:bg-ifpb-tealHover transition-colors cursor-pointer shadow-xs shrink-0"
+                        title={`Abrir prontuário e detalhes de ${estudante.nomeCompleto}`}
+                        aria-label={`Ver detalhes de ${estudante.nomeCompleto}`}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Detalhes</span>
                       </button>
-                      <button type="button" onClick={() => { void editar(estudante); }} disabled={abrindoEdicao}
-                        title="Editar estudante" aria-label={`Editar ${estudante.nomeCompleto}`}
-                        className="rounded p-2 text-ifpb-teal hover:bg-emerald-50 disabled:opacity-40 cursor-pointer">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button type="button" onClick={() => setEstudanteInativacao(estudante)} disabled={!estudante.ativo}
-                        title={estudante.ativo ? 'Inativar estudante' : 'Estudante já inativo'}
-                        aria-label={`Inativar ${estudante.nomeCompleto}`}
-                        className="rounded p-2 text-red-700 hover:bg-red-50 disabled:opacity-30 cursor-pointer">
-                        <UserRoundX className="w-4 h-4" />
-                      </button>
+                      {!isAcessoFuncional && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => { void editar(estudante); }}
+                            disabled={abrindoEdicao}
+                            title="Editar estudante"
+                            aria-label={`Editar ${estudante.nomeCompleto}`}
+                            className="rounded p-1.5 text-gray-500 hover:text-ifpb-teal hover:bg-emerald-50 disabled:opacity-40 cursor-pointer transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEstudanteInativacao(estudante)}
+                            disabled={!estudante.ativo}
+                            title={estudante.ativo ? 'Inativar estudante' : 'Estudante já inativo'}
+                            aria-label={`Inativar ${estudante.nomeCompleto}`}
+                            className="rounded p-1.5 text-gray-500 hover:text-red-700 hover:bg-red-50 disabled:opacity-30 cursor-pointer transition-colors"
+                          >
+                            <UserRoundX className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

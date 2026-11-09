@@ -81,8 +81,7 @@ app/frontend/src/
 │   ├── FormularioEstudoDeCaso.tsx   # Formulário completo de Estudo de Caso (Rascunho e Conclusão)
 │   ├── FormularioPea.tsx            # Formulário de Plano de Ensino Adaptado (por disciplina)
 │   ├── FormularioPei.tsx            # Formulário de Plano Educacional Individualizado
-│   ├── HeaderIFPB.tsx               # Cabeçalho padrão IFPB com logo institucional e título
-│   ├── MenuDev.tsx                  # Menu flutuante de desenvolvimento para chavear entre telas
+│   ├── HeaderIFPB.tsx               # Cabeçalho padrão IFPB com logo institucional, título e menu hambúrguer RBAC
 │   ├── ModalAlunoHeader.tsx         # Modal de exibição detalhada dos dados do estudante
 │   ├── ModalBase.tsx                # Modal base com backdrop, ARIA dialog, ESC e bloqueio de scroll
 │   ├── ModalConfirmacaoAcao.tsx     # Confirmação para emissão de RAE e Dossiê do Estudante
@@ -291,7 +290,7 @@ A navegação client-side utiliza `react-router-dom` v7. O roteador raiz `<Brows
 | `/pea` | `<FormularioPea />` | Formulário do Plano de Ensino Adaptado por disciplina. |
 | `*` | `<Navigate to="/" replace />` | Rota curinga que redireciona qualquer URL desconhecida para `/`. |
 
-Para agilizar o desenvolvimento local, o componente flutuante `<MenuDev />` (canto inferior esquerdo) permite alternar rapidamente entre as telas `/`, `/estudo-de-caso` e `/pei`.
+A navegação principal do sistema é centralizada no **Menu Hambúrguer ("Menu Pizza")** do cabeçalho institucional (`HeaderIFPB`), cujas opções de telas (Ficha do Estudante, Gestão de Estudantes e Gestão de Usuários) são exibidas de acordo com o nível de restrição RBAC do usuário autenticado.
 
 ---
 

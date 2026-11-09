@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { Users } from 'lucide-react';
+import { ArrowLeft, Users } from 'lucide-react';
 import { HeaderIFPB } from './components/HeaderIFPB';
 import { TelaAluno } from './components/TelaAluno';
 import { FormularioEstudoDeCaso } from './components/FormularioEstudoDeCaso';
@@ -8,7 +8,6 @@ import { FormularioPei } from './components/FormularioPei';
 import { ToastAlert, type ToastMessage } from './components/ToastAlert';
 import { StudentHeader } from './components/StudentHeader';
 import { Timeline } from './components/Timeline';
-import { MenuDev } from './components/MenuDev';
 import { ProntuarioQuickActions } from './components/ProntuarioQuickActions';
 import { ModalNovoAtendimento } from './components/ModalNovoAtendimento';
 import { ModalNovoEstudo } from './components/ModalNovoEstudo';
@@ -529,39 +528,41 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAF8] flex flex-col justify-between selection:bg-ifpb-teal selection:text-white">
-      {/* Menu de desenvolvimento para testar telas */}
-      <MenuDev />
-
       {/* Alertas Toasts flutuantes */}
       <ToastAlert toasts={toasts} onFechar={removerToast} />
 
       {/* Modal global de sigilo clínico/LGPD (403) */}
       <ModalAcessoNegadoLGPD />
 
-
-      {/* Cabeçalho Oficial do IFPB */}
-      <HeaderIFPB
-        searchTerm={termoBusca}
-        onSearch={setTermoBusca}
-        subTitle={
-          location.pathname.startsWith('/admin')
-            ? 'Gestão de Acessos e Usuários (RBAC)'
-            : location.pathname === '/login'
-            ? 'Autenticação'
-            : location.pathname === '/estudantes'
-            ? 'Gestão de Estudantes'
-            : location.pathname === '/estudo-de-caso'
-            ? 'Formulário de Estudo de Caso'
-            : location.pathname === '/pei'
-              ? 'Plano Educacional Individualizado (PEI)'
-              : location.pathname === '/pea'
-                ? 'Plano de Ensino Adaptado (PEA)'
-                : 'Ficha do Estudante'
-        }
-      />
+      {/* Cabeçalho Oficial do IFPB (totalmente ocultado na tela de login) */}
+      {location.pathname !== '/login' && (
+        <HeaderIFPB
+          searchTerm={termoBusca}
+          onSearch={setTermoBusca}
+          subTitle={
+            location.pathname.startsWith('/admin')
+              ? 'Gestão de Acessos e Usuários (RBAC)'
+              : location.pathname === '/estudantes'
+              ? 'Gestão de Estudantes'
+              : location.pathname === '/estudo-de-caso'
+              ? 'Formulário de Estudo de Caso'
+              : location.pathname === '/pei'
+                ? 'Plano Educacional Individualizado (PEI)'
+                : location.pathname === '/pea'
+                  ? 'Plano de Ensino Adaptado (PEA)'
+                  : 'Ficha do Estudante'
+          }
+        />
+      )}
 
       {/* Conteúdo Principal */}
-      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
+      <main
+        className={`w-full flex-1 ${
+          location.pathname === '/login'
+            ? 'flex items-center justify-center p-4'
+            : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
+        }`}
+      >
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route element={<RotaProtegida />}>
@@ -603,6 +604,17 @@ export const App: React.FC = () => {
                 </div>
               ) : (
                 <>
+                  <div className="mb-4">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/estudantes')}
+                      className="inline-flex items-center gap-2 text-xs font-semibold text-ifpb-teal hover:text-ifpb-tealHover cursor-pointer transition-colors px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200 shadow-2xs"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      Voltar para Gestão de Estudantes
+                    </button>
+                  </div>
+
                   {header && <StudentHeader header={header} />}
                   {!header && (loadingHeader || errorHeader) && (
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">

@@ -7,7 +7,7 @@ import { toProblem } from '../services/apiClient';
 export const Login: React.FC = () => {
   const { autenticado, login, avisoSessao, limparAviso } = useAuth();
   const location = useLocation();
-  const destino = (location.state as { from?: string } | null)?.from ?? '/';
+  const destino = (location.state as { from?: string } | null)?.from ?? '/estudantes';
 
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
