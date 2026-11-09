@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Menu } from 'lucide-react';
+import { LogOut, Menu, Shield } from 'lucide-react';
 import ifpbLogo from '../assets/imagens/ifpb.png';
+import { useAuth } from '../contexts/AuthContext';
+import { ROTULO_ROLE } from '../types/auth';
 
 interface HeaderIFPBProps {
   onSearch?: (term: string) => void;
@@ -10,11 +12,12 @@ interface HeaderIFPBProps {
 }
 
 export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
+  const { sessao, logout } = useAuth();
   return (
     <header className="w-full bg-white border-b border-gray-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Linha Principal com Logo e Menu Hambúrguer */}
-        <div className="py-4 flex items-center">
+        <div className="py-4 flex items-center justify-between gap-4">
           <div className="flex items-center space-x-8">
             {/* Logo Oficial IFPB */}
             <Link to="/">
@@ -35,7 +38,36 @@ export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
                 <Menu className="w-7 h-7 text-[#0F6460]" strokeWidth={2.6} />
               </button>
             </div>
+      clear
           </div>
+
+          {/* Usuário autenticado (RBAC) */}
+          {sessao && (
+            <div className="flex items-center gap-3 text-sm">
+              {sessao.role === 'ADMIN' && (
+                <Link
+                  to="/admin/usuarios"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-ifpb-teal hover:bg-ifpb-tealHover transition-colors shadow-2xs"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  Painel Admin
+                </Link>
+              )}
+              <div className="text-right leading-tight">
+                <p className="font-semibold text-gray-800">{sessao.nome || sessao.email}</p>
+                <p className="text-xs text-ifpb-teal font-medium">{ROTULO_ROLE[sessao.role] ?? sessao.role}</p>
+              </div>
+              <button
+                type="button"
+                onClick={logout}
+                className="inline-flex items-center gap-1.5 border border-gray-300 rounded-lg px-3 py-1.5 text-gray-700 hover:bg-gray-50 cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                Sair
+              </button>
+            </div>
+          )}
+
         </div>
       </div>
       

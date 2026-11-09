@@ -94,6 +94,10 @@ public class AuthRevocationIntegrationTest {
                             .findFirst();
                 });
 
+        org.mockito.Mockito.lenient().when(usuarioRepository.findAll())
+                .thenAnswer(inv -> new java.util.ArrayList<>(bancoUsuarios.values()));
+
+
         adminUser = new Usuario(
                 "Admin Teste",
                 "admin.test@sigi.ifpb.edu.br",
@@ -258,4 +262,59 @@ public class AuthRevocationIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Sessão revogada ou versão do token inválida."));
     }
+
+    @Test
+    @DisplayName("Admin: Deve listar todos os usuários com dados de RBAC com sucesso (200 OK)")
+    void deveListarUsuariosComSucessoParaAdmin() throws Exception {
+        LoginRequestDTO loginAdmin = new LoginRequestDTO("admin.test@sigi.ifpb.edu.br", "senha123");
+        MvcResult loginAdminResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginAdmin)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        LoginResponseDTO adminResponse = objectMapper.readValue(
+                loginAdminResult.getResponse().getContentAsString(),
+                LoginResponseDTO.class
+        );
+
+        mockMvc.perform(get("/api/admin/usuarios")
+                        .header("Authorization", "Bearer " + adminResponse.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[?(@.email == 'admin.test@sigi.ifpb.edu.br')].role").value("ADMIN"))
+                .andExpect(jsonPath("$[?(@.email == 'admin.test@sigi.ifpb.edu.br')].nivelRestricao").value("SUPER_RESTRICAO"))
+                .andExpect(jsonPath("$[?(@.email == 'admin.test@sigi.ifpb.edu.br')].acessoAtivo").value(true))
+                .andExpect(jsonPath("$[?(@.email == 'aluno.test@sigi.ifpb.edu.br')].role").value("ALUNO_APOIADOR"))
+                .andExpect(jsonPath("$[?(@.email == 'aluno.test@sigi.ifpb.edu.br')].nivelRestricao").value("ACESSO_FUNCIONAL"));
+    }
+
+    @Test
+    @DisplayName("Segurança: Usuário não-admin (ALUNO_APOIADOR) deve receber 403 Forbidden ao tentar listar usuários")
+    void deveNegarListagemDeUsuariosParaNaoAdmin() throws Exception {
+        LoginRequestDTO loginAluno = new LoginRequestDTO("aluno.test@sigi.ifpb.edu.br", "senha123");
+        MvcResult loginAlunoResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginAluno)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        LoginResponseDTO alunoResponse = objectMapper.readValue(
+                loginAlunoResult.getResponse().getContentAsString(),
+                LoginResponseDTO.class
+        );
+
+        mockMvc.perform(get("/api/admin/usuarios")
+                        .header("Authorization", "Bearer " + alunoResponse.token()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Segurança: Requisição não autenticada para listar usuários deve receber 401 Unauthorized")
+    void deveRejeitarListagemDeUsuariosSemAutenticacao() throws Exception {
+        mockMvc.perform(get("/api/admin/usuarios"))
+                .andExpect(status().isUnauthorized());
+    }
 }
+

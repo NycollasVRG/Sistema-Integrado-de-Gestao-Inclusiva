@@ -38,10 +38,17 @@ import type {
   ProblemDetailRFC9457,
 } from './types/estudoDeCaso';
 import { AreaGestaoEstudantes } from './components/AreaGestaoEstudantes';
+import { Login } from './pages/Login';
+import { RotaProtegida } from './components/RotaProtegida';
+import { ModalAcessoNegadoLGPD } from './components/ModalAcessoNegadoLGPD';
+import { useAuth } from './contexts/AuthContext';
+import { PainelAdminUsuarios } from './pages/PainelAdminUsuarios';
+import { SecaoProntuarioRbac } from './components/SecaoProntuarioRbac';
 
 export const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { autenticado } = useAuth();
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno>(ALUNOS_PADRAO[0]);
   const [indicadores] = useState<IndicadorReutilizavel[]>(INDICADORES_PADRAO);
   const [estudoAtual, setEstudoAtual] = useState<EstudoDeCasoResponseDTO | null>(null);
@@ -177,12 +184,13 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!autenticado) return;
     carregarEstudosDoAluno(alunoSelecionado.id);
     carregarPeiDoAluno(alunoSelecionado.id);
     carregarPeaDoAluno(alunoSelecionado.id);
     carregarHeader(alunoSelecionado.id);
     carregarTimeline(alunoSelecionado.id);
-  }, [alunoSelecionado]);
+  }, [alunoSelecionado, autenticado]);
 
   const handleSalvarPei = async (habilidadesInteresses: string, propostasAdaptacoes: string) => {
     setIsLoading(true);
@@ -466,12 +474,20 @@ export const App: React.FC = () => {
       {/* Alertas Toasts flutuantes */}
       <ToastAlert toasts={toasts} onFechar={removerToast} />
 
+      {/* Modal global de sigilo clínico/LGPD (403) */}
+      <ModalAcessoNegadoLGPD />
+
+
       {/* Cabeçalho Oficial do IFPB */}
       <HeaderIFPB
         searchTerm={termoBusca}
         onSearch={setTermoBusca}
         subTitle={
-          location.pathname === '/estudantes'
+          location.pathname.startsWith('/admin')
+            ? 'Gestão de Acessos e Usuários (RBAC)'
+            : location.pathname === '/login'
+            ? 'Autenticação'
+            : location.pathname === '/estudantes'
             ? 'Gestão de Estudantes'
             : location.pathname === '/estudo-de-caso'
             ? 'Formulário de Estudo de Caso'
@@ -486,10 +502,18 @@ export const App: React.FC = () => {
       {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
         <Routes>
-          <Route
+          <Route path="/login" element={<Login />} />
+          <Route element={<RotaProtegida />}>
+            <Route
+              path="/admin/usuarios"
+              element={<PainelAdminUsuarios onNotificar={adicionarToast} />}
+            />
+            <Route path="/admin" element={<Navigate to="/admin/usuarios" replace />} />
+            <Route
               path="/estudantes"
               element={<AreaGestaoEstudantes onAbrirProntuario={abrirProntuarioDaListagem} />}
             />
+
           <Route
             path="/"
             element={
@@ -532,6 +556,12 @@ export const App: React.FC = () => {
                   onAbrirFormularioPei={() => navigate('/pei')}
                   onAbrirFormularioPea={() => navigate('/pea')}
                 />
+
+                {/* US 09 / TA11.2 e TA11.3: históricos sensíveis e anexos com RBAC visual */}
+                <div className="mt-6">
+                  <SecaoProntuarioRbac key={alunoSelecionado.id} alunoId={alunoSelecionado.id} />
+                </div>
+
               </>
             }
           />
@@ -580,6 +610,7 @@ export const App: React.FC = () => {
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
         </Routes>
       </main>
 
