@@ -297,18 +297,18 @@ Documento norteador institucional contendo as diretrizes pedagógicas globais do
 
 | Método | Endpoint | Cabeçalhos | Descrição |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/peis` | — | Lista todos os planos educacionais individualizados ativos |
-| `GET` | `/api/peis/{id}` | — | Detalhes do PEI com resolução automática de dados do discente |
-| `GET` | `/api/peis/acompanhamento/{acompanhamentoId}` | — | Lista PEIs vinculados a um acompanhamento |
-| `GET` | `/api/peis/aluno/{alunoId}` | — | Lista PEIs vinculados a um aluno |
-| `GET` | `/api/peis/{id}/anexos-sensiveis` | `X-User-Perfil` | Consulta anexos sensíveis e laudos clínicos (**Controle de Acesso TA3.2**) |
-| `POST` | `/api/peis` | `X-User-Id` *(obrigatório)* | Cria um novo PEI a partir do acompanhamento (**TA3.1**) |
-| `PUT` | `/api/peis/{id}` | `X-User-Id` *(obrigatório)* | Atualiza metas, habilidades e propostas de adaptação |
-| `DELETE` | `/api/peis/{id}` | `X-User-Id` *(obrigatório)* | Inativa o PEI via *soft delete* preservando os registros de auditoria (**TA3.4**) |
+| `GET` | `/api/peis` | `Authorization: Bearer <token>` | Lista todos os planos educacionais individualizados ativos |
+| `GET` | `/api/peis/{id}` | `Authorization: Bearer <token>` | Detalhes do PEI com resolução automática de dados do discente |
+| `GET` | `/api/peis/acompanhamento/{acompanhamentoId}` | `Authorization: Bearer <token>` | Lista PEIs vinculados a um acompanhamento |
+| `GET` | `/api/peis/aluno/{alunoId}` | `Authorization: Bearer <token>` | Lista PEIs vinculados a um aluno |
+| `GET` | `/api/peis/{id}/anexos-sensiveis` | `Authorization: Bearer <token>` | Consulta anexos sensíveis e laudos clínicos (**Controle de Acesso TA3.2 / TA11.3 — RESTRICAO_MODERADA ou superior**) |
+| `POST` | `/api/peis` | `Authorization: Bearer <token>` | Cria um novo PEI a partir do acompanhamento (**TA3.1**) |
+| `PUT` | `/api/peis/{id}` | `Authorization: Bearer <token>` | Atualiza metas, habilidades e propostas de adaptação |
+| `DELETE` | `/api/peis/{id}` | `Authorization: Bearer <token>` | Inativa o PEI via *soft delete* preservando os registros de auditoria (**TA3.4**) |
 
 * **Regras de Negócio Chave:**
-  * **TA3.2 (Segurança de Dados Sensíveis):** O endpoint `/api/peis/{id}/anexos-sensiveis` rejeita requisições identificadas com perfil `Professor` com status **`403 Forbidden`**, preservando o sigilo de dados de saúde do estudante.
-  * **TA3.4 (Auditoria e Soft Delete):** A inativação de um PEI marca o campo booleano `deleted = true` e atualiza a trilha de auditoria (`atualizado_por`, `atualizado_em`), impedindo exclusão em cascata das tabelas associadas (`sigi.pea`, `sigi.aluno`, `sigi.acompanhamento`).
+  * **TA3.2 e TA11.3 (Segurança de Dados Sensíveis):** O endpoint `/api/peis/{id}/anexos-sensiveis` exige nível de autorização `RESTRICAO_MODERADA` ou superior (`@PreAuthorize("@rbacGuard.temRestricaoModeradaOuSuperior()")`), rejeitando perfis `Professor` ou `ACESSO_FUNCIONAL` com **`403 Forbidden`** e preservando o sigilo clínico e LGPD dos laudos médicos do estudante.
+  * **TA3.4 (Auditoria e Soft Delete):** A inativação de um PEI marca o campo booleano `deleted = true` e atualiza a trilha de auditoria (`atualizado_por`, `atualizado_em`) via JWT do usuário autenticado, impedindo exclusão em cascata das tabelas associadas (`sigi.pea`, `sigi.aluno`, `sigi.acompanhamento`).
 
 ---
 
