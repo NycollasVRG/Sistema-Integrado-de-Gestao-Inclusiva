@@ -11,9 +11,12 @@ import {
 } from 'lucide-react';
 
 import type { Aluno, ProblemDetailRFC9457 } from '../types/estudoDeCaso';
-import type { PeaResponseDTO, PerfilUsuario } from '../types/pea';
+import type { PeaResponseDTO } from '../types/pea';
 import { PeaService } from '../services/peaService';
 import { ConfirmModal } from './ConfirmModal';
+import { useAuth } from '../contexts/AuthContext';
+import { ROTULO_ROLE } from '../types/auth';
+import { notificarAcessoNegado } from '../services/authSessao';
 
 interface DadosFormularioPea {
   objetivoGeral: string;
@@ -45,6 +48,8 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
   onVoltar,
   isLoading = false,
 }) => {
+  const { sessao, podeAcessarDadosSensiveis } = useAuth();
+
   const [objetivoGeral, setObjetivoGeral] = useState('');
   const [metodologia, setMetodologia] = useState('');
   const [avaliacao, setAvaliacao] = useState('');
@@ -52,9 +57,6 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
 
   // Erros estruturados por campo (N9 e A11)
   const [errosCampos, setErrosCampos] = useState<Record<string, string>>({});
-
-  // Mock de perfil para testes da TA3.2.
-  const [perfil, setPerfil] = useState<PerfilUsuario>('Professor');
 
   const [abaAtiva, setAbaAtiva] = useState<'pedagogico' | 'anexos'>('pedagogico');
 
@@ -64,10 +66,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
   const [erroFormulario, setErroFormulario] = useState<string | null>(null);
   const [confirmarSaida, setConfirmarSaida] = useState<boolean>(false);
 
-  // Evita exibir resultados antigos ao trocar o perfil.
   const requisicaoAtual = useRef(0);
-
-  const isProfessor = perfil === 'Professor';
 
   // Identificação de dirty state para confirmação de saída (N10)
   const isDirty =
@@ -91,15 +90,6 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
     };
   }, []);
 
-  const alterarPerfil = (novoPerfil: PerfilUsuario) => {
-    requisicaoAtual.current += 1;
-    setPerfil(novoPerfil);
-    setAbaAtiva('pedagogico');
-    setAnexos([]);
-    setErroAcesso(null);
-    setCarregandoAnexos(false);
-  };
-
   const handleVoltar = () => {
     if (isDirty) {
       setConfirmarSaida(true);
@@ -113,6 +103,17 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
     setAnexos([]);
     setErroAcesso(null);
 
+    // Bloqueio preventivo alinhado com TA3.2 e TA11.3 (LGPD / Sigilo Clínico)
+    if (!podeAcessarDadosSensiveis) {
+      setErroAcesso(
+        'Acesso restrito. Seu perfil possui acesso apenas aos dados pedagógicos e não tem autorização para visualizar laudos médicos ou anexos confidenciais.'
+      );
+      notificarAcessoNegado(
+        'Acesso restrito: a visualização de laudos médicos e anexos confidenciais é restrita à equipe multiprofissional (CLAI) e Coordenação.'
+      );
+      return;
+    }
+
     if (!peiId) {
       setErroAcesso('Não há um PEI associado para consultar os anexos.');
       return;
@@ -122,7 +123,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
     setCarregandoAnexos(true);
 
     try {
-      const resultado = await PeaService.listarAnexosSensiveis(peiId, perfil);
+      const resultado = await PeaService.listarAnexosSensiveis(peiId);
 
       if (numeroRequisicao !== requisicaoAtual.current) {
         return;
@@ -288,41 +289,15 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
         </div>
       )}
 
-      {/* Perfil simulado (Ambiente de Teste) */}
-      <div className="bg-amber-50/50 border-b border-amber-200/60 p-4 sm:p-5 space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
-            Ambiente de Teste
-          </span>
-          <label htmlFor="perfil-pea" className="text-xs font-bold text-gray-700">
-            Simulação de Perfil de Acesso (Regra TA3.2)
-          </label>
-        </div>
-
-        <select
-          id="perfil-pea"
-          value={perfil}
-          onChange={(e) => alterarPerfil(e.target.value as PerfilUsuario)}
-          className="block w-full sm:w-72 p-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal"
-        >
-          <option value="Professor">Professor (Sem acesso a anexos sigilosos)</option>
-          <option value="Coordenador">Coordenador (Acesso total)</option>
-        </select>
-
-        <p className="text-[11px] text-gray-500">
-          Alterne o perfil acima para verificar a validação de segurança e restrição de laudos do estudante.
-        </p>
-      </div>
-
-      {/* Aviso para Professor */}
-      {isProfessor && (
+      {/* Aviso contextual de sigilo clínico (LGPD) para perfis sem acesso a laudos */}
+      {!podeAcessarDadosSensiveis && (
         <div className="m-5 p-4 bg-amber-50 border border-amber-200 rounded-lg flex gap-3">
-          <Lock className="w-5 h-5 text-amber-700 shrink-0" />
+          <Lock className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
           <div>
-            <h3 className="text-sm font-bold text-amber-800">Acesso restrito</h3>
+            <h3 className="text-sm font-bold text-amber-800">Acesso restrito por sigilo clínico (LGPD)</h3>
             <p className="text-xs text-amber-700 mt-1">
-              O perfil Professor pode acessar as informações pedagógicas, mas não possui permissão
-              para visualizar os Laudos Médicos / Anexos Confidenciais.
+              O perfil {sessao?.role ? ROTULO_ROLE[sessao.role] : 'Professor'} pode acessar as informações pedagógicas,
+              mas não possui permissão para visualizar os Laudos Médicos e Anexos Confidenciais do estudante.
             </p>
           </div>
         </div>
@@ -342,18 +317,19 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
           Dados Pedagógicos
         </button>
 
-        {/* TA3.2: O usuário clica para disparar a requisição e validar a autorização no Backend */}
+        {/* TA3.2 e TA11.3: Anexos sensíveis protegidos por RBAC */}
         <button
           type="button"
           onClick={abrirAnexos}
           disabled={isLoading}
-          className={`pb-3 px-2 text-sm font-semibold border-b-2 cursor-pointer ${
+          className={`pb-3 px-2 text-sm font-semibold border-b-2 cursor-pointer flex items-center gap-1.5 ${
             abaAtiva === 'anexos'
               ? 'border-ifpb-teal text-ifpb-teal'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
-          Laudos Médicos / Anexos
+          {!podeAcessarDadosSensiveis && <Lock className="w-3.5 h-3.5 text-amber-600" />}
+          <span>Laudos Médicos / Anexos</span>
         </button>
       </div>
 
@@ -519,7 +495,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
               <ShieldAlert className="w-5 h-5 text-ifpb-teal" />
               Laudos Médicos / Anexos do Plano
             </h3>
-            <span className="text-xs text-gray-500">Regra de Segurança TA3.2</span>
+            <span className="text-xs text-gray-500">Controle de Acesso LGPD</span>
           </div>
 
           {carregandoAnexos && (

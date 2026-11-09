@@ -2,7 +2,6 @@ import type {
   PeaRequestDTO,
   PeaResponseDTO,
   PeaUpdateDTO,
-  PerfilUsuario,
 } from '../types/pea';
 import { apiFetch } from './apiClient';
 
@@ -60,18 +59,12 @@ export class PeaService {
     return response.json();
   }
 
-  // TA3.2: Consulta protegida aos anexos do PEI.
+  // TA3.2 e TA11.3: Consulta protegida aos anexos do PEI via Bearer JWT do usuário autenticado.
   static async listarAnexosSensiveis(
-    peiId: string,
-    perfil?: PerfilUsuario
+    peiId: string
   ): Promise<PeaResponseDTO[]> {
-    const headers: Record<string, string> = {};
-    if (perfil) {
-      headers['X-User-Perfil'] = perfil;
-    }
     const response = await apiFetch(
-      `/api/peis/${encodeURIComponent(peiId)}/anexos-sensiveis`,
-      { headers }
+      `/api/peis/${encodeURIComponent(peiId)}/anexos-sensiveis`
     );
 
     return response.json();
