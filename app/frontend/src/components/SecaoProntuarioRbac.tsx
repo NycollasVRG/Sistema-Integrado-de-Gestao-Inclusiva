@@ -32,6 +32,8 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
   const [erro, setErro] = useState<string | null>(null);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
 
+  const [erroDownload, setErroDownload] = useState<string | null>(null);
+
   useEffect(() => {
     const controlador = new AbortController();
     Promise.allSettled([
@@ -51,6 +53,7 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
   }, [alunoId]);
 
   const baixar = async (anexo: AnexoEstudanteDTO) => {
+    setErroDownload(null);
     // TA11.2: bloqueio preventivo, sem sequer chamar a API.
     if (isAnexoSensivel(anexo.classificacao) && !podeBaixarLaudo) {
       notificarAcessoNegado();
@@ -60,7 +63,7 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
     try {
       await AnexoService.baixar(anexo);
     } catch {
-      // 401/403 já tratados globalmente (logout / modal LGPD).
+      setErroDownload(`Falha ao baixar "${anexo.nomeOriginal}". Verifique sua conexão e permissões.`);
     } finally {
       setBaixandoId(null);
     }
@@ -107,10 +110,25 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
           Anexos e Documentos
         </h3>
 
-        {carregando && <p className="text-xs text-gray-500">Carregando anexos...</p>}
+        {erroDownload && (
+          <p role="alert" className="text-xs text-red-700 bg-red-50 p-2.5 rounded-lg border border-red-200">
+            {erroDownload}
+          </p>
+        )}
+
+        {carregando && (
+          <div className="flex items-center gap-2.5 py-4 text-xs text-gray-500">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-ifpb-teal" />
+            <span>Carregando anexos e laudos...</span>
+          </div>
+        )}
         {erro && !carregando && <p className="text-xs text-red-700">{erro}</p>}
         {!carregando && !erro && anexos.length === 0 && (
-          <p className="text-xs text-gray-500">Nenhum anexo cadastrado para este estudante.</p>
+          <div className="p-6 text-center text-gray-400 border border-dashed border-gray-200 rounded-lg text-xs space-y-1">
+            <FileText className="w-7 h-7 mx-auto text-gray-300" />
+            <p className="font-medium text-gray-600">Nenhum anexo cadastrado</p>
+            <p className="text-gray-400">Não há laudos médicos ou documentos vinculados a este estudante.</p>
+          </div>
         )}
 
         <ul className="divide-y divide-gray-100">

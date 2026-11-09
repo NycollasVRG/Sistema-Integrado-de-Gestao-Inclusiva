@@ -184,7 +184,7 @@ export const ModalNovoAtendimento: React.FC<ModalNovoAtendimentoProps> = ({
                 value={dataAtendimento}
                 onChange={(e) => setDataAtendimento(e.target.value)}
                 disabled={isSubmitting}
-                className="w-full px-3 py-2 rounded-lg text-xs border border-gray-300 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal"
+                className="w-full pl-3 pr-8 py-2 rounded-lg text-xs border border-gray-300 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal [&::-webkit-calendar-picker-indicator]:opacity-0 cursor-pointer"
               />
               <Calendar className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
             </div>
@@ -210,7 +210,7 @@ export const ModalNovoAtendimento: React.FC<ModalNovoAtendimentoProps> = ({
               }}
               placeholder="Ex.: Psicopedagogia CLAI / Nome do Profissional"
               disabled={isSubmitting}
-              className={`w-full px-3 py-2 rounded-lg text-xs border bg-white text-gray-800 focus:outline-none focus:ring-2 ${
+              className={`w-full pl-3 pr-9 py-2 rounded-lg text-xs border bg-white text-gray-800 focus:outline-none focus:ring-2 ${
                 erroProfissional
                   ? 'border-ifpb-red focus:ring-red-200'
                   : 'border-gray-300 focus:ring-ifpb-teal/30 focus:border-ifpb-teal'

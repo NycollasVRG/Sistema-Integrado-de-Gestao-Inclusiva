@@ -35,10 +35,9 @@ export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
                 className="text-ifpb-teal hover:text-ifpb-tealHover focus:outline-none p-1 rounded transition-colors"
                 title="Menu de Navegação"
               >
-                <Menu className="w-7 h-7 text-[#0F6460]" strokeWidth={2.6} />
+                <Menu className="w-7 h-7 text-ifpb-teal" strokeWidth={2.6} />
               </button>
             </div>
-      clear
           </div>
 
           {/* Usuário autenticado (RBAC) */}

@@ -1,5 +1,4 @@
-import { obterTokenGestao } from './authGestaoEstudantes';
-import { tratarStatusGlobal } from './apiClient';
+import { apiFetch, isProblem } from './apiClient';
 import type {
   DadosEstudanteFormulario,
   EstudanteResumo,
@@ -7,8 +6,6 @@ import type {
   PaginaEstudantes,
   TagDificuldadeDTO,
 } from '../types/gestaoEstudantes';
-
-const API_BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8080').replace(/\/$/, '');
 
 export class ErroApiAlunos extends Error {
   readonly status: number;
@@ -74,36 +71,28 @@ async function requisitar<T>(
   caminho: string,
   opcoes: { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; body?: unknown; signal?: AbortSignal } = {},
 ): Promise<T> {
-  const token = obterTokenGestao();
-  if (!token) throw new ErroApiAlunos(401, 'Sua sessão expirou. Faça login novamente.');
-
-  const resposta = await fetch(`${API_BASE}${caminho}`, {
+  const init: RequestInit = {
     method: opcoes.method ?? 'GET',
     headers: {
       Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
       ...(opcoes.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
     },
     ...(opcoes.body !== undefined ? { body: JSON.stringify(opcoes.body) } : {}),
     signal: opcoes.signal,
-  });
+  };
 
-  if (!resposta.ok) {
-    let mensagem = `Não foi possível concluir a operação (HTTP ${resposta.status}).`;
-    try {
-      const problema: unknown = await resposta.json();
-      if (problema && typeof problema === 'object') {
-        const detalhes = problema as { detail?: unknown; title?: unknown };
-        if (typeof detalhes.detail === 'string' && detalhes.detail.trim()) mensagem = detalhes.detail;
-        else if (typeof detalhes.title === 'string' && detalhes.title.trim()) mensagem = detalhes.title;
-      }
-    } catch { /* API pode responder sem JSON. */ }
-    tratarStatusGlobal(resposta.status, { detail: mensagem });
-    throw new ErroApiAlunos(resposta.status, mensagem);
+  try {
+    const resposta = await apiFetch(caminho, init);
+    if (resposta.status === 204) return undefined as T;
+    return (await resposta.json()) as T;
+  } catch (err: unknown) {
+    if (isProblem(err)) {
+      throw new ErroApiAlunos(err.status, err.detail || err.title || 'Falha na requisição.');
+    }
+    if (err instanceof ErroApiAlunos) throw err;
+    const msg = err instanceof Error ? err.message : 'Não foi possível concluir a operação.';
+    throw new ErroApiAlunos(-1, msg);
   }
-
-  if (resposta.status === 204) return undefined as T;
-  return (await resposta.json()) as T;
 }
 
 export const GestaoEstudantesService = {

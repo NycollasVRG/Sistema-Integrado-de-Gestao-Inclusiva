@@ -14,6 +14,7 @@ import {
   FileEdit,
   Clock,
   Lock,
+  RotateCw,
 } from 'lucide-react';
 
 interface FormularioEstudoDeCasoProps {
@@ -45,6 +46,7 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
   const [erroIndicadores, setErroIndicadores] = useState<string | null>(null);
   const [tentouConcluir, setTentouConcluir] = useState<boolean>(false);
   const [confirmarDescarte, setConfirmarDescarte] = useState<boolean>(false);
+  const [confirmarSaida, setConfirmarSaida] = useState<boolean>(false);
 
   // TA11.3: só Restrição Moderada ou superior E campos presentes no JSON.
   const { podeAcessarDadosSensiveis } = useAuth();
@@ -144,10 +146,8 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
 
   const handleVoltar = () => {
     if (isDirty) {
-      const confirmar = window.confirm(
-        'Existem alterações não salvas no Estudo de Caso. Deseja realmente sair e descartar as alterações?'
-      );
-      if (!confirmar) return;
+      setConfirmarSaida(true);
+      return;
     }
     onVoltar();
   };
@@ -419,8 +419,12 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
               title={somenteLeitura ? 'Estudo concluído é somente leitura' : undefined}
               className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-xs font-bold border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-xs transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Save className="w-4 h-4 mr-1.5 text-gray-500" />
-              Salvar Rascunho
+              {isLoading ? (
+                <RotateCw className="w-4 h-4 mr-1.5 text-gray-500 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-1.5 text-gray-500" />
+              )}
+              {isLoading ? 'Salvando...' : 'Salvar Rascunho'}
             </button>
 
             {/* Botão Concluir (Valida TA2.3 e envia ENCERRADO) */}
@@ -431,12 +435,31 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
               title={somenteLeitura ? 'Estudo concluído é somente leitura' : undefined}
               className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg text-xs font-bold text-white bg-ifpb-teal hover:bg-ifpb-tealHover focus:outline-none focus:ring-2 focus:ring-ifpb-teal/40 shadow-sm transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <CheckCircle className="w-4 h-4 mr-1.5 text-green-300" />
-              Concluir Estudo de Caso
+              {isLoading ? (
+                <RotateCw className="w-4 h-4 mr-1.5 text-green-300 animate-spin" />
+              ) : (
+                <CheckCircle className="w-4 h-4 mr-1.5 text-green-300" />
+              )}
+              {isLoading ? 'Concluindo...' : 'Concluir Estudo de Caso'}
             </button>
           </div>
         </div>
       </form>
+
+      {confirmarSaida && (
+        <ConfirmModal
+          titulo="Descartar alterações?"
+          mensagem="Existem alterações não salvas no Estudo de Caso. Deseja realmente sair e descartar as alterações?"
+          textoConfirmar="Descartar e Sair"
+          textoCancelar="Continuar Editando"
+          variante="perigo"
+          onConfirmar={() => {
+            setConfirmarSaida(false);
+            onVoltar();
+          }}
+          onCancelar={() => setConfirmarSaida(false)}
+        />
+      )}
 
       {confirmarDescarte && onExcluirRascunho && (
         <ConfirmModal

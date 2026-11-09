@@ -13,6 +13,7 @@ import {
 import type { Aluno, ProblemDetailRFC9457 } from '../types/estudoDeCaso';
 import type { PeaResponseDTO, PerfilUsuario } from '../types/pea';
 import { PeaService } from '../services/peaService';
+import { ConfirmModal } from './ConfirmModal';
 
 interface DadosFormularioPea {
   objetivoGeral: string;
@@ -61,6 +62,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
   const [carregandoAnexos, setCarregandoAnexos] = useState(false);
   const [erroAcesso, setErroAcesso] = useState<string | null>(null);
   const [erroFormulario, setErroFormulario] = useState<string | null>(null);
+  const [confirmarSaida, setConfirmarSaida] = useState<boolean>(false);
 
   // Evita exibir resultados antigos ao trocar o perfil.
   const requisicaoAtual = useRef(0);
@@ -100,10 +102,8 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
 
   const handleVoltar = () => {
     if (isDirty) {
-      const confirmar = window.confirm(
-        'Existem alterações não salvas no PEA. Deseja realmente sair e descartar as alterações?'
-      );
-      if (!confirmar) return;
+      setConfirmarSaida(true);
+      return;
     }
     onVoltar();
   };
@@ -288,24 +288,29 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
         </div>
       )}
 
-      {/* Perfil simulado */}
-      <div className="bg-gray-50 border-b p-5 space-y-2">
-        <label htmlFor="perfil-pea" className="text-sm font-bold text-gray-700">
-          Perfil do usuário (simulação)
-        </label>
+      {/* Perfil simulado (Ambiente de Teste) */}
+      <div className="bg-amber-50/50 border-b border-amber-200/60 p-4 sm:p-5 space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
+            Ambiente de Teste
+          </span>
+          <label htmlFor="perfil-pea" className="text-xs font-bold text-gray-700">
+            Simulação de Perfil de Acesso (Regra TA3.2)
+          </label>
+        </div>
 
         <select
           id="perfil-pea"
           value={perfil}
           onChange={(e) => alterarPerfil(e.target.value as PerfilUsuario)}
-          className="block w-full sm:w-64 p-2 border border-gray-300 rounded-lg text-sm bg-white"
+          className="block w-full sm:w-72 p-2 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal"
         >
-          <option value="Professor">Professor</option>
-          <option value="Coordenador">Coordenador</option>
+          <option value="Professor">Professor (Sem acesso a anexos sigilosos)</option>
+          <option value="Coordenador">Coordenador (Acesso total)</option>
         </select>
 
-        <p className="text-xs text-gray-500">
-          Selecione um perfil para testar as restrições de acesso da regra TA3.2.
+        <p className="text-[11px] text-gray-500">
+          Alterne o perfil acima para verificar a validação de segurança e restrição de laudos do estudante.
         </p>
       </div>
 
@@ -592,6 +597,21 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
               </div>
             ))}
         </div>
+      )}
+
+      {confirmarSaida && (
+        <ConfirmModal
+          titulo="Descartar alterações?"
+          mensagem="Existem alterações não salvas no PEA. Deseja realmente sair e descartar as alterações?"
+          textoConfirmar="Descartar e Sair"
+          textoCancelar="Continuar Editando"
+          variante="perigo"
+          onConfirmar={() => {
+            setConfirmarSaida(false);
+            onVoltar();
+          }}
+          onCancelar={() => setConfirmarSaida(false)}
+        />
       )}
     </div>
   );

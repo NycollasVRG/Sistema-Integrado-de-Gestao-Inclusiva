@@ -33,7 +33,7 @@ export const ModalAlunoHeader: React.FC<ModalAlunoHeaderProps> = ({ aluno }) => 
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Nome do Aluno */}
-        <div className="sm:col-span-1">
+        <div className="sm:col-span-3">
           <label
             htmlFor="modal-readonly-nome"
             className="block text-[11px] font-semibold text-gray-600 uppercase"
@@ -45,12 +45,12 @@ export const ModalAlunoHeader: React.FC<ModalAlunoHeaderProps> = ({ aluno }) => 
             type="text"
             readOnly
             value={aluno.nome}
-            className="mt-1 w-full px-3 py-1.5 rounded-md text-xs font-semibold text-ifpb-dark bg-white/90 border border-gray-300 cursor-default focus:outline-none"
+            className="mt-1 w-full px-3 py-1.5 rounded-md text-xs font-bold text-gray-900 bg-white/90 border border-gray-300 cursor-default focus:outline-none"
           />
         </div>
 
         {/* Matrícula (Pré-carregada sem redigitação - TA9.3) */}
-        <div>
+        <div className="sm:col-span-1">
           <label
             htmlFor="modal-readonly-matricula"
             className="block text-[11px] font-semibold text-gray-600 uppercase"
@@ -67,7 +67,7 @@ export const ModalAlunoHeader: React.FC<ModalAlunoHeaderProps> = ({ aluno }) => 
         </div>
 
         {/* Curso */}
-        <div>
+        <div className="sm:col-span-2">
           <label
             htmlFor="modal-readonly-curso"
             className="block text-[11px] font-semibold text-gray-600 uppercase"
@@ -79,7 +79,7 @@ export const ModalAlunoHeader: React.FC<ModalAlunoHeaderProps> = ({ aluno }) => 
             type="text"
             readOnly
             value={aluno.curso || 'Não informado'}
-            className="mt-1 w-full px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 bg-white/90 border border-gray-300 cursor-default focus:outline-none"
+            className="mt-1 w-full px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 bg-white/90 border border-gray-300 cursor-default focus:outline-none truncate"
           />
         </div>
       </div>

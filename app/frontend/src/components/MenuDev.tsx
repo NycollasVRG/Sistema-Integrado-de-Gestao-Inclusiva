@@ -13,9 +13,13 @@ const TELAS: { path: string; label: string; icon: React.ReactNode }[] = [
 
 
 export const MenuDev: React.FC = () => {
-  const [aberto, setAberto] = useState(true);
+  const [aberto, setAberto] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  if (!import.meta.env.DEV) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-4 left-4 z-50 flex items-end">
