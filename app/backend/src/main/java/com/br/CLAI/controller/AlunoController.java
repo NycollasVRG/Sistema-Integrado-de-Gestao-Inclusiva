@@ -2,6 +2,7 @@ package com.br.CLAI.controller;
 
 import com.br.CLAI.domain.enums.StatusAluno;
 import com.br.CLAI.dto.request.AlunoRequestDTO;
+import com.br.CLAI.dto.response.AcompanhamentoResponseDTO;
 import com.br.CLAI.dto.response.AlunoResponseDTO;
 import com.br.CLAI.security.RbacGuard;
 import com.br.CLAI.service.AlunoService;
@@ -45,6 +46,11 @@ public class AlunoController {
     @GetMapping("/{id}")
     public ResponseEntity<AlunoResponseDTO> buscarPorId(@PathVariable UUID id) {
         return ResponseEntity.ok(service.buscarPorId(id));
+    }
+
+    @GetMapping("/{id}/acompanhamento")
+    public ResponseEntity<AcompanhamentoResponseDTO> buscarAcompanhamento(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.buscarOuCriarAcompanhamento(id));
     }
 
     @GetMapping

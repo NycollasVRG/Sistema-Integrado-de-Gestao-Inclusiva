@@ -1,22 +1,27 @@
 package com.br.CLAI.service;
 
+import com.br.CLAI.domain.Acompanhamento;
 import com.br.CLAI.domain.Aluno;
 import com.br.CLAI.domain.IndicadorReutilizavel;
 import com.br.CLAI.domain.enums.StatusAluno;
 import com.br.CLAI.dto.request.AlunoRequestDTO;
+import com.br.CLAI.dto.response.AcompanhamentoResponseDTO;
 import com.br.CLAI.dto.response.AlunoResponseDTO;
 import com.br.CLAI.exception.ConflitoException;
 import com.br.CLAI.exception.NaoEncontradoException;
 import com.br.CLAI.exception.RegraDeNegocioException;
 import com.br.CLAI.mapper.AlunoMapper;
+import com.br.CLAI.repository.AcompanhamentoRepository;
 import com.br.CLAI.repository.AlunoRepository;
 import com.br.CLAI.repository.IndicadorReutilizavelRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -31,13 +36,23 @@ public class AlunoService {
     private final AlunoRepository alunoRepository;
     private final IndicadorReutilizavelRepository tagRepository;
     private final AlunoMapper mapper;
+    private final AcompanhamentoRepository acompanhamentoRepository;
 
     public AlunoService(AlunoRepository alunoRepository,
-                            IndicadorReutilizavelRepository tagRepository,
-                            AlunoMapper mapper) {
+                        IndicadorReutilizavelRepository tagRepository,
+                        AlunoMapper mapper) {
+        this(alunoRepository, tagRepository, mapper, null);
+    }
+
+    @Autowired
+    public AlunoService(AlunoRepository alunoRepository,
+                        IndicadorReutilizavelRepository tagRepository,
+                        AlunoMapper mapper,
+                        AcompanhamentoRepository acompanhamentoRepository) {
         this.alunoRepository = alunoRepository;
         this.tagRepository = tagRepository;
         this.mapper = mapper;
+        this.acompanhamentoRepository = acompanhamentoRepository;
     }
 
     @Transactional
@@ -58,6 +73,24 @@ public class AlunoService {
     @Transactional(readOnly = true)
     public AlunoResponseDTO buscarPorId(UUID id) {
         return mapper.toResponse(buscarEntidade(id));
+    }
+
+    @Transactional
+    public AcompanhamentoResponseDTO buscarOuCriarAcompanhamento(UUID alunoId) {
+        Aluno aluno = buscarEntidade(alunoId);
+        if (acompanhamentoRepository == null) {
+            throw new IllegalStateException("AcompanhamentoRepository não foi injetado.");
+        }
+        List<Acompanhamento> acompanhamentos = acompanhamentoRepository.findByAlunoId(alunoId);
+        if (!acompanhamentos.isEmpty()) {
+            Acompanhamento a = acompanhamentos.get(0);
+            return new AcompanhamentoResponseDTO(a.getId(), a.getAluno().getId(), a.getDataInicio());
+        }
+        Acompanhamento novo = new Acompanhamento(aluno, LocalDate.now());
+        novo.setCriadoPor(aluno.getCriadoPor());
+        novo.setAtualizadoPor(aluno.getAtualizadoPor());
+        Acompanhamento salvo = acompanhamentoRepository.save(novo);
+        return new AcompanhamentoResponseDTO(salvo.getId(), salvo.getAluno().getId(), salvo.getDataInicio());
     }
 
     @Transactional(readOnly = true)
