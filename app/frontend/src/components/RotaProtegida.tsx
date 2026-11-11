@@ -7,7 +7,7 @@ export const RotaProtegida: React.FC = () => {
   const { autenticado } = useAuth();
   const location = useLocation();
   if (!autenticado) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
   return <Outlet />;
 };

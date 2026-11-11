@@ -1,4 +1,4 @@
-import { apiFetch, isProblem } from './apiClient';
+import { apiFetch, isAbortError, isProblem } from './apiClient';
 import type {
   DadosEstudanteFormulario,
   EstudanteResumo,
@@ -86,6 +86,9 @@ async function requisitar<T>(
     if (resposta.status === 204) return undefined as T;
     return (await resposta.json()) as T;
   } catch (err: unknown) {
+    if (isAbortError(err) || opcoes.signal?.aborted) {
+      throw err;
+    }
     if (isProblem(err)) {
       throw new ErroApiAlunos(err.status, err.detail || err.title || 'Falha na requisição.');
     }

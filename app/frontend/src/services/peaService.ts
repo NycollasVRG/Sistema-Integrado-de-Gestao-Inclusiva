@@ -9,9 +9,10 @@ export class PeaService {
   private static baseUrl = '/api/peas';
 
   static async listarPorAluno(
-    alunoId: string
+    alunoId: string,
+    signal?: AbortSignal
   ): Promise<PeaResponseDTO[]> {
-    const response = await apiFetch(`${this.baseUrl}/aluno/${encodeURIComponent(alunoId)}`);
+    const response = await apiFetch(`${this.baseUrl}/aluno/${encodeURIComponent(alunoId)}`, { signal });
     return response.json();
   }
 

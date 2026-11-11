@@ -16,13 +16,13 @@ function normalizarEstudo(estudo: EstudoDeCasoResponseDTO): EstudoDeCasoResponse
 export class EstudoDeCasoService {
   private static baseUrl = '/api/estudos-de-caso';
 
-  static async buscarPorId(id: string): Promise<EstudoDeCasoResponseDTO> {
-    const res = await apiFetch(`${this.baseUrl}/${encodeURIComponent(id)}`);
+  static async buscarPorId(id: string, signal?: AbortSignal): Promise<EstudoDeCasoResponseDTO> {
+    const res = await apiFetch(`${this.baseUrl}/${encodeURIComponent(id)}`, { signal });
     return normalizarEstudo(await res.json());
   }
 
-  static async listarPorAluno(alunoId: string): Promise<EstudoDeCasoResponseDTO[]> {
-    const res = await apiFetch(`${this.baseUrl}/aluno/${encodeURIComponent(alunoId)}`);
+  static async listarPorAluno(alunoId: string, signal?: AbortSignal): Promise<EstudoDeCasoResponseDTO[]> {
+    const res = await apiFetch(`${this.baseUrl}/aluno/${encodeURIComponent(alunoId)}`, { signal });
     const lista: EstudoDeCasoResponseDTO[] = await res.json();
     return lista.map(normalizarEstudo);
   }

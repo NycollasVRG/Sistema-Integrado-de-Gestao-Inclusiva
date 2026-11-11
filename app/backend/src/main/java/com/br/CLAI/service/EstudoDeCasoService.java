@@ -7,6 +7,7 @@ import com.br.CLAI.domain.enums.StatusEstudoCaso;
 import com.br.CLAI.dto.request.EstudoDeCasoRequestDTO;
 import com.br.CLAI.dto.request.EstudoDeCasoUpdateDTO;
 import com.br.CLAI.dto.response.EstudoDeCasoResponseDTO;
+import com.br.CLAI.exception.NaoEncontradoException;
 import com.br.CLAI.exception.RegraDeNegocioException;
 import com.br.CLAI.mapper.EstudoDeCasoMapper;
 import com.br.CLAI.repository.AlunoRepository;
@@ -70,16 +71,16 @@ public class EstudoDeCasoService {
     @Transactional(readOnly = true)
     public EstudoDeCasoResponseDTO buscarPorId(UUID id) {
         EstudoDeCaso estudo = repository.findById(id)
-                .orElseThrow(() -> new com.br.CLAI.exception.NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
+                .orElseThrow(() -> new NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
         return mapper.toResponse(estudo);
     }
 
     @Transactional(readOnly = true)
     public List<EstudoDeCasoResponseDTO> listarPorAluno(UUID alunoId) {
         if (!alunoRepository.existsById(alunoId)) {
-            throw new com.br.CLAI.exception.NaoEncontradoException("Aluno não encontrado com o ID fornecido.");
+            throw new NaoEncontradoException("Aluno não encontrado com o ID fornecido.");
         }
-        List<EstudoDeCaso> estudos = repository.findByAlunoId(alunoId);
+        List<EstudoDeCaso> estudos = OrdenacaoAuditoria.ordenarEstudosPorVigencia(repository.findByAlunoId(alunoId));
         return estudos.stream()
                 .map(mapper::toResponse)
                 .toList();
@@ -90,7 +91,7 @@ public class EstudoDeCasoService {
         validarUsuarioResponsavel(usuarioId);
 
         EstudoDeCaso estudo = repository.findById(id)
-                .orElseThrow(() -> new com.br.CLAI.exception.NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
+                .orElseThrow(() -> new NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
 
         // Regra de Proteção: estudo concluído (ENCERRADO/ATIVO) não pode voltar para RASCUNHO (ref. TA2.1)
         if ((StatusEstudoCaso.ENCERRADO.equals(estudo.getStatus())
@@ -128,7 +129,7 @@ public class EstudoDeCasoService {
         validarUsuarioResponsavel(usuarioId);
 
         EstudoDeCaso estudo = repository.findById(id)
-                .orElseThrow(() -> new com.br.CLAI.exception.NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
+                .orElseThrow(() -> new NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
 
         // Regra de Proteção: Não permite exclusão de estudos concluídos (ENCERRADO ou ATIVO, ref. TA2.1)
         if (StatusEstudoCaso.ENCERRADO.equals(estudo.getStatus())

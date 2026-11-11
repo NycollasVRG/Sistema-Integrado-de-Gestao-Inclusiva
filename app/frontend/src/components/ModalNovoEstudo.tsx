@@ -42,6 +42,8 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
   onError,
 }) => {
   const isRascunhoExistente = estudoExistente?.status === 'RASCUNHO';
+  const isConcluidoExistente =
+    estudoExistente?.status === 'ENCERRADO' || estudoExistente?.status === 'ATIVO';
 
   const [diagnostico, setDiagnostico] = useState<string>(
     isRascunhoExistente ? estudoExistente?.diagnosticoInicial || '' : ''
@@ -75,6 +77,14 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
   };
 
   const enviarEstudo = async (modo: 'RASCUNHO' | 'ENCERRADO') => {
+    if (isConcluidoExistente) {
+      onError?.(
+        'Estudo de Caso Já Concluído',
+        'Este estudante já possui um Estudo de Caso concluído e não pode receber um duplicado.'
+      );
+      return;
+    }
+
     if (modo === 'ENCERRADO') {
       let possuiErro = false;
 
@@ -160,7 +170,7 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
           <button
             type="button"
             onClick={() => enviarEstudo('RASCUNHO')}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isConcluidoExistente}
             className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg text-xs font-bold border border-ifpb-teal text-ifpb-teal bg-white hover:bg-ifpb-tealLight transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSubmitting && modoEnvio === 'RASCUNHO' ? (
@@ -174,7 +184,7 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
           <button
             type="button"
             onClick={() => enviarEstudo('ENCERRADO')}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isConcluidoExistente}
             className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-lg text-xs font-bold text-white bg-ifpb-teal hover:bg-ifpb-tealHover shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSubmitting && modoEnvio === 'ENCERRADO' ? (
@@ -211,8 +221,8 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
             if (e.target.value.trim()) setErroDiagnostico(null);
           }}
           placeholder="Digite o parecer técnico e observações iniciais da equipe..."
-          disabled={isSubmitting}
-          className={`w-full p-3 rounded-lg text-xs border bg-white text-gray-800 focus:outline-none focus:ring-2 resize-y ${
+          disabled={isSubmitting || isConcluidoExistente}
+          className={`w-full p-3 rounded-lg text-xs border bg-white text-gray-800 focus:outline-none focus:ring-2 resize-y disabled:bg-gray-100 disabled:cursor-not-allowed ${
             erroDiagnostico
               ? 'border-ifpb-red focus:ring-red-200'
               : 'border-gray-300 focus:ring-ifpb-teal/30 focus:border-ifpb-teal'
@@ -254,8 +264,8 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
                 key={ind.id}
                 type="button"
                 onClick={() => toggleIndicador(ind.id)}
-                disabled={isSubmitting}
-                className={`flex items-start space-x-2.5 p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                disabled={isSubmitting || isConcluidoExistente}
+                className={`flex items-start space-x-2.5 p-2.5 rounded-lg border text-left transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                   selecionado
                     ? 'bg-ifpb-tealLight border-ifpb-teal text-ifpb-dark shadow-xs'
                     : 'bg-white border-gray-200 text-gray-700 hover:border-ifpb-teal/40'

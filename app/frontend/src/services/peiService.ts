@@ -9,12 +9,12 @@ import { getAcompanhamento, type AcompanhamentoDTO } from './alunoService';
 export class PeiService {
   private static baseUrl = '/api/peis';
 
-  static async buscarAcompanhamentoPorAluno(alunoId: string): Promise<AcompanhamentoDTO> {
-    return getAcompanhamento(alunoId);
+  static async buscarAcompanhamentoPorAluno(alunoId: string, signal?: AbortSignal): Promise<AcompanhamentoDTO> {
+    return getAcompanhamento(alunoId, signal);
   }
 
-  static async listarPorAluno(alunoId: string): Promise<PeiResponseDTO[]> {
-    const res = await apiFetch(`${this.baseUrl}/aluno/${encodeURIComponent(alunoId)}`);
+  static async listarPorAluno(alunoId: string, signal?: AbortSignal): Promise<PeiResponseDTO[]> {
+    const res = await apiFetch(`${this.baseUrl}/aluno/${encodeURIComponent(alunoId)}`, { signal });
     return await res.json();
   }
 
