@@ -282,7 +282,7 @@ const AppConteudo: React.FC = () => {
           tags.map((t) => ({
             id: t.id ?? '',
             nome: t.nome,
-            descricao: '',
+            descricao: t.descricao ?? '',
           }))
         );
       })

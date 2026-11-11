@@ -2,6 +2,7 @@
 export interface TagDificuldadeDTO {
   id?: string;
   nome: string;
+  descricao?: string;
 }
 
 export interface EstudanteResumo {

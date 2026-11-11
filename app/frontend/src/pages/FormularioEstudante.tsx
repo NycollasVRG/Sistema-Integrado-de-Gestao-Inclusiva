@@ -143,7 +143,7 @@ function ConteudoFormularioEstudante({
       return;
     }
     if (campos.tagsDificuldadeIds.length === 0) {
-      setErro('Selecione pelo menos uma tag de dificuldade para salvar o estudante.');
+      setErro('Selecione pelo menos uma tag de deficiência para salvar o estudante.');
       return;
     }
     if (tagsSemId) {
@@ -228,7 +228,7 @@ function ConteudoFormularioEstudante({
         <div>
           <span className="font-semibold text-ifpb-teal">Orientações de Preenchimento:</span>{' '}
           Campos marcados com <span className="text-ifpb-red font-semibold">*</span> são obrigatórios.
-          Selecione ao menos uma tag de dificuldade para vincular o estudante aos fluxos da equipe multidisciplinar.
+          Selecione ao menos uma tag de deficiência para vincular o estudante aos fluxos da equipe multidisciplinar.
         </div>
       </div>
 
@@ -331,7 +331,7 @@ function ConteudoFormularioEstudante({
           <legend className="text-sm font-bold text-ifpb-dark px-1.5 inline-flex items-center gap-1.5">
             <Tag className="w-4 h-4 text-ifpb-teal" />
             <span>
-              Tags de dificuldade (seleção múltipla) <span className="text-ifpb-red">*</span>
+              Tags de deficiência (seleção múltipla) <span className="text-ifpb-red">*</span>
             </span>
           </legend>
 

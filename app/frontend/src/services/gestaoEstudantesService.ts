@@ -113,7 +113,11 @@ export const GestaoEstudantesService = {
       if (typeof tag.id !== 'string' || typeof tag.nome !== 'string') {
         throw new Error('Uma tag retornada pela API está sem id ou nome.');
       }
-      return { id: tag.id, nome: tag.nome };
+      return {
+        id: tag.id,
+        nome: tag.nome,
+        ...(typeof tag.descricao === 'string' ? { descricao: tag.descricao } : {}),
+      };
     });
   },
 
