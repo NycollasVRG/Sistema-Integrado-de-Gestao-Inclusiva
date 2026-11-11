@@ -526,8 +526,14 @@ export const App: React.FC = () => {
     navigate('/');
   };
 
+  const isLogin = location.pathname === '/login';
+
   return (
-    <div className="min-h-screen bg-[#F8FAF8] flex flex-col justify-between selection:bg-ifpb-teal selection:text-white">
+    <div
+      className={`${
+        isLogin ? 'h-screen overflow-hidden' : 'min-h-screen'
+      } bg-[#F8FAF8] flex flex-col justify-between selection:bg-ifpb-teal selection:text-white`}
+    >
       {/* Alertas Toasts flutuantes */}
       <ToastAlert toasts={toasts} onFechar={removerToast} />
 
@@ -535,7 +541,7 @@ export const App: React.FC = () => {
       <ModalAcessoNegadoLGPD />
 
       {/* Cabeçalho Oficial do IFPB (totalmente ocultado na tela de login) */}
-      {location.pathname !== '/login' && (
+      {!isLogin && (
         <HeaderIFPB
           searchTerm={termoBusca}
           onSearch={setTermoBusca}
@@ -558,8 +564,8 @@ export const App: React.FC = () => {
       {/* Conteúdo Principal */}
       <main
         className={`w-full flex-1 ${
-          location.pathname === '/login'
-            ? 'flex items-center justify-center p-4'
+          isLogin
+            ? 'flex items-center justify-center p-4 overflow-y-auto'
             : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
         }`}
       >
@@ -781,7 +787,11 @@ export const App: React.FC = () => {
       />
 
       {/* Rodapé Institucional */}
-      <footer className="w-full bg-[#1A2E26] text-gray-300 text-xs py-6 mt-12 border-t border-gray-800">
+      <footer
+        className={`w-full bg-[#1A2E26] text-gray-300 text-xs border-t border-gray-800 ${
+          isLogin ? 'py-3 sm:py-4 mt-0' : 'py-6 mt-12'
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
             <div className="w-2.5 h-2.5 rounded-full bg-ifpb-green"></div>

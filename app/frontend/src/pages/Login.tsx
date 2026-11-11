@@ -36,7 +36,7 @@ export const Login: React.FC = () => {
   }
 
   return (
-    <div className="py-8 sm:py-12 flex flex-col justify-center">
+    <div className="w-full flex flex-col justify-center">
       <section className="max-w-md w-full mx-auto bg-white border border-gray-200 rounded-xl shadow-sm p-6 sm:p-8 space-y-5">
         <div>
           <h1 className="text-xl font-bold text-ifpb-teal">Entrar no SIGI-CLAI</h1>
