@@ -58,7 +58,8 @@ Todas as versões abaixo foram extraídas com precisão dos arquivos de configur
 | **Criptografia AES-256-GCM** | Padrão NIST | Cifragem simétrica autenticada em repouso para laudos clínicos e anexos de estudantes |
 | **BCrypt** | Padrão OpenBSD | Algoritmo com sal para hashing seguro de credenciais de usuários |
 | **Maven Wrapper (`mvnw`)** | *(incluso em `app/backend/`)* | Automação padronizada de build e resolução de dependências |
-| *Observação sobre Flyway / Lombok* | — | *Não utilizados.* O projeto optou pela execução direta de scripts DDL versionados em SQL nativo e código Java explícito sem metaprogramação |
+| **Flyway** | *(gerenciado por Spring Boot 4.1.1)* | Versionamento automático do schema DDL (`db/migration`) e seeds de desenvolvimento (`db/seed/dev`) no PostgreSQL |
+| *Observação sobre Lombok* | — | *Não utilizado.* O projeto adota código Java explícito sem metaprogramação |
 
 ### Frontend
 | Tecnologia | Versão Exata | Finalidade no Projeto |
@@ -81,7 +82,7 @@ Todas as versões abaixo foram extraídas com precisão dos arquivos de configur
 | Tecnologia | Versão / Padrão | Finalidade no Projeto |
 | :--- | :--- | :--- |
 | **PostgreSQL** | `>= 14.x` *(Docker: `16-alpine`)* | Sistema de banco relacional principal (database `sigi_clai`, schema `sigi`) |
-| **pgAdmin 4 / DBeaver** | — | Ferramentas visuais recomendadas para execução dos scripts DDL e seeds DML |
+| **pgAdmin 4 / DBeaver** | — | Ferramentas visuais recomendadas para inspeção do banco `sigi_clai` e histórico do Flyway |
 | **Postman / Newman** | `Collection v2.1` | Suíte de testes automatizados de integração de API (`app/backend/collection/`) para US02, US03 e US11 |
 | **RFC 9457 (Problem Details)** | Padrão IETF | Estrutura semântica padronizada de mensagens de erro HTTP (`application/problem+json`) |
 | **Vite Dev Server Proxy** | — | Roteamento transparente de chamadas `/api` no frontend para `http://localhost:8080` |
@@ -101,7 +102,7 @@ Todas as versões abaixo foram extraídas com precisão dos arquivos de configur
 > # Ambiente de Produção:
 > cp .env.example .env && docker compose -f docker-compose.prd.yml up -d --build
 > ```
-> O container `sigi-db` aplica automaticamente todos os scripts de schema e seeds em `/docker-entrypoint-initdb.d/`. Para instruções completas de arquitetura, perfis Spring Boot (`dev` e `prd`), conexão via DBeaver e *troubleshooting*, consulte o [**Guia de Execução com Docker (`DOCKER_GUIDE.md`)**](DOCKER_GUIDE.md).
+> Na inicialização do `sigi-backend`, o **Flyway** aplica automaticamente as migrations estruturais (`classpath:db/migration`) e, exclusivamente em `dev`, os seeds iniciais (`classpath:db/seed/dev`), validados em seguida pelo Hibernate (`ddl-auto: validate`). Para instruções completas de arquitetura, perfis Spring Boot (`dev` e `prd`), conexão via DBeaver e *troubleshooting*, consulte o [**Guia de Execução com Docker (`DOCKER_GUIDE.md`)**](DOCKER_GUIDE.md).
 
 ### Pré-requisitos (Execução Tradicional / Local)
 Certifique-se de ter os seguintes componentes instalados no seu ambiente:
@@ -127,22 +128,12 @@ A API do Spring Boot está localizada no diretório `app/backend`.
 
 #### 2.1. Preparar o Banco de Dados PostgreSQL
 1. Inicie seu servidor PostgreSQL local (porta `5432`).
-2. Conecte-se via pgAdmin, DBeaver ou terminal `psql` e crie a base de dados:
+2. Conecte-se via pgAdmin, DBeaver ou terminal `psql` e crie apenas a base de dados vazia:
    ```sql
    CREATE DATABASE sigi_clai;
    ```
-3. Execute os scripts DDL de criação do schema `sigi`, tabelas, constraints e índices (a partir da raiz do projeto):
-   ```bash
-   psql -U postgres -d sigi_clai -f app/backend/database/schema/01_create_tables.sql
-   psql -U postgres -d sigi_clai -f app/backend/database/schema/02_alter_tables_constraints.sql
-   ```
-4. Execute os scripts DML de carga inicial e dados de teste (seeds):
-   ```bash
-   psql -U postgres -d sigi_clai -f app/backend/database/inserts/01_seed_us11_rbac.sql
-   psql -U postgres -d sigi_clai -f app/backend/database/inserts/02_seed_us02_estudo_caso.sql
-   psql -U postgres -d sigi_clai -f app/backend/database/inserts/03_seed_us03_planejamento_pedagogico.sql
-   ```
-   *(Todos os scripts de seed são idempotentes com `ON CONFLICT DO NOTHING`). Para mais detalhes, consulte o [README do Banco de Dados](app/backend/database/README.md).*
+3. Ao subir a aplicação Spring Boot, o **Flyway** criará automaticamente o schema `sigi`, as tabelas, constraints, índices (`app/backend/src/main/resources/db/migration/`) e, quando o perfil `dev` estiver ativo, os dados iniciais de teste (`app/backend/src/main/resources/db/seed/dev/`). Em `prd`, apenas as migrations estruturais são executadas.
+   *(Todos os scripts de seed são idempotentes com `ON CONFLICT DO NOTHING`).*
 
 #### 2.2. Variáveis de Ambiente do Backend
 O arquivo `app/backend/src/main/resources/application-dev.yaml` já possui valores padrão predefinidos para desenvolvimento local:

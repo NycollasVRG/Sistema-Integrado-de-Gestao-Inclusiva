@@ -7,20 +7,14 @@ Esta pasta contém a coleção completa de testes de API e massa de dados para v
 * `SIGI_EstudoDeCaso.postman_collection.json`: Coleção no formato Postman Collection v2.1 com requisições e scripts de asserção automática.
 * `SIGI_Environment.postman_environment.json`: Variáveis de ambiente (`baseUrl`, `alunoId`, `indicadorId1`, `usuarioId`, etc.).
 * `README.md`: Este guia de instruções.
-* *(Seed SQL consolidado em [`database/inserts/02_seed_us02_estudo_caso.sql`](../../database/inserts/02_seed_us02_estudo_caso.sql)):* Script SQL para carregar alunos e indicadores de teste no PostgreSQL local com os mesmos UUIDs configurados no ambiente.
+* *(Seed SQL consolidado em [`R__02_seed_us02_estudo_caso.sql`](../../src/main/resources/db/seed/dev/R__02_seed_us02_estudo_caso.sql)):* Script executado automaticamente pelo **Flyway** no perfil `dev` para carregar alunos e indicadores de teste com os mesmos UUIDs configurados no ambiente.
 
 ---
 
 ## 🚀 Como Executar os Testes
 
 ### 1. Preparar a Massa de Dados no Banco
-Antes de iniciar a suíte, certifique-se de que o banco de dados PostgreSQL está em execução e execute o script de carga inicial:
-
-```bash
-# Exemplo via psql (a partir de app/backend):
-psql -U postgres -d sigi_clai -f database/inserts/02_seed_us02_estudo_caso.sql
-```
-*(Ou execute o conteúdo do arquivo `database/inserts/02_seed_us02_estudo_caso.sql` no seu cliente de banco de dados, como DBeaver, pgAdmin ou IntelliJ Database Tools).*
+Ao subir a aplicação com o perfil padrão (`dev`), o **Flyway** aplica automaticamente o schema e o seed [`R__02_seed_us02_estudo_caso.sql`](../../src/main/resources/db/seed/dev/R__02_seed_us02_estudo_caso.sql) no PostgreSQL. Caso precise aplicar manualmente em um banco existente, utilize o conteúdo desse arquivo em seu cliente SQL (DBeaver, pgAdmin, etc.).
 
 ### 2. Iniciar a Aplicação Spring Boot
 Inicie a aplicação localmente:

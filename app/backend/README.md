@@ -5,7 +5,7 @@ API REST do **Sistema Integrado de Gestão Inclusiva (SIGI)** da **Coordenação
 - Código-fonte do back-end: [`app/backend`](.)
 - Front-end (React/Vite): [`app/frontend`](../frontend/README.md)
 - Execução completa via Docker (db + backend + frontend): [`DOCKER_GUIDE.md`](../../DOCKER_GUIDE.md)
-- Detalhes de banco de dados: [`app/backend/database/README.md`](database/README.md)
+- Migrations e seeds do banco: [`src/main/resources/db/`](src/main/resources/db)
 
 ## Sumário
 
@@ -41,14 +41,15 @@ A API centraliza o acompanhamento pedagógico de estudantes com necessidades esp
 | :--- | :--- |
 | **Java** | 21 (`java.version`; imagem `eclipse-temurin:21`) |
 | **Spring Boot** | 4.1.1 (`spring-boot-starter-parent`) |
-| **Spring WebMVC** | `spring-boot-starter-webmvc` (CORS configurado para `http://localhost:5173`) |
+| **Spring WebMVC** | `spring-boot-starter-webmvc` (CORS configurável por ambiente) |
 | **Spring Security** | `spring-boot-starter-security` + `spring-boot-starter-security-oauth2-resource-server` (stateless, Resource Server nativo, `@EnableMethodSecurity`) |
-| **Spring Data JPA / Hibernate** | `spring-boot-starter-data-jpa` (`ddl-auto: none`, `@SoftDelete`, JPA Auditing, `open-in-view: false`, `@EntityGraph`) |
+| **Spring Data JPA / Hibernate** | `spring-boot-starter-data-jpa` (`ddl-auto: validate`, `@SoftDelete`, JPA Auditing, `open-in-view: false`, `@EntityGraph`) |
+| **Flyway** | `spring-boot-starter-flyway` + `flyway-database-postgresql` (`db/migration` estrutural e `db/seed/dev` apenas em `dev`) |
 | **Bean Validation** | `spring-boot-starter-validation` |
 | **Actuator** | `spring-boot-starter-actuator` (health check do container) |
 | **JWT** | Spring Security OAuth2 Resource Server + Nimbus JOSE/JWT (HS256 via `NimbusJwtEncoder` / `NimbusJwtDecoder` com chave HMAC-SHA256) |
 | **Senhas** | `BCryptPasswordEncoder` |
-| **Banco de dados** | **PostgreSQL 16** (`postgres:16-alpine`; scripts compatíveis com 14+) + driver `org.postgresql:postgresql` |
+| **Banco de dados** | **PostgreSQL 16** (`postgres:16-alpine`; compatível com 14+) + driver `org.postgresql:postgresql` |
 | **DevTools** | `spring-boot-devtools` (runtime, opcional) |
 | **Testes** | starters de teste (actuator, data-jpa, validation, webmvc) + `spring-security-test` |
 | **Build** | Maven (wrapper `mvnw` incluso) · Artefato `com.br:CLAI:0.0.1-SNAPSHOT` |
@@ -221,7 +222,7 @@ O back-end possui segregação formal de configurações em perfis do Spring Boo
 > `JWT_SECRET` e `AES_KEY` padrão servem **exclusivamente para desenvolvimento**. Trocar a `AES_KEY` torna ilegíveis os anexos previamente criptografados.
 
 > [!NOTE]
-> O projeto utiliza `open-in-view: false` (OSIV desativado) e `ddl-auto: none`: **o banco de dados precisa ter o schema criado previamente** (via scripts de `database/schema/`). A aplicação não cria tabelas em tempo de execução.
+> O projeto utiliza `open-in-view: false` (OSIV desativado), `ddl-auto: validate` e **Flyway** (`enabled: true`): **o schema e as tabelas são versionados e aplicados automaticamente na inicialização do backend** (`src/main/resources/db/migration/`). Em seguida, o Hibernate valida todas as entidades contra o banco real antes de liberar a API.
 
 ### Opção A — Via Docker (Recomendado)
 
@@ -239,25 +240,26 @@ docker compose -f docker-compose.dev.yml up -d db
 ```
 
 > [!TIP]
-> - **Desenvolvimento:** O [`docker-compose.dev.yml`](../../docker-compose.dev.yml) sobe os containers `sigi-db-dev`, `sigi-backend-dev` e `sigi-frontend`, aplicando automaticamente o schema e todos os seeds de teste.
-> - **Produção:** O [`docker-compose.prd.yml`](../../docker-compose.prd.yml) isola o ambiente com portas restritas, sem sementes de mock e exige variáveis obrigatórias via `.env`.
+> - **Desenvolvimento (`dev`):** O [`docker-compose.dev.yml`](../../docker-compose.dev.yml) sobe `sigi-db-dev`, `sigi-backend-dev` e `sigi-frontend-dev`. Ao subir o backend, o **Flyway** aplica `classpath:db/migration` (DDL) e `classpath:db/seed/dev` (dados iniciais de teste).
+> - **Produção (`prd`):** O [`docker-compose.prd.yml`](../../docker-compose.prd.yml) isola o ambiente com portas restritas, exige segredos obrigatórios e configura o Flyway para executar **apenas** `classpath:db/migration` (sem dados fictícios/seeds de teste e com `clean-disabled: true`).
 
-Na **primeira inicialização** (volume vazio) o PostgreSQL executa automaticamente, em ordem alfabética, os scripts montados em `/docker-entrypoint-initdb.d/`:
+Migrations versionadas executadas automaticamente pelo Flyway:
 
-| Ordem | Origem (host) | Destino no container |
-| :---: | :--- | :--- |
-| 1 | `app/backend/database/schema/01_create_tables.sql` | `01-create-tables.sql` |
-| 2 | `app/backend/database/schema/02_alter_tables_constraints.sql` | `02-alter-tables-constraints.sql` |
-| 3 | `app/backend/database/inserts/01_seed_us11_rbac.sql` | `03-seed-us11-rbac.sql` |
-| 4 | `app/backend/database/inserts/02_seed_us02_estudo_caso.sql` | `04-seed-us02-estudo-caso.sql` |
-| 5 | `app/backend/database/inserts/03_seed_us03_planejamento_pedagogico.sql` | `05-seed-us03-planejamento-pedagogico.sql` |
+| Script | Pasta | Perfis | Função |
+| :--- | :--- | :---: | :--- |
+| `V1__create_initial_schema.sql` | `db/migration/` | `dev`, `prd` | Schema `sigi` + 11 tabelas principais |
+| `V2__constraints_indexes_and_comments.sql` | `db/migration/` | `dev`, `prd` | Índice parcial único (`idx_estudo_caso_ativo`), índices e comentários LGPD |
+| `R__01_seed_us11_rbac.sql` | `db/seed/dev/` | `dev` | 5 usuários RBAC de desenvolvimento (senha `senha123`) |
+| `R__02_seed_us02_estudo_caso.sql` | `db/seed/dev/` | `dev` | 2 alunos base + tags US 12 + 3 indicadores |
+| `R__03_seed_us03_planejamento_pedagogico.sql` | `db/seed/dev/` | `dev` | 2 acompanhamentos base |
 
 > [!IMPORTANT]
-> Os scripts de inicialização só rodam quando o volume de dados está vazio. Para recriar o banco do zero: `docker compose down -v && docker compose up -d db`.
+> Caso um volume PostgreSQL local tenha sido criado anteriormente sem o Flyway (antes da adoção de `flyway_schema_history`), recrie o volume limpo para que o Flyway assuma o histórico desde a `V1`: `docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up -d --build`.
 
-Verificação rápida de integridade:
+Verificação rápida do histórico Flyway e usuários em desenvolvimento:
 ```bash
-docker exec -it sigi-db psql -U postgres -d sigi_clai -c "SELECT email, role FROM sigi.usuario;"
+docker exec -it sigi-db-dev psql -U postgres -d sigi_clai -c "SELECT installed_rank, version, description, success FROM sigi.flyway_schema_history;"
+docker exec -it sigi-db-dev psql -U postgres -d sigi_clai -c "SELECT email, role FROM sigi.usuario;"
 ```
 
 ### Opção B — PostgreSQL Nativo / Clientes Externos (DBeaver, pgAdmin)
@@ -272,28 +274,11 @@ docker exec -it sigi-db psql -U postgres -d sigi_clai -c "SELECT email, role FRO
    | Usuário / Senha | `postgres` / `postgres` |
    | Schema | `sigi` |
 
-2. Crie o banco (caso não exista):
+2. Crie apenas o banco vazio (caso não exista):
    ```sql
    CREATE DATABASE sigi_clai;
    ```
-3. Execute **manualmente, nesta ordem exata**, conectado em `sigi_clai`:
-
-   | # | Script | Função |
-   | :---: | :--- | :--- |
-   | 1 | `app/backend/database/schema/01_create_tables.sql` | Schema `sigi` + 11 tabelas (incluindo US 12) |
-   | 2 | `app/backend/database/schema/02_alter_tables_constraints.sql` | Colunas sensíveis, colunas US 12, constraints, índices e comentários |
-   | 3 | `app/backend/database/inserts/01_seed_us11_rbac.sql` | 5 usuários RBAC (senha `senha123`) |
-   | 4 | `app/backend/database/inserts/02_seed_us02_estudo_caso.sql` | 2 alunos + dados US 12 + 3 indicadores |
-   | 5 | `app/backend/database/inserts/03_seed_us03_planejamento_pedagogico.sql` | 2 acompanhamentos base |
-
-   Via `psql` (a partir de `app/backend`):
-   ```bash
-   psql -U postgres -d sigi_clai -f database/schema/01_create_tables.sql
-   psql -U postgres -d sigi_clai -f database/schema/02_alter_tables_constraints.sql
-   psql -U postgres -d sigi_clai -f database/inserts/01_seed_us11_rbac.sql
-   psql -U postgres -d sigi_clai -f database/inserts/02_seed_us02_estudo_caso.sql
-   psql -U postgres -d sigi_clai -f database/inserts/03_seed_us03_planejamento_pedagogico.sql
-   ```
+3. Ao iniciar o backend (`./mvnw spring-boot:run`), o **Flyway** criará automaticamente o schema `sigi`, as tabelas, índices e (no perfil `dev`) os seeds de desenvolvimento, validados na sequência por `ddl-auto: validate`.
 
 ### Executando a aplicação Spring Boot localmente
 
@@ -544,13 +529,13 @@ As coleções ficam em [`app/backend/collection/`](collection) (formato Postman 
 
 ### Coleção × seed necessário
 
-| Pasta | Arquivos | Ambiente Postman | Cobertura | Seed obrigatório (`database/inserts/`) |
+| Pasta | Arquivos | Ambiente Postman | Cobertura | Seed automático em `dev` (`db/seed/dev/`) |
 | :--- | :--- | :--- | :--- | :--- |
-| `collection/US02` | `SIGI_EstudoDeCaso.postman_collection.json` + `SIGI_Environment.postman_environment.json` | `SIGI - Localhost Environment` | CRUD de Estudo de Caso (TA2.2/2.3/2.4, soft delete) | `02_seed_us02_estudo_caso.sql` (alunos `1111…`/`2222…` e indicadores `aaaa…`/`bbbb…`/`cccc…`) + `01_seed_us11_rbac.sql` (usuários, necessários para obter o JWT) |
-| `collection/US03` | `SIGI_PlanejamentoPedagogico.postman_collection.json` + `SIGI_Environment.postman_environment.json` | `SIGI - US03 Environment` | PEA e PEI (TA3.1/3.2/3.4) | `03_seed_us03_planejamento_pedagogico.sql` (acompanhamentos `3333…`/`4444…`) + `01_seed_us11_rbac.sql` |
-| `collection/US11` | `SIGI_US11_Autenticacao_RBAC.postman_collection.json` + `SIGI_US11_Environment.postman_environment.json` | `SIGI - US11 Environment` | Login/JWT, RBAC, revogação (TA11.4), anexos AES-256 (TA11.1/11.2), matriz granular (TA11.3/TA3.2) | `01_seed_us11_rbac.sql` + `02_seed_us02_estudo_caso.sql` (estudante `1111…`); recomendado também `03_seed_us03_planejamento_pedagogico.sql` |
+| `collection/US02` | `SIGI_EstudoDeCaso.postman_collection.json` + `SIGI_Environment.postman_environment.json` | `SIGI - Localhost Environment` | CRUD de Estudo de Caso (TA2.2/2.3/2.4, soft delete) | `R__02_seed_us02_estudo_caso.sql` (alunos `1111…`/`2222…` e indicadores `aaaa…`/`bbbb…`/`cccc…`) + `R__01_seed_us11_rbac.sql` (usuários, necessários para obter o JWT) |
+| `collection/US03` | `SIGI_PlanejamentoPedagogico.postman_collection.json` + `SIGI_Environment.postman_environment.json` | `SIGI - US03 Environment` | PEA e PEI (TA3.1/3.2/3.4) | `R__03_seed_us03_planejamento_pedagogico.sql` (acompanhamentos `3333…`/`4444…`) + `R__01_seed_us11_rbac.sql` |
+| `collection/US11` | `SIGI_US11_Autenticacao_RBAC.postman_collection.json` + `SIGI_US11_Environment.postman_environment.json` | `SIGI - US11 Environment` | Login/JWT, RBAC, revogação (TA11.4), anexos AES-256 (TA11.1/11.2), matriz granular (TA11.3/TA3.2) | `R__01_seed_us11_rbac.sql` + `R__02_seed_us02_estudo_caso.sql` (estudante `1111…`); recomendado também `R__03_seed_us03_planejamento_pedagogico.sql` |
 
-Rodar os três seeds na ordem (automático no Docker) atende a todas as coleções. A coleção **US11** inclui scripts PowerShell auxiliares (`test_matriz_granular.ps1`, `test_criptografia_anexos.ps1`, `test_revogacao_sessao.ps1`) e faz o login de cada perfil, salvando os tokens em variáveis do ambiente (`tokenAdmin`, `tokenProfessor`, `tokenPsicopedagogo`, `tokenCoordenador`, `tokenAluno`).
+No perfil `dev`, o Flyway executa automaticamente os três seeds na ordem alfabética (atendendo todas as coleções). A coleção **US11** inclui scripts PowerShell auxiliares (`test_matriz_granular.ps1`, `test_criptografia_anexos.ps1`, `test_revogacao_sessao.ps1`) e faz o login de cada perfil, salvando os tokens em variáveis do ambiente (`tokenAdmin`, `tokenProfessor`, `tokenPsicopedagogo`, `tokenCoordenador`, `tokenAluno`).
 
 ### Usuários de seed (senha `senha123` para todos)
 
