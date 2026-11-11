@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Users } from 'lucide-react';
+import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+  useMatch,
+  useParams,
+} from 'react-router-dom';
+import { AlertTriangle, ArrowLeft, Users } from 'lucide-react';
 import { HeaderIFPB } from './components/HeaderIFPB';
 import { TelaAluno } from './components/TelaAluno';
 import { FormularioEstudoDeCaso } from './components/FormularioEstudoDeCaso';
@@ -12,12 +20,10 @@ import { ProntuarioQuickActions } from './components/ProntuarioQuickActions';
 import { ModalNovoAtendimento } from './components/ModalNovoAtendimento';
 import { ModalNovoEstudo } from './components/ModalNovoEstudo';
 import { ModalConfirmacaoAcao } from './components/ModalConfirmacaoAcao';
-import {
-  EstudoDeCasoService,
-} from './services/estudoDeCasoService';
+import { EstudoDeCasoService } from './services/estudoDeCasoService';
 import { PeiService } from './services/peiService';
 import { GestaoEstudantesService } from './services/gestaoEstudantesService';
-import { getAlunoHeader } from './services/alunoService';
+import { estudanteParaHeader } from './services/alunoService';
 import type { EstudanteResumo } from './types/gestaoEstudantes';
 import { getTimeline } from './services/timelineService';
 import { FormularioPea } from './components/FormularioPea';
@@ -45,18 +51,73 @@ import { PainelAdminUsuarios } from './pages/PainelAdminUsuarios';
 import { SecaoProntuarioRbac } from './components/SecaoProntuarioRbac';
 import { FormularioEstudante } from './pages/FormularioEstudante';
 
-export const App: React.FC = () => {
+function resumoParaAluno(estudante: EstudanteResumo): Aluno {
+  return {
+    id: estudante.id,
+    nome: estudante.nomeCompleto,
+    matricula: estudante.matricula,
+    curso: estudante.curso,
+    turma: estudante.turma,
+  };
+}
+
+const RedirecionarParaProntuario: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/estudantes/${id}/prontuario` : '/estudantes'} replace />;
+};
+
+const CardCarregamento: React.FC<{ mensagem: string }> = ({ mensagem }) => (
+  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center my-6">
+    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-ifpb-teal mb-4"></div>
+    <p className="text-sm font-medium text-gray-600">{mensagem}</p>
+  </div>
+);
+
+const CardErroEstudante: React.FC<{ mensagem: string; onVoltar: () => void }> = ({
+  mensagem,
+  onVoltar,
+}) => (
+  <div className="bg-white rounded-lg shadow-sm border border-red-200 p-10 text-center max-w-lg mx-auto my-6 space-y-4">
+    <div className="p-3 bg-red-50 rounded-full w-12 h-12 flex items-center justify-center mx-auto text-red-600">
+      <AlertTriangle className="w-6 h-6" />
+    </div>
+    <h3 className="text-base font-bold text-gray-900">Não foi possível abrir o prontuário</h3>
+    <p className="text-sm text-gray-600">{mensagem}</p>
+    <button
+      type="button"
+      onClick={onVoltar}
+      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-ifpb-teal hover:bg-ifpb-tealHover rounded-md shadow-sm transition-colors cursor-pointer"
+    >
+      <Users className="w-4 h-4" />
+      Voltar para Gestão de Estudantes
+    </button>
+  </div>
+);
+
+const AppConteudo: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { autenticado } = useAuth();
+
+  const matchProntuario = useMatch('/estudantes/:id/prontuario');
+  const matchEstudo = useMatch('/estudantes/:id/estudo-de-caso');
+  const matchPei = useMatch('/estudantes/:id/pei');
+  const matchPea = useMatch('/estudantes/:id/pea');
+  const routeAlunoId =
+    matchProntuario?.params?.id ??
+    matchEstudo?.params?.id ??
+    matchPei?.params?.id ??
+    matchPea?.params?.id ??
+    null;
+
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
   const [indicadores, setIndicadores] = useState<IndicadorReutilizavel[]>([]);
-  const [carregandoEstudantes, setCarregandoEstudantes] = useState<boolean>(true);
   const [estudoAtual, setEstudoAtual] = useState<EstudoDeCasoResponseDTO | null>(null);
   const [peiAtual, setPeiAtual] = useState<PeiResponseDTO | null>(null);
   const [peaAtual, setPeaAtual] = useState<PeaResponseDTO | null>(null);
   const [peasDoAluno, setPeasDoAluno] = useState<PeaResponseDTO[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [carregandoEstudo, setCarregandoEstudo] = useState<boolean>(false);
   const [loadingPei, setLoadingPei] = useState<boolean>(false);
   const [loadingPea, setLoadingPea] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -67,10 +128,19 @@ export const App: React.FC = () => {
   const [loadingTimeline, setLoadingTimeline] = useState<boolean>(false);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
   const [errorTimeline, setErrorTimeline] = useState<string | null>(null);
+  const [erroAlunoRota, setErroAlunoRota] = useState<string | null>(null);
+  const [revisaoProntuario, setRevisaoProntuario] = useState<number>(0);
   const [modalAtivo, setModalAtivo] = useState<ProntuarioModalTipo>(null);
 
   // Evita toasts duplicados decorrentes do StrictMode em desenvolvimento
   const ultimosToastsRef = useRef<Map<string, number>>(new Map());
+  const ultimoAlunoCarregadoRef = useRef<string | null>(null);
+  const alunoSelecionadoRef = useRef<Aluno | null>(null);
+  const pathnameRef = useRef<string>(location.pathname);
+
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+  }, [location.pathname]);
 
   const removerToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -92,49 +162,49 @@ export const App: React.FC = () => {
     }, 5000);
   }, [removerToast]);
 
-  // Carrega os estudos do aluno selecionado
-  const carregarEstudosDoAluno = async (alunoId: string) => {
-    setIsLoading(true);
+  const carregarEstudosDoAluno = useCallback(async (alunoId: string, signal?: AbortSignal) => {
+    setCarregandoEstudo(true);
     try {
-      const estudos = await EstudoDeCasoService.listarPorAluno(alunoId);
-      if (estudos && estudos.length > 0) {
-        setEstudoAtual(estudos[0]);
-      } else {
-        setEstudoAtual(null);
-      }
+      const estudos = await EstudoDeCasoService.listarPorAluno(alunoId, signal);
+      if (signal?.aborted) return;
+      setEstudoAtual(estudos && estudos.length > 0 ? estudos[0] : null);
     } catch (e: unknown) {
+      if (signal?.aborted) return;
       console.error('Erro ao buscar estudos do aluno:', e);
       setEstudoAtual(null);
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) setCarregandoEstudo(false);
     }
-  };
+  }, []);
 
-  const carregarPeiDoAluno = async (alunoId: string) => {
+  const carregarPeiDoAluno = useCallback(async (alunoId: string, signal?: AbortSignal) => {
     setLoadingPei(true);
     try {
-      const peis = await PeiService.listarPorAluno(alunoId);
+      const peis = await PeiService.listarPorAluno(alunoId, signal);
+      if (signal?.aborted) return;
       setPeiAtual(peis.length > 0 ? peis[0] : null);
     } catch (e: unknown) {
+      if (signal?.aborted) return;
       console.error('Erro ao buscar PEI do aluno:', e);
       setPeiAtual(null);
     } finally {
-      setLoadingPei(false);
+      if (!signal?.aborted) setLoadingPei(false);
     }
-  };
+  }, []);
 
-  const carregarPeaDoAluno = async (alunoId: string) => {
+  const carregarPeaDoAluno = useCallback(async (alunoId: string, signal?: AbortSignal) => {
     setLoadingPea(true);
     try {
-      const peas = await PeaService.listarPorAluno(alunoId);
+      const peas = await PeaService.listarPorAluno(alunoId, signal);
+      if (signal?.aborted) return;
       setPeasDoAluno(peas);
       setPeaAtual(peas.length > 0 ? peas[0] : null);
     } catch (erro: unknown) {
+      if (signal?.aborted) return;
       console.error('Erro ao buscar PEA do aluno:', erro);
       setPeasDoAluno([]);
       setPeaAtual(null);
-      // N5: suprime o toast na home; exibe apenas na rota '/pea'
-      if (location.pathname === '/pea') {
+      if (pathnameRef.current.endsWith('/pea')) {
         const prob = erro as Partial<ProblemDetailRFC9457>;
         adicionarToast(
           'erro',
@@ -143,33 +213,49 @@ export const App: React.FC = () => {
         );
       }
     } finally {
-      setLoadingPea(false);
+      if (!signal?.aborted) setLoadingPea(false);
     }
-  };
+  }, [adicionarToast]);
 
-  const carregarHeader = async (alunoId: string) => {
+  const carregarHeader = useCallback(async (alunoId: string, signal?: AbortSignal) => {
     setLoadingHeader(true);
     setErrorHeader(null);
+    setErroAlunoRota(null);
     try {
-      const data = await getAlunoHeader(alunoId);
-      setHeader(data);
+      const estudante = await GestaoEstudantesService.buscarPorId(alunoId, signal);
+      if (signal?.aborted) return;
+      const resumo = resumoParaAluno(estudante);
+      alunoSelecionadoRef.current = resumo;
+      ultimoAlunoCarregadoRef.current = estudante.id;
+      setAlunoSelecionado(resumo);
+      setHeader(estudanteParaHeader(estudante));
     } catch (e: unknown) {
+      if (signal?.aborted) return;
       console.error('Erro ao carregar header do aluno:', e);
-      const err = e as { message?: string };
-      setErrorHeader(err?.message || 'Erro ao carregar header do aluno');
+      const err = e as { message?: string; status?: number };
+      const msg = err?.message || 'Erro ao carregar dados do estudante.';
+      setErrorHeader(msg);
       setHeader(null);
+      if (err?.status === 404 || alunoSelecionadoRef.current?.id !== alunoId) {
+        alunoSelecionadoRef.current = null;
+        ultimoAlunoCarregadoRef.current = null;
+        setErroAlunoRota(msg);
+        setAlunoSelecionado(null);
+      }
     } finally {
-      setLoadingHeader(false);
+      if (!signal?.aborted) setLoadingHeader(false);
     }
-  };
+  }, []);
 
-  const carregarTimeline = async (alunoId: string) => {
+  const carregarTimeline = useCallback(async (alunoId: string, signal?: AbortSignal) => {
     setLoadingTimeline(true);
     setErrorTimeline(null);
     try {
-      const data = await getTimeline(alunoId);
+      const data = await getTimeline(alunoId, signal);
+      if (signal?.aborted) return;
       setTimeline(data || []);
     } catch (e: unknown) {
+      if (signal?.aborted) return;
       console.error('Erro ao carregar linha do tempo:', e);
       const prob = e as Partial<ProblemDetailRFC9457> & { message?: string };
       setErrorTimeline(
@@ -180,72 +266,86 @@ export const App: React.FC = () => {
       );
       setTimeline([]);
     } finally {
-      setLoadingTimeline(false);
+      if (!signal?.aborted) setLoadingTimeline(false);
     }
-  };
+  }, []);
 
-  // Carrega os indicadores e estudantes reais do banco de dados ao autenticar
+  // Carrega catálogo de indicadores ao autenticar
   useEffect(() => {
     if (!autenticado) return;
 
-    let ativo = true;
-    setCarregandoEstudantes(true);
-
-    Promise.all([
-      GestaoEstudantesService.listarTags().catch((e) => {
+    const controlador = new AbortController();
+    GestaoEstudantesService.listarTags(controlador.signal)
+      .then((tags) => {
+        if (controlador.signal.aborted) return;
+        setIndicadores(
+          tags.map((t) => ({
+            id: t.id ?? '',
+            nome: t.nome,
+            descricao: '',
+          }))
+        );
+      })
+      .catch((e) => {
+        if (controlador.signal.aborted) return;
         console.error('Erro ao listar tags de indicadores do banco:', e);
-        return [];
-      }),
-      GestaoEstudantesService.listar({
-        page: 0,
-        size: 50,
-        ativo: true,
-        termo: '',
-        curso: '',
-        turma: '',
-        tag: '',
-      }).catch((e) => {
-        console.error('Erro ao listar estudantes do banco:', e);
-        return { content: [] };
-      }),
-    ]).then(([tags, pagina]) => {
-      if (!ativo) return;
-      setIndicadores(
-        tags.map((t) => ({
-          id: t.id ?? '',
-          nome: t.nome,
-          descricao: '',
-        }))
-      );
-      if (pagina.content && pagina.content.length > 0) {
-        setAlunoSelecionado((atual) => {
-          if (atual) return atual;
-          const primeiro = pagina.content[0];
-          return {
-            id: primeiro.id,
-            nome: primeiro.nomeCompleto,
-            matricula: primeiro.matricula,
-            curso: primeiro.curso,
-            turma: primeiro.turma,
-          };
-        });
-      }
-      setCarregandoEstudantes(false);
-    });
+      });
 
     return () => {
-      ativo = false;
+      controlador.abort();
     };
   }, [autenticado]);
 
+  // Carrega ou recarrega o prontuário sempre que entrar em uma rota de estudante (inclusive mesmo ID ou F5)
   useEffect(() => {
-    if (!autenticado || !alunoSelecionado) return;
-    carregarEstudosDoAluno(alunoSelecionado.id);
-    carregarPeiDoAluno(alunoSelecionado.id);
-    carregarPeaDoAluno(alunoSelecionado.id);
-    carregarHeader(alunoSelecionado.id);
-    carregarTimeline(alunoSelecionado.id);
-  }, [alunoSelecionado?.id, autenticado]);
+    if (!autenticado || !routeAlunoId) return;
+
+    const controlador = new AbortController();
+    const { signal } = controlador;
+    const mudouAluno = ultimoAlunoCarregadoRef.current !== routeAlunoId;
+    ultimoAlunoCarregadoRef.current = routeAlunoId;
+
+    const carregarProntuario = async () => {
+      if (mudouAluno) {
+        alunoSelecionadoRef.current = null;
+        setAlunoSelecionado(null);
+        setEstudoAtual(null);
+        setPeiAtual(null);
+        setPeaAtual(null);
+        setPeasDoAluno([]);
+        setHeader(null);
+        setTimeline([]);
+      }
+
+      await Promise.all([
+        carregarHeader(routeAlunoId, signal),
+        carregarEstudosDoAluno(routeAlunoId, signal),
+        carregarPeiDoAluno(routeAlunoId, signal),
+        carregarPeaDoAluno(routeAlunoId, signal),
+        carregarTimeline(routeAlunoId, signal),
+      ]);
+    };
+
+    void carregarProntuario();
+
+    return () => {
+      controlador.abort();
+    };
+  }, [
+    autenticado,
+    routeAlunoId,
+    revisaoProntuario,
+    carregarHeader,
+    carregarEstudosDoAluno,
+    carregarPeiDoAluno,
+    carregarPeaDoAluno,
+    carregarTimeline,
+  ]);
+
+  const irParaProntuario = useCallback(
+    (alunoId: string) => navigate(`/estudantes/${alunoId}/prontuario`),
+    [navigate]
+  );
 
   const handleSalvarPei = async (habilidadesInteresses: string, propostasAdaptacoes: string) => {
     if (!alunoSelecionado) return;
@@ -266,7 +366,7 @@ export const App: React.FC = () => {
       }
       setPeiAtual(resultado);
       await carregarTimeline(alunoSelecionado.id);
-      navigate('/');
+      irParaProntuario(alunoSelecionado.id);
       adicionarToast('sucesso', 'PEI Salvo com Sucesso', 'O Plano Educacional Individualizado foi registrado.');
     } catch (err: unknown) {
       const prob = err as Partial<ProblemDetailRFC9457>;
@@ -275,7 +375,7 @@ export const App: React.FC = () => {
       setIsLoading(false);
     }
   };
-  
+
   const handleSalvarPea = async (dados: {
     objetivoGeral: string;
     metodologia: string;
@@ -294,7 +394,6 @@ export const App: React.FC = () => {
       let resultado: PeaResponseDTO;
 
       if (peaAtual) {
-        // Atualiza um PEA existente (alinhado com N7 e D3)
         resultado = await PeaService.atualizar(
           peaAtual.id,
           {
@@ -305,7 +404,6 @@ export const App: React.FC = () => {
           }
         );
       } else {
-        // Cria um novo PEA obtendo acompanhamento real do banco
         let acompanhamentoId = peiAtual?.acompanhamentoId || peasDoAluno[0]?.acompanhamentoId;
         if (!acompanhamentoId) {
           const acomp = await PeiService.buscarAcompanhamentoPorAluno(alunoSelecionado.id);
@@ -334,14 +432,13 @@ export const App: React.FC = () => {
       await carregarTimeline(alunoSelecionado.id);
       await carregarPeaDoAluno(alunoSelecionado.id);
 
-      navigate('/');
+      irParaProntuario(alunoSelecionado.id);
 
       adicionarToast(
         'sucesso',
         'PEA salvo com sucesso',
         'O Plano de Ensino Adaptado foi registrado.'
       );
-
     } catch (erro: unknown) {
       const prob = erro as Partial<ProblemDetailRFC9457>;
       const titulo =
@@ -362,7 +459,6 @@ export const App: React.FC = () => {
   // Ação: Salvar Rascunho
   const handleSalvarRascunho = async (diagnostico: string, indicadoresIds: string[]) => {
     if (!alunoSelecionado) return;
-    // Proteção contra edição de estudo concluído via código
     if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
       adicionarToast(
         'erro',
@@ -412,7 +508,6 @@ export const App: React.FC = () => {
   // Ação: Concluir Estudo de Caso (Após validação de front TA2.3)
   const handleConcluir = async (diagnostico: string, indicadoresIds: string[]) => {
     if (!alunoSelecionado) return;
-    // Proteção contra alteração de estudo concluído
     if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
       adicionarToast(
         'erro',
@@ -442,7 +537,7 @@ export const App: React.FC = () => {
 
       setEstudoAtual(resultado);
       await carregarTimeline(alunoSelecionado.id);
-      navigate('/');
+      irParaProntuario(alunoSelecionado.id);
       adicionarToast(
         'sucesso',
         'Estudo de Caso Concluído!',
@@ -469,7 +564,7 @@ export const App: React.FC = () => {
       await EstudoDeCasoService.excluir(estudoAtual.id);
       setEstudoAtual(null);
       await carregarTimeline(alunoSelecionado.id);
-      navigate('/');
+      irParaProntuario(alunoSelecionado.id);
       adicionarToast(
         'sucesso',
         'Rascunho Descartado',
@@ -509,34 +604,38 @@ export const App: React.FC = () => {
     turma: alunoSelecionado?.turma || '',
   };
 
-  // US12: seleciona o aluno real na listagem e recarrega os dados do prontuário.
+  // US12: seleciona o aluno na listagem, força recarga completa e navega para rota parametrizada.
   const abrirProntuarioDaListagem = (estudante: EstudanteResumo) => {
-    setEstudoAtual(null);
-    setPeiAtual(null);
-    setPeaAtual(null);
-    setPeasDoAluno([]);
-    setHeader(null);
-    setTimeline([]);
-    setAlunoSelecionado({
-      id: estudante.id,
-      nome: estudante.nomeCompleto,
-      matricula: estudante.matricula,
-      curso: estudante.curso,
-      turma: estudante.turma,
-    });
-    navigate('/');
+    if (alunoSelecionado?.id !== estudante.id) {
+      setEstudoAtual(null);
+      setPeiAtual(null);
+      setPeaAtual(null);
+      setPeasDoAluno([]);
+      setTimeline([]);
+    }
+    setErroAlunoRota(null);
+    setErrorHeader(null);
+    setErrorTimeline(null);
+    setLoadingHeader(true);
+    setLoadingTimeline(true);
+    setCarregandoEstudo(true);
+    setLoadingPei(true);
+    setLoadingPea(true);
+    const resumo = resumoParaAluno(estudante);
+    alunoSelecionadoRef.current = resumo;
+    ultimoAlunoCarregadoRef.current = estudante.id;
+    setAlunoSelecionado(resumo);
+    setHeader(estudanteParaHeader(estudante));
+    setRevisaoProntuario((v) => v + 1);
+    navigate(`/estudantes/${estudante.id}/prontuario`);
   };
 
   const handleEstudanteSalvo = (estudante: EstudanteResumo) => {
     if (alunoSelecionado?.id === estudante.id) {
-      setAlunoSelecionado({
-        id: estudante.id,
-        nome: estudante.nomeCompleto,
-        matricula: estudante.matricula,
-        curso: estudante.curso,
-        turma: estudante.turma,
-      });
-      void carregarHeader(estudante.id);
+      const resumo = resumoParaAluno(estudante);
+      alunoSelecionadoRef.current = resumo;
+      setAlunoSelecionado(resumo);
+      setHeader(estudanteParaHeader(estudante));
     }
   };
 
@@ -568,11 +667,11 @@ export const App: React.FC = () => {
               ? 'Edição de Estudante'
               : location.pathname === '/estudantes'
               ? 'Gestão de Estudantes'
-              : location.pathname === '/estudo-de-caso'
+              : matchEstudo || location.pathname === '/estudo-de-caso'
               ? 'Formulário de Estudo de Caso'
-              : location.pathname === '/pei'
+              : matchPei || location.pathname === '/pei'
                 ? 'Plano Educacional Individualizado (PEI)'
-                : location.pathname === '/pea'
+                : matchPea || location.pathname === '/pea'
                   ? 'Plano de Ensino Adaptado (PEA)'
                   : 'Ficha do Estudante'
           }
@@ -617,150 +716,192 @@ export const App: React.FC = () => {
                 />
               }
             />
+            <Route path="/estudantes/:id" element={<RedirecionarParaProntuario />} />
 
-          <Route
-            path="/"
-            element={
-              carregandoEstudantes ? (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center my-6">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-ifpb-teal mb-4"></div>
-                  <p className="text-sm font-medium text-gray-600">Carregando dados dos estudantes...</p>
-                </div>
-              ) : !alunoSelecionado ? (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center max-w-lg mx-auto my-6">
-                  <div className="p-3 bg-gray-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3 text-gray-500">
-                    <Users className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-base font-bold text-gray-900 mb-1">Nenhum estudante selecionado</h3>
-                  <p className="text-sm text-gray-500 mb-6">
-                    Selecione um estudante na listagem ou cadastre um novo registro para visualizar o prontuário.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/estudantes')}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-ifpb-teal hover:bg-ifpb-tealHover rounded-md shadow-sm transition-colors cursor-pointer"
-                  >
-                    <Users className="w-4 h-4" />
-                    Acessar Gestão de Estudantes
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-4">
-                    <button
-                      type="button"
-                      onClick={() => navigate('/estudantes')}
-                      className="inline-flex items-center gap-2 text-xs font-semibold text-ifpb-teal hover:text-ifpb-tealHover cursor-pointer transition-colors px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200 shadow-2xs"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      Voltar para Gestão de Estudantes
-                    </button>
-                  </div>
+            <Route path="/" element={<Navigate to="/estudantes" replace />} />
+            <Route
+              path="/estudo-de-caso"
+              element={
+                <Navigate
+                  to={alunoSelecionado ? `/estudantes/${alunoSelecionado.id}/estudo-de-caso` : '/estudantes'}
+                  replace
+                />
+              }
+            />
+            <Route
+              path="/pei"
+              element={
+                <Navigate
+                  to={alunoSelecionado ? `/estudantes/${alunoSelecionado.id}/pei` : '/estudantes'}
+                  replace
+                />
+              }
+            />
+            <Route
+              path="/pea"
+              element={
+                <Navigate
+                  to={alunoSelecionado ? `/estudantes/${alunoSelecionado.id}/pea` : '/estudantes'}
+                  replace
+                />
+              }
+            />
 
-                  {header && <StudentHeader header={header} />}
-                  {!header && (loadingHeader || errorHeader) && (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                      {loadingHeader && (
-                        <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-ifpb-teal"></div>
-                          <span className="ml-3 text-sm text-gray-600">Carregando cabeçalho...</span>
-                        </div>
-                      )}
-                      {errorHeader && !loadingHeader && (
-                        <p className="text-sm text-red-700">Erro ao carregar cabeçalho: {errorHeader}</p>
-                      )}
+            <Route
+              path="/estudantes/:id/prontuario"
+              element={
+                erroAlunoRota ? (
+                  <CardErroEstudante
+                    mensagem={erroAlunoRota}
+                    onVoltar={() => navigate('/estudantes')}
+                  />
+                ) : !alunoSelecionado ? (
+                  <CardCarregamento mensagem="Carregando dados do estudante..." />
+                ) : (
+                  <>
+                    <div className="mb-4">
+                      <button
+                        type="button"
+                        onClick={() => navigate('/estudantes')}
+                        className="inline-flex items-center gap-2 text-xs font-semibold text-ifpb-teal hover:text-ifpb-tealHover cursor-pointer transition-colors px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200 shadow-2xs"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        Voltar para Gestão de Estudantes
+                      </button>
                     </div>
-                  )}
 
-                  {/* Barra de Atalhos Rápidos do Prontuário (Task #13 / US 09) */}
-                  <ProntuarioQuickActions
-                    alunoNome={alunoEmFoco.nome}
-                    onNovoAtendimento={() => setModalAtivo('ATENDIMENTO')}
-                    onNovoEstudo={() => setModalAtivo('ESTUDO')}
-                    onEmitirRae={() => setModalAtivo('EMITIR_RAE')}
-                    onGerarDossie={() => setModalAtivo('GERAR_DOSSIE')}
+                    {header && <StudentHeader header={header} />}
+                    {!header && (loadingHeader || errorHeader) && (
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                        {loadingHeader && (
+                          <div className="flex items-center">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-ifpb-teal"></div>
+                            <span className="ml-3 text-sm text-gray-600">Carregando cabeçalho...</span>
+                          </div>
+                        )}
+                        {errorHeader && !loadingHeader && (
+                          <p className="text-sm text-red-700">Erro ao carregar cabeçalho: {errorHeader}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Barra de Atalhos Rápidos do Prontuário (Task #13 / US 09) */}
+                    <ProntuarioQuickActions
+                      alunoNome={alunoEmFoco.nome}
+                      estudoStatus={estudoAtual?.status ?? null}
+                      carregandoEstudo={carregandoEstudo}
+                      onNovoAtendimento={() => setModalAtivo('ATENDIMENTO')}
+                      onNovoEstudo={() => {
+                        if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
+                          adicionarToast(
+                            'alerta',
+                            'Estudo de Caso Já Concluído',
+                            'Este estudante já possui um Estudo de Caso concluído. Exibindo o registro em modo visualização.'
+                          );
+                          navigate(`/estudantes/${alunoSelecionado.id}/estudo-de-caso`);
+                          return;
+                        }
+                        setModalAtivo('ESTUDO');
+                      }}
+                      onEmitirRae={() => setModalAtivo('EMITIR_RAE')}
+                      onGerarDossie={() => setModalAtivo('GERAR_DOSSIE')}
+                    />
+
+                    <div className="mb-6">
+                      <Timeline events={timeline} loading={loadingTimeline} error={errorTimeline} />
+                    </div>
+
+                    <TelaAluno
+                      alunoSelecionado={alunoSelecionado}
+                      estudoAtual={estudoAtual}
+                      indicadores={indicadores}
+                      onAbrirFormularioEstudo={() => navigate(`/estudantes/${alunoSelecionado.id}/estudo-de-caso`)}
+                      onCriarPlanoAcao={handleCriarPlanoAcao}
+                      peiAtual={peiAtual}
+                      onAbrirFormularioPei={() => navigate(`/estudantes/${alunoSelecionado.id}/pei`)}
+                      onAbrirFormularioPea={() => navigate(`/estudantes/${alunoSelecionado.id}/pea`)}
+                    />
+
+                    {/* US 09 / TA11.2 e TA11.3: históricos sensíveis e anexos com RBAC visual */}
+                    <div className="mt-6">
+                      <SecaoProntuarioRbac key={alunoSelecionado.id} alunoId={alunoSelecionado.id} />
+                    </div>
+                  </>
+                )
+              }
+            />
+            <Route
+              path="/estudantes/:id/pei"
+              element={
+                erroAlunoRota ? (
+                  <CardErroEstudante
+                    mensagem={erroAlunoRota}
+                    onVoltar={() => navigate('/estudantes')}
                   />
-
-                  <div className="mb-6">
-                    <Timeline events={timeline} loading={loadingTimeline} error={errorTimeline} />
-                  </div>
-
-                  <TelaAluno
-                    alunoSelecionado={alunoSelecionado}
-                    estudoAtual={estudoAtual}
-                    indicadores={indicadores}
-                    onAbrirFormularioEstudo={() => navigate('/estudo-de-caso')}
-                    onCriarPlanoAcao={handleCriarPlanoAcao}
-                    peiAtual={peiAtual}
-                    onAbrirFormularioPei={() => navigate('/pei')}
-                    onAbrirFormularioPea={() => navigate('/pea')}
+                ) : !alunoSelecionado || loadingPei ? (
+                  <CardCarregamento mensagem="Carregando Plano Educacional Individualizado (PEI)..." />
+                ) : (
+                  <FormularioPei
+                    aluno={alunoSelecionado}
+                    peiExistente={peiAtual}
+                    dificuldades={dificuldadesDoEstudo}
+                    onSalvar={handleSalvarPei}
+                    onVoltar={() => irParaProntuario(alunoSelecionado.id)}
+                    isLoading={isLoading}
                   />
-
-                  {/* US 09 / TA11.2 e TA11.3: históricos sensíveis e anexos com RBAC visual */}
-                  <div className="mt-6">
-                    <SecaoProntuarioRbac key={alunoSelecionado.id} alunoId={alunoSelecionado.id} />
-                  </div>
-                </>
-              )
-            }
-          />
-          <Route
-            path="/pei"
-            element={
-              alunoSelecionado ? (
-                <FormularioPei
-                  aluno={alunoSelecionado}
-                  peiExistente={peiAtual}
-                  dificuldades={dificuldadesDoEstudo}
-                  onSalvar={handleSalvarPei}
-                  onVoltar={() => navigate('/')}
-                  isLoading={isLoading || loadingPei}
-                />
-              ) : (
-                <Navigate to="/" replace />
-              )
-            }
-          />
-          <Route
-            path="/pea"
-            element={
-              alunoSelecionado ? (
-                <FormularioPea
-                  aluno={alunoSelecionado}
-                  peaExistente={peaAtual}
-                  peasExistentes={peasDoAluno}
-                  onSelecionarPea={(pea) => setPeaAtual(pea)}
-                  onNovoPea={() => setPeaAtual(null)}
-                  peiId={peiAtual?.id}
-                  onSalvar={handleSalvarPea}
-                  onVoltar={() => navigate('/')}
-                  isLoading={isLoading || loadingPea}
-                />
-              ) : (
-                <Navigate to="/" replace />
-              )
-            }
-          />
-          <Route
-            path="/estudo-de-caso"
-            element={
-              alunoSelecionado ? (
-                <FormularioEstudoDeCaso
-                  aluno={alunoSelecionado}
-                  estudoExistente={estudoAtual}
-                  indicadoresDisponiveis={indicadores}
-                  onSalvarRascunho={handleSalvarRascunho}
-                  onConcluir={handleConcluir}
-                  onExcluirRascunho={estudoAtual?.status === 'RASCUNHO' ? handleExcluirRascunho : undefined}
-                  onVoltar={() => navigate('/')}
-                  isLoading={isLoading}
-                />
-              ) : (
-                <Navigate to="/" replace />
-              )
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
+                )
+              }
+            />
+            <Route
+              path="/estudantes/:id/pea"
+              element={
+                erroAlunoRota ? (
+                  <CardErroEstudante
+                    mensagem={erroAlunoRota}
+                    onVoltar={() => navigate('/estudantes')}
+                  />
+                ) : !alunoSelecionado || loadingPea ? (
+                  <CardCarregamento mensagem="Carregando Plano de Ensino Adaptado (PEA)..." />
+                ) : (
+                  <FormularioPea
+                    aluno={alunoSelecionado}
+                    peaExistente={peaAtual}
+                    peasExistentes={peasDoAluno}
+                    onSelecionarPea={(pea) => setPeaAtual(pea)}
+                    onNovoPea={() => setPeaAtual(null)}
+                    peiId={peiAtual?.id}
+                    onSalvar={handleSalvarPea}
+                    onVoltar={() => irParaProntuario(alunoSelecionado.id)}
+                    isLoading={isLoading}
+                  />
+                )
+              }
+            />
+            <Route
+              path="/estudantes/:id/estudo-de-caso"
+              element={
+                erroAlunoRota ? (
+                  <CardErroEstudante
+                    mensagem={erroAlunoRota}
+                    onVoltar={() => navigate('/estudantes')}
+                  />
+                ) : !alunoSelecionado || carregandoEstudo ? (
+                  <CardCarregamento mensagem="Carregando Estudo de Caso..." />
+                ) : (
+                  <FormularioEstudoDeCaso
+                    aluno={alunoSelecionado}
+                    estudoExistente={estudoAtual}
+                    indicadoresDisponiveis={indicadores}
+                    onSalvarRascunho={handleSalvarRascunho}
+                    onConcluir={handleConcluir}
+                    onExcluirRascunho={estudoAtual?.status === 'RASCUNHO' ? handleExcluirRascunho : undefined}
+                    onVoltar={() => irParaProntuario(alunoSelecionado.id)}
+                    isLoading={isLoading}
+                  />
+                )
+              }
+            />
+            <Route path="*" element={<Navigate to="/estudantes" replace />} />
           </Route>
         </Routes>
       </main>
@@ -770,12 +911,11 @@ export const App: React.FC = () => {
         isOpen={modalAtivo === 'ATENDIMENTO'}
         onClose={() => setModalAtivo(null)}
         aluno={alunoEmFoco}
-        onSuccess={async () => {
-          if (alunoSelecionado) await carregarTimeline(alunoSelecionado.id);
+        onSuccess={() => {
           adicionarToast(
             'sucesso',
-            'Atendimento Registrado',
-            `Novo atendimento vinculado a ${alunoEmFoco.nome} (${alunoEmFoco.matricula}) e adicionado à Linha do Tempo.`
+            'Atendimento Registrado Localmente',
+            `Novo atendimento registrado localmente para ${alunoEmFoco.nome} (${alunoEmFoco.matricula}). A integração com a Linha do Tempo será habilitada em etapa futura.`
           );
         }}
         onError={(titulo, detalhe) => adicionarToast('erro', titulo, detalhe)}
@@ -809,10 +949,7 @@ export const App: React.FC = () => {
         onClose={() => setModalAtivo(null)}
         aluno={alunoEmFoco}
         tipoDocumento={modalAtivo === 'EMITIR_RAE' ? 'RAE' : 'DOSSIE'}
-        onSuccess={async (doc) => {
-          if (alunoSelecionado) {
-            await carregarTimeline(alunoSelecionado.id);
-          }
+        onSuccess={(doc) => {
           adicionarToast(
             'sucesso',
             doc.tipoDocumento === 'RAE' ? 'RAE Emitido com Sucesso' : 'Dossiê Gerado com Sucesso',
@@ -842,6 +979,11 @@ export const App: React.FC = () => {
       </footer>
     </div>
   );
+};
+
+export const App: React.FC = () => {
+  const { autenticado, sessao } = useAuth();
+  return <AppConteudo key={autenticado ? (sessao?.userId || 'auth') : 'anon'} />;
 };
 
 export default App;

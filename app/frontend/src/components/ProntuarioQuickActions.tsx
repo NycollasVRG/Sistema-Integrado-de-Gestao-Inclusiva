@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Eye,
   FileDown,
   FilePlus2,
   FileSpreadsheet,
@@ -7,8 +8,12 @@ import {
   Zap,
 } from 'lucide-react';
 
+import type { StatusEstudoCaso } from '../types/estudoDeCaso';
+
 export interface ProntuarioQuickActionsProps {
   alunoNome?: string;
+  estudoStatus?: StatusEstudoCaso | null;
+  carregandoEstudo?: boolean;
   onNovoAtendimento: () => void;
   onNovoEstudo: () => void;
   onEmitirRae: () => void;
@@ -18,12 +23,27 @@ export interface ProntuarioQuickActionsProps {
 
 export const ProntuarioQuickActions: React.FC<ProntuarioQuickActionsProps> = ({
   alunoNome,
+  estudoStatus = null,
+  carregandoEstudo = false,
   onNovoAtendimento,
   onNovoEstudo,
   onEmitirRae,
   onGerarDossie,
   disabled = false,
 }) => {
+  const estudoConcluido = estudoStatus === 'ENCERRADO' || estudoStatus === 'ATIVO';
+  const estudoRascunho = estudoStatus === 'RASCUNHO';
+  const tituloBotaoEstudo = estudoConcluido
+    ? 'Ver Estudo'
+    : estudoRascunho
+      ? 'Continuar Estudo'
+      : 'Novo Estudo';
+  const subtituloBotaoEstudo = estudoConcluido
+    ? 'Visualizar estudo concluído'
+    : estudoRascunho
+      ? 'Retomar rascunho em edição'
+      : 'Iniciar estudo de caso';
+
   return (
     <section
       aria-label="Atalhos Rápidos do Prontuário"
@@ -64,18 +84,22 @@ export const ProntuarioQuickActions: React.FC<ProntuarioQuickActionsProps> = ({
           </div>
         </button>
 
-        {/* Botão 2: Novo Estudo (TA9.3) */}
+        {/* Botão 2: Estudo de Caso (TA9.3) */}
         <button
           type="button"
           onClick={onNovoEstudo}
-          disabled={disabled}
+          disabled={disabled || carregandoEstudo}
           className="flex items-center justify-center sm:justify-start space-x-3 px-4 py-3 rounded-lg text-xs font-bold bg-ifpb-tealLight hover:bg-ifpb-teal/15 text-ifpb-teal border border-ifpb-teal/30 transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <FilePlus2 className="w-4 h-4 shrink-0" />
+          {estudoConcluido ? (
+            <Eye className="w-4 h-4 shrink-0" />
+          ) : (
+            <FilePlus2 className="w-4 h-4 shrink-0" />
+          )}
           <div className="text-left">
-            <span className="block">Novo Estudo</span>
+            <span className="block">{tituloBotaoEstudo}</span>
             <span className="block text-[10px] font-normal text-ifpb-teal/80">
-              Iniciar ou atualizar estudo
+              {subtituloBotaoEstudo}
             </span>
           </div>
         </button>

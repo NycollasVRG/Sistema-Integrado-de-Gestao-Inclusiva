@@ -47,6 +47,12 @@ export function isProblem(e: unknown): e is ApiProblem {
   return typeof obj.status === 'number' && typeof obj.title === 'string';
 }
 
+/** Identifica erros nativos de cancelamento via AbortController/AbortSignal. */
+export function isAbortError(e: unknown): boolean {
+  if (typeof e !== 'object' || e === null) return false;
+  return (e as { name?: unknown }).name === 'AbortError';
+}
+
 /** Converte qualquer valor lançado em um ProblemDetail exibível. */
 export function toProblem(e: unknown, titulo = 'Erro inesperado', detalhe = 'Ocorreu um erro inesperado.'): ApiProblem {
   if (isProblem(e)) return e;
@@ -145,7 +151,10 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
   let res: Response;
   try {
     res = await fetch(resolveApiUrl(input), { ...init, headers });
-  } catch {
+  } catch (err: unknown) {
+    if (isAbortError(err) || init?.signal?.aborted) {
+      throw err;
+    }
     throw problemaRede();
   }
   if (!res.ok) {
