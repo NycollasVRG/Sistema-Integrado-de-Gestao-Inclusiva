@@ -131,7 +131,7 @@ export const TelaAluno: React.FC<TelaAlunoProps> = ({
                   </div>
 
                   <div>
-                    <span className="text-xs font-semibold text-gray-500 uppercase block">Dificuldades / Indicadores:</span>
+                    <span className="text-xs font-semibold text-gray-500 uppercase block">Deficiências / Indicadores:</span>
                     <div className="flex flex-wrap gap-1.5 mt-1">
                       {dificuldadesDoEstudo.length > 0 ? (
                         dificuldadesDoEstudo.map((dif) => (
@@ -143,7 +143,7 @@ export const TelaAluno: React.FC<TelaAlunoProps> = ({
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs text-gray-400">Nenhuma dificuldade associada</span>
+                        <span className="text-xs text-gray-400">Nenhuma deficiência associada</span>
                       )}
                     </div>
                   </div>

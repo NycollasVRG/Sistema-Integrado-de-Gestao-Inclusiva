@@ -120,8 +120,8 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
             <input value={turma} onChange={(e) => alterarFiltro(setTurma, e.target.value)} placeholder="Filtrar turma"
               className="block w-full mt-1 rounded-lg border border-gray-300 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal" />
           </label>
-          <label className="text-sm font-medium text-gray-700">Tag de dificuldade
-            <input value={tag} onChange={(e) => alterarFiltro(setTag, e.target.value)} placeholder="Ex.: Dislexia"
+          <label className="text-sm font-medium text-gray-700">Tag de deficiência
+            <input value={tag} onChange={(e) => alterarFiltro(setTag, e.target.value)} placeholder="Ex.: Deficiência Visual"
               className="block w-full mt-1 rounded-lg border border-gray-300 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal" />
           </label>
           <label className="text-sm font-medium text-gray-700">Situação

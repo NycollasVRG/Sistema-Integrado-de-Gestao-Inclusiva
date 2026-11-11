@@ -99,7 +99,7 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
 
       if (indicadoresSelecionados.length === 0) {
         setErroIndicadores(
-          'Selecione pelo menos uma Dificuldade/Indicador identificada para o aluno.'
+          'Selecione pelo menos uma Deficiência/Indicador identificada para o aluno.'
         );
         possuiErro = true;
       } else {
@@ -241,7 +241,7 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
         <div className="flex items-center justify-between mb-1">
           <label className="text-xs font-bold text-ifpb-dark flex items-center">
             <Tag className="w-3.5 h-3.5 mr-1.5 text-ifpb-teal" />
-            2. Dificuldades / Indicadores Identificados{' '}
+            2. Deficiências / Indicadores Identificados{' '}
             <span className="text-ifpb-red ml-1">*</span>
           </label>
           <span className="text-[11px] font-semibold text-ifpb-teal bg-ifpb-tealLight px-2 py-0.5 rounded-full">
@@ -249,7 +249,7 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
           </span>
         </div>
         <p className="text-[11px] text-gray-500 mb-2.5">
-          Selecione ao menos um indicador de barreira ou condição para conclusão do documento:
+          Selecione ao menos um indicador de deficiência ou condição para conclusão do documento:
         </p>
 
         <div

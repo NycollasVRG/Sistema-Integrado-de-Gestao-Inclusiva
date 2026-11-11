@@ -76,7 +76,7 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
         if (novos.length > 0) {
           setErroIndicadores(null);
         } else {
-          setErroIndicadores('Selecione pelo menos uma Dificuldade/Indicador para concluir o Estudo de Caso.');
+          setErroIndicadores('Selecione pelo menos uma Deficiência/Indicador para concluir o Estudo de Caso.');
         }
       }
       return novos;
@@ -116,9 +116,9 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
       setErroDiagnostico(null);
     }
 
-    // TA2.3: Impedir envio se Dificuldades estiverem vazias
+    // TA2.3: Impedir envio se Deficiências estiverem vazias
     if (!indicadoresSelecionados || indicadoresSelecionados.length === 0) {
-      setErroIndicadores('Selecione pelo menos uma Dificuldade/Indicador identificada para o aluno.');
+      setErroIndicadores('Selecione pelo menos uma Deficiência/Indicador identificada para o aluno.');
       temErro = true;
     } else {
       setErroIndicadores(null);
@@ -213,7 +213,7 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
         <div>
           <span className="font-semibold text-ifpb-teal">Instruções para a Equipe Multidisciplinar:</span>{' '}
           Você pode salvar rascunhos preliminares a qualquer momento clicando em <strong>"Salvar Rascunho"</strong>.{' '}
-          Para a finalização formal, clique em <strong>"Concluir"</strong> (requer Diagnóstico e ao menos uma Dificuldade selecionada).
+          Para a finalização formal, clique em <strong>"Concluir"</strong> (requer Diagnóstico e ao menos uma Deficiência selecionada).
         </div>
       </div>
 
@@ -291,12 +291,12 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
           )}
         </div>
 
-        {/* CAMPO 2: Dificuldades Identificadas / Indicadores */}
+        {/* CAMPO 2: Deficiências Identificadas / Indicadores */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-sm font-bold text-ifpb-dark flex items-center">
               <Tag className="w-4 h-4 mr-1.5 text-ifpb-teal" />
-              <span>2. Dificuldades Identificadas / Indicadores Reutilizáveis</span>
+              <span>2. Deficiências Identificadas / Indicadores Reutilizáveis</span>
               <span className="text-ifpb-red ml-1" title="Obrigatório para conclusão">*</span>
             </label>
             <span className="text-xs font-semibold text-ifpb-teal">
@@ -305,7 +305,7 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
           </div>
 
           <p className="text-xs text-gray-500">
-            Selecione as categorias e barreiras diagnosticadas para apoiar os indicadores do Plano de Ação:
+            Selecione as deficiências e condições identificadas para apoiar os indicadores do Plano de Ação:
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">

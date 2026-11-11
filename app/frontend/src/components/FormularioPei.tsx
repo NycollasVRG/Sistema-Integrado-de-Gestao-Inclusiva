@@ -182,7 +182,7 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
           <section className="space-y-2">
             <h3 className="text-sm font-bold text-ifpb-dark flex items-center">
               <Tag className="w-4 h-4 mr-1.5 text-ifpb-teal" />
-              Dificuldades Apresentadas (do Estudo de Caso)
+              Deficiências Apresentadas (do Estudo de Caso)
             </h3>
             <div className="flex flex-wrap gap-1.5">
               {dificuldades.map((d) => (
