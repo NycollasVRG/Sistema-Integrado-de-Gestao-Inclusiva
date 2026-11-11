@@ -10,6 +10,9 @@ spring:
       hibernate:
         format_sql: true
 
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed/dev
+
 logging:
   level:
     root: INFO
@@ -23,3 +26,6 @@ sigi:
   security:
     jwt-secret: ${JWT_SECRET:sigi-clai-dev-jwt-secret-key-2026-ifpb-change-in-prod}
     aes-key: ${AES_KEY:0123456789abcdef0123456789abcdef}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+

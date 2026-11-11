@@ -1,14 +1,13 @@
 -- =============================================================================
--- SEED 03: PLANEJAMENTO PEDAGÓGICO (ACOMPANHAMENTO, PEA E PEI) - SIGI / CLAI (US 03)
+-- SEED 03 (DEV): PLANEJAMENTO PEDAGÓGICO (ACOMPANHAMENTO, PEA E PEI) - SIGI / CLAI (US 03)
 -- =============================================================================
--- Este script garante os alunos base e insere os acompanhamentos com UUIDs fixos
--- para permitir a execução automatizada da coleção Postman / Newman de PEA e PEI.
---
--- Observação: como o acompanhamento é a ponte obrigatória entre Aluno e os
--- planos PEA/PEI, os registros são semeados de forma idempotente abaixo.
+-- Este script é executado automaticamente pelo Flyway apenas no perfil "dev".
+-- Garante os alunos base e insere os acompanhamentos com UUIDs fixos para
+-- desenvolvimento local e execução das coleções Postman / Newman de PEA e PEI.
+-- Script idempotente (ON CONFLICT DO NOTHING).
 -- =============================================================================
 
--- 1. Garantia idempotente dos Alunos de Teste (caso este script seja rodado isoladamente)
+-- 1. Garantia idempotente dos Alunos de Teste
 INSERT INTO sigi.aluno (id, nome, matricula, deleted, criado_em, atualizado_em)
 VALUES
     ('11111111-1111-1111-1111-111111111111', 'Aluno Teste Fluxo Completo', 'MAT-TEST-001', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),

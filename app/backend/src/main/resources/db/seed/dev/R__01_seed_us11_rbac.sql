@@ -1,9 +1,10 @@
 -- =============================================================================
--- SEED 01: AUTENTICAÇÃO JWT, PERFIS RBAC E MATRIZ GRANULAR - SIGI / CLAI (US 11)
+-- SEED 01 (DEV): AUTENTICAÇÃO JWT, PERFIS RBAC E MATRIZ GRANULAR - SIGI / CLAI (US 11)
 -- =============================================================================
--- Este script insere os usuários base de teste com credenciais e UUIDs fixos
--- para validação das Tasks #50, #51 e #52 (Autenticação JWT, Perfis RBAC,
--- Revogação de Sessão TA11.4, Criptografia AES-256 TA11.1/TA11.2 e Matriz TA11.3).
+-- Este script é executado automaticamente pelo Flyway apenas no perfil "dev".
+-- Insere os usuários base de teste com credenciais e UUIDs fixos para validação
+-- das Tasks #50, #51 e #52 (Autenticação JWT, Perfis RBAC, Revogação de Sessão
+-- TA11.4, Criptografia AES-256 TA11.1/TA11.2 e Matriz TA11.3).
 --
 -- Senha padrão para todos os usuários abaixo: "senha123"
 -- Hash BCrypt: $2a$10$P.HQ81At.XE1IE7ekR9tDOqLhit.7kAiWoqOgFRI2J2t0K6QksLeC

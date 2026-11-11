@@ -24,12 +24,12 @@ flowchart TD
 
         subgraph BackC["Container sigi-backend (JRE 21 Alpine)"]
             Spring["Spring Boot 4.1.1 API REST\n(Porta 8080)"]
+            Flyway["Flyway + Hibernate validate\n(db/migration + db/seed/dev em DEV)"]
             Actuator["Healthcheck (/actuator/health)"]
         end
 
         subgraph DbC["Container sigi-db (PostgreSQL 16 Alpine)"]
             PG["PostgreSQL Server\nDatabase: sigi_clai\nSchema: sigi"]
-            Init["/docker-entrypoint-initdb.d/\n(01-create-tables.sql + 02-seed.sql)"]
         end
 
         VolPostgres[("Volume Nomeado:\nsigi_postgres_data")]
@@ -80,7 +80,7 @@ Abra o terminal na **raiz do repositório** e copie o modelo:
 ### Passo 2 — Subir a aplicação conforme o ambiente desejado
 
 #### 💻 Ambiente de Desenvolvimento (`dev`)
-Utiliza `SPRING_PROFILES_ACTIVE=dev`, expõe as portas de banco (5432) e backend (8080) e carrega massas de dados de teste (seeds):
+Utiliza `SPRING_PROFILES_ACTIVE=dev`, expõe as portas de banco (5432) e backend (8080) e executa via Flyway as migrations estruturais + seeds de teste:
 
 ```bash
 # Execução direta com o compose de desenvolvimento:
@@ -91,7 +91,7 @@ docker compose up -d --build
 ```
 
 #### 🔒 Ambiente de Produção (`prd`)
-Utiliza `SPRING_PROFILES_ACTIVE=prd`, fail-fast estrito de segredos, isolamento total das portas de banco/API na rede interna e carrega apenas DDL estrutural:
+Utiliza `SPRING_PROFILES_ACTIVE=prd`, fail-fast estrito de segredos, isolamento total das portas de banco/API na rede interna e executa via Flyway apenas as migrations estruturais (`classpath:db/migration`), sem dados de teste:
 
 ```bash
 # Certifique-se de preencher as variáveis obrigatórias no .env antes de executar:
@@ -102,7 +102,7 @@ O Docker realizará:
 1. O download das imagens base (`postgres`, `eclipse-temurin`, `node`, `nginx`).
 2. O build multi-stage do Backend (Maven compila o `.jar` e gera imagem JRE enxuta).
 3. O build multi-stage do Frontend (TypeScript compila o bundle estático e Nginx é configurado).
-4. A inicialização automática do banco com criação do schema `sigi`, tabelas estruturais e (em dev) dados iniciais de teste (seeds).
+4. A inicialização do banco PostgreSQL e, na subida do backend, a execução automática do **Flyway** (criação do schema `sigi`, tabelas e, em `dev`, dados iniciais) seguida pela validação `ddl-auto: validate` do Hibernate.
 5. Os *healthchecks* aguardam a prontidão de cada dependência antes de liberar o próximo serviço.
 
 ### Passo 3 — Verificar a saúde dos containers
@@ -145,7 +145,7 @@ Você pode conectar qualquer cliente SQL externo diretamente ao PostgreSQL do co
 Ao criar a conexão PostgreSQL no DBeaver:
 1. Informe **Host:** `localhost`, **Database:** `sigi_clai`, **Usuário:** `postgres`, **Senha:** `postgres`.
 2. Clique em **Test Connection**.
-3. Na aba do navegador de banco, expanda: `Databases > sigi_clai > Schemas > sigi > Tables` para visualizar as 8 tabelas criadas automaticamente (`aluno`, `estudo_de_caso`, `pei`, `pea`, etc.).
+3. Na aba do navegador de banco, expanda: `Databases > sigi_clai > Schemas > sigi > Tables` para visualizar as 11 tabelas criadas pelo Flyway (`aluno`, `estudo_de_caso`, `pei`, `pea`, etc.) além da tabela `flyway_schema_history`.
 
 ---
 

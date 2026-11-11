@@ -7,20 +7,14 @@ Esta pasta contém a coleção completa de testes de API e massa de dados para v
 * `SIGI_PlanejamentoPedagogico.postman_collection.json`: Coleção no formato Postman Collection v2.1 com as pastas `1. PEA` e `2. PEI`, requisições e scripts de asserção automática.
 * `SIGI_Environment.postman_environment.json`: Variáveis de ambiente (`baseUrl`, `alunoId`, `acompanhamentoId`, `usuarioId`, etc.).
 * `README.md`: Este guia de instruções.
-* *(Seed SQL consolidado em [`database/inserts/03_seed_us03_planejamento_pedagogico.sql`](../../database/inserts/03_seed_us03_planejamento_pedagogico.sql)):* Script SQL para carregar alunos e acompanhamentos de teste no PostgreSQL local com os mesmos UUIDs configurados no ambiente.
+* *(Seed SQL consolidado em [`R__03_seed_us03_planejamento_pedagogico.sql`](../../src/main/resources/db/seed/dev/R__03_seed_us03_planejamento_pedagogico.sql)):* Script executado automaticamente pelo **Flyway** no perfil `dev` para carregar alunos e acompanhamentos de teste com os mesmos UUIDs configurados no ambiente.
 
 ---
 
 ## 🚀 Como Executar os Testes
 
 ### 1. Preparar a Massa de Dados no Banco
-Antes de iniciar a suíte, certifique-se de que o banco de dados PostgreSQL está em execução e execute o script de carga inicial:
-
-```bash
-# Exemplo via psql (a partir de app/backend):
-psql -U postgres -d sigi_clai -f database/inserts/03_seed_us03_planejamento_pedagogico.sql
-```
-*(Ou execute o conteúdo do arquivo `database/inserts/03_seed_us03_planejamento_pedagogico.sql` no seu cliente de banco de dados, como DBeaver, pgAdmin ou IntelliJ Database Tools).*
+Ao subir a aplicação com o perfil padrão (`dev`), o **Flyway** aplica automaticamente o schema e o seed [`R__03_seed_us03_planejamento_pedagogico.sql`](../../src/main/resources/db/seed/dev/R__03_seed_us03_planejamento_pedagogico.sql) no PostgreSQL. Caso precise aplicar manualmente em um banco existente, utilize o conteúdo desse arquivo em seu cliente SQL (DBeaver, pgAdmin, etc.).
 
 > **Atenção:** o acompanhamento é a ponte entre o Aluno e o PEI/PEA. Como o sistema ainda não possui endpoint REST para criar `Acompanhamento`, essa linha é inserida diretamente pelo seed.
 

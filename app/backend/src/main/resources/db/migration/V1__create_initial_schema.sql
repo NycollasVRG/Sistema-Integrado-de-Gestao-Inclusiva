@@ -1,6 +1,6 @@
 -- =============================================================================
 -- SIGI / CLAI - Sistema Integrado de Gestão Inclusiva
--- Script DDL 01: Criação do Schema e Tabelas Principais
+-- Flyway Migration V1: Criação do Schema e Tabelas Principais
 -- Banco de Dados: PostgreSQL 14+ (Schema: sigi)
 -- =============================================================================
 -- Ordem lógica de criação respeitando integridade referencial (Foreign Keys):

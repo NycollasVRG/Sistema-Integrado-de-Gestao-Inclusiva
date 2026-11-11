@@ -14,14 +14,8 @@ services:
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
-      # Persistência dos dados de desenvolvimento
+      # Persistência dos dados de desenvolvimento (schema e seeds gerenciados pelo Flyway)
       - postgres_dev_data:/var/lib/postgresql/data
-      # DDL estrutural e sementes completas de teste para ambiente local
-      - ./app/backend/database/schema/01_create_tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
-      - ./app/backend/database/schema/02_alter_tables_constraints.sql:/docker-entrypoint-initdb.d/02-alter-tables-constraints.sql:ro
-      - ./app/backend/database/inserts/01_seed_us11_rbac.sql:/docker-entrypoint-initdb.d/03-seed-us11-rbac.sql:ro
-      - ./app/backend/database/inserts/02_seed_us02_estudo_caso.sql:/docker-entrypoint-initdb.d/04-seed-us02-estudo-caso.sql:ro
-      - ./app/backend/database/inserts/03_seed_us03_planejamento_pedagogico.sql:/docker-entrypoint-initdb.d/05-seed-us03-planejamento-pedagogico.sql:ro
     networks:
       - sigi-network
     healthcheck:
@@ -55,6 +49,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       JWT_SECRET: ${JWT_SECRET:-sigi-clai-dev-jwt-secret-key-2026-ifpb-change-in-prod}
       AES_KEY: ${AES_KEY:-0123456789abcdef0123456789abcdef}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
       ATTACHMENTS_STORAGE_PATH: ${ATTACHMENTS_STORAGE_PATH:-/app/storage/anexos}
     ports:
       - "${BACKEND_PORT:-8080}:8080"

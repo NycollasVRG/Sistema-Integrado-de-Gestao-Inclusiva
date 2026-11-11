@@ -14,10 +14,16 @@ spring:
     open-in-view: false
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     properties:
       hibernate:
         default_schema: ${DB_SCHEMA:sigi}
+
+  flyway:
+    enabled: true
+    schemas: ${DB_SCHEMA:sigi}
+    default-schema: ${DB_SCHEMA:sigi}
+    locations: classpath:db/migration
 
 sigi:
   security:

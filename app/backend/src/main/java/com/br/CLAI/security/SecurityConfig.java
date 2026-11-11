@@ -57,12 +57,27 @@ import java.util.Optional;
 public class SecurityConfig {
 
     private final String jwtSecret;
+    private final List<String> allowedOrigins;
 
     @Autowired
     public SecurityConfig(
-            @Value("${sigi.security.jwt-secret:sigi-clai-dev-jwt-secret-key-2026-ifpb-change-in-prod}") String jwtSecret
+            @Value("${sigi.security.jwt-secret}") String jwtSecret,
+            @Value("${sigi.cors.allowed-origins:http://localhost:5173}") List<String> allowedOrigins
     ) {
+        if (jwtSecret == null || jwtSecret.isBlank()) {
+            throw new IllegalArgumentException("O segredo JWT (JWT_SECRET) não pode ser nulo ou vazio.");
+        }
         this.jwtSecret = jwtSecret;
+        this.allowedOrigins = (allowedOrigins == null || allowedOrigins.isEmpty())
+                ? List.of("http://localhost:5173")
+                : allowedOrigins.stream()
+                        .map(String::trim)
+                        .filter(origin -> !origin.isEmpty())
+                        .toList();
+    }
+
+    public SecurityConfig(String jwtSecret) {
+        this(jwtSecret, List.of("http://localhost:5173"));
     }
 
     @Bean
@@ -260,7 +275,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(
                 List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
         );
