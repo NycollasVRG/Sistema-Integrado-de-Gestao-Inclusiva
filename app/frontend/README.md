@@ -85,7 +85,6 @@ app/frontend/src/
 │   ├── ModalAlunoHeader.tsx         # Modal de exibição detalhada dos dados do estudante
 │   ├── ModalBase.tsx                # Modal base com backdrop, ARIA dialog, ESC e bloqueio de scroll
 │   ├── ModalConfirmacaoAcao.tsx     # Confirmação para emissão de RAE e Dossiê do Estudante
-│   ├── ModalEstudante.tsx           # Modal de criação e edição cadastral de estudantes (US 12)
 │   ├── ModalInativarEstudante.tsx   # Modal de inativação lógica do estudante (INATIVO/EVADIDO)
 │   ├── ModalNovoAtendimento.tsx     # Modal de registro rápido de novo atendimento
 │   ├── ModalNovoEstudo.tsx          # Modal de criação rápida de rascunho/estudo a partir do prontuário
@@ -98,6 +97,7 @@ app/frontend/src/
 ├── config/                          # Constantes de configuração e flags de runtime
 │   └── featureFlags.ts              # API_URL e flag USE_LOCAL_FALLBACK
 ├── pages/                           # Visões completas de rota
+│   ├── FormularioEstudante.tsx      # Tela dedicada de criação e edição cadastral de estudantes (US 12)
 │   └── GestaoEstudantes.tsx         # Painel de listagem, busca debounced, filtros e paginação (US 12)
 ├── services/                        # Camada de comunicação com a API REST
 │   ├── alunoService.ts              # Serviço de obtenção do cabeçalho do aluno
@@ -157,7 +157,7 @@ Ao receber comandos para criar novas funcionalidades, o Agente de IA deve seguir
 
 ### Convenções de Nomenclatura
 
-- **Componentes React:** `PascalCase.tsx` (ex: `ModalEstudante.tsx`, `StudentHeader.tsx`, `ConfirmModal.tsx`).
+- **Componentes React:** `PascalCase.tsx` (ex: `FormularioEstudante.tsx`, `StudentHeader.tsx`, `ConfirmModal.tsx`).
 - **Arquivos de Serviço:** `camelCase.ts` (ex: `alunoService.ts`, `timelineService.ts`, `apiClient.ts`) ou classes estáticas `PascalCase` dentro de arquivo camelCase (`gestaoEstudantesService.ts` contendo `GestaoEstudantesService`).
 - **Arquivos de Tipos:** `camelCase.ts` (ex: `estudoDeCaso.ts`, `gestaoEstudantes.ts`).
 - **Interfaces e Tipos:** `PascalCase` sem prefixo `I` (ex: `EstudanteResumo`, `ModalBaseProps`).
@@ -284,7 +284,9 @@ A navegação client-side utiliza `react-router-dom` v7. O roteador raiz `<Brows
 | Caminho da Rota | Componente Renderizado | Descrição da Tela |
 | :--- | :--- | :--- |
 | `/` | `StudentHeader` + `ProntuarioQuickActions` + `Timeline` + `TelaAluno` | Ficha do Estudante em foco e visualização unificada do prontuário. |
-| `/estudantes` | `<AreaGestaoEstudantes />` | Portal de Gestão de Estudantes (com login in-page e listagem US 12). |
+| `/estudantes` | `<AreaGestaoEstudantes />` | Portal de Gestão de Estudantes (listagem e filtros US 12). |
+| `/estudantes/novo` | `<FormularioEstudante />` | Tela dedicada de cadastro de novo estudante. |
+| `/estudantes/:id/editar` | `<FormularioEstudante />` | Tela dedicada de edição cadastral do estudante. |
 | `/estudo-de-caso` | `<FormularioEstudoDeCaso />` | Elaboração e edição de Estudo de Caso (rascunho ou conclusão). |
 | `/pei` | `<FormularioPei />` | Formulário do Plano Educacional Individualizado do discente. |
 | `/pea` | `<FormularioPea />` | Formulário do Plano de Ensino Adaptado por disciplina. |
@@ -447,7 +449,7 @@ Os serviços de `estudoDeCasoService.ts`, `peiService.ts` e `timelineService.ts`
 O projeto utiliza **componentes controlados nativos do React** sem dependência de bibliotecas externas como React Hook Form ou Formik:
 
 ```tsx
-// Exemplo real de formulário controlado extraído de src/components/ModalEstudante.tsx
+// Exemplo real de formulário controlado baseado em src/pages/FormularioEstudante.tsx
 const [dados, setDados] = useState<DadosEstudanteFormulario>(() => obterEstadoInicial(estudante, tagsDisponiveis));
 const [salvando, setSalvando] = useState(false);
 const [erro, setErro] = useState('');
