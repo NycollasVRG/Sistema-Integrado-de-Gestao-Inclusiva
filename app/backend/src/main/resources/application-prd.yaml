@@ -10,6 +10,10 @@ spring:
       hibernate:
         format_sql: false
 
+  flyway:
+    locations: classpath:db/migration
+    clean-disabled: true
+
 logging:
   level:
     root: WARN
@@ -22,3 +26,6 @@ sigi:
   security:
     jwt-secret: ${JWT_SECRET}
     aes-key: ${AES_KEY}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost}
+

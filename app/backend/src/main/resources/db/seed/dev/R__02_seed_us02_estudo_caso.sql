@@ -1,8 +1,9 @@
 -- =============================================================================
--- SEED 02: ESTUDO DE CASO E INDICADORES REUTILIZÁVEIS - SIGI / CLAI (US 02)
+-- SEED 02 (DEV): ESTUDO DE CASO E INDICADORES REUTILIZÁVEIS - SIGI / CLAI (US 02)
 -- =============================================================================
--- Este script insere alunos base e indicadores reutilizáveis com UUIDs fixos e
--- conhecidos para permitir a execução automatizada das coleções Postman/Newman.
+-- Este script é executado automaticamente pelo Flyway apenas no perfil "dev".
+-- Insere alunos base e indicadores reutilizáveis com UUIDs fixos e conhecidos
+-- para desenvolvimento local e execução das coleções Postman/Newman.
 -- Script idempotente (ON CONFLICT DO NOTHING).
 -- =============================================================================
 

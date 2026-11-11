@@ -1,6 +1,6 @@
 -- =============================================================================
 -- SIGI / CLAI - Sistema Integrado de Gestão Inclusiva
--- Script DDL 02: Alterações Idempotentes, Constraints, Índices e Comentários
+-- Flyway Migration V2: Constraints, Índices e Comentários LGPD
 -- Banco de Dados: PostgreSQL 14+ (Schema: sigi)
 -- =============================================================================
 -- Consolida as regras de negócio de banco (TA2.4, TA11.1, TA11.3, TA11.4),

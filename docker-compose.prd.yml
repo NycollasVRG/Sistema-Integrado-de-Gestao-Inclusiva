@@ -13,11 +13,8 @@ services:
       TZ: America/Fortaleza
     # Porta 5432 não é publicada para o host em produção por segurança (acesso restrito à rede interna)
     volumes:
-      # Persistência isolada do banco de produção
+      # Persistência isolada do banco de produção (migrations estruturais aplicadas pelo Flyway)
       - postgres_prd_data:/var/lib/postgresql/data
-      # Apenas criação estrutural das tabelas e constraints (SEM seeds de dados de teste/mock)
-      - ./app/backend/database/schema/01_create_tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
-      - ./app/backend/database/schema/02_alter_tables_constraints.sql:/docker-entrypoint-initdb.d/02-alter-tables-constraints.sql:ro
     networks:
       - sigi-network
     healthcheck:
@@ -51,6 +48,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD environment variable is required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET environment variable is required}
       AES_KEY: ${AES_KEY:?AES_KEY environment variable is required}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}
       ATTACHMENTS_STORAGE_PATH: ${ATTACHMENTS_STORAGE_PATH:-/app/storage/anexos}
     # Porta 8080 mantida interna; o tráfego externo é canalizado pelo proxy reverso do frontend (Nginx)
     volumes:
