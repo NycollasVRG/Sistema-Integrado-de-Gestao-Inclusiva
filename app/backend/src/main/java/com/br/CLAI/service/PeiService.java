@@ -48,7 +48,7 @@ public class PeiService {
     @Transactional(readOnly = true)
     public List<PeiResponseDTO> listarTodos() {
 
-        return repository.findAll()
+        return OrdenacaoAuditoria.ordenarPorAtualizacaoDesc(repository.findAll())
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
@@ -63,7 +63,9 @@ public class PeiService {
     @Transactional(readOnly = true)
     public List<PeiResponseDTO> listarPorAcompanhamento(UUID acompanhamentoId) {
 
-        return repository.findByAcompanhamentoId(acompanhamentoId)
+        return OrdenacaoAuditoria.ordenarPorAtualizacaoDesc(
+                        repository.findByAcompanhamentoId(acompanhamentoId)
+                )
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
@@ -72,7 +74,9 @@ public class PeiService {
     @Transactional(readOnly = true)
     public List<PeiResponseDTO> listarPorAluno(UUID alunoId) {
 
-        return repository.findByAcompanhamento_Aluno_Id(alunoId)
+        return OrdenacaoAuditoria.ordenarPorAtualizacaoDesc(
+                        repository.findByAcompanhamento_Aluno_Id(alunoId)
+                )
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
@@ -98,8 +102,9 @@ public class PeiService {
 
         Pei pei = buscarEntidade(id);
 
-        return peaRepository
-                .findByAcompanhamentoId(pei.getAcompanhamento().getId())
+        return OrdenacaoAuditoria.ordenarPorCriacaoDesc(
+                        peaRepository.findByAcompanhamentoId(pei.getAcompanhamento().getId())
+                )
                 .stream()
                 .map(peaMapper::toResponse)
                 .toList();

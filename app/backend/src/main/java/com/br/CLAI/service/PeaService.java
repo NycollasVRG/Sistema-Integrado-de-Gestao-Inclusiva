@@ -36,7 +36,7 @@ public class PeaService {
     @Transactional(readOnly = true)
     public List<PeaResponseDTO> listarTodos() {
 
-        return repository.findAll()
+        return OrdenacaoAuditoria.ordenarPorCriacaoDesc(repository.findAll())
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
@@ -58,8 +58,9 @@ public class PeaService {
     public List<PeaResponseDTO> listarPorAcompanhamento(
             UUID acompanhamentoId) {
 
-        return repository
-                .findByAcompanhamentoId(acompanhamentoId)
+        return OrdenacaoAuditoria.ordenarPorCriacaoDesc(
+                        repository.findByAcompanhamentoId(acompanhamentoId)
+                )
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
@@ -68,8 +69,9 @@ public class PeaService {
     @Transactional(readOnly = true)
     public List<PeaResponseDTO> listarPorAluno(UUID alunoId) {
 
-        return repository
-                .findByAcompanhamento_Aluno_Id(alunoId)
+        return OrdenacaoAuditoria.ordenarPorCriacaoDesc(
+                        repository.findByAcompanhamento_Aluno_Id(alunoId)
+                )
                 .stream()
                 .map(mapper::toResponse)
                 .toList();

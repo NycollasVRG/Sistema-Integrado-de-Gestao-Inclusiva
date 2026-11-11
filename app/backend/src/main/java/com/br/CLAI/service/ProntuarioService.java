@@ -3,6 +3,7 @@ package com.br.CLAI.service;
 import com.br.CLAI.domain.Aluno;
 import com.br.CLAI.domain.EstudoDeCaso;
 import com.br.CLAI.domain.enums.StatusEstudoCaso;
+import com.br.CLAI.dto.response.HistoricoSocioemocionalResponseDTO;
 import com.br.CLAI.dto.response.ProntuarioResponseDTO;
 import com.br.CLAI.exception.NaoEncontradoException;
 import com.br.CLAI.repository.AlunoRepository;
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -53,11 +53,7 @@ public class ProntuarioService {
         Aluno aluno = alunoRepository.findById(alunoId)
                 .orElseThrow(() -> new NaoEncontradoException("Estudante não encontrado com o ID: " + alunoId));
 
-        List<EstudoDeCaso> estudos = estudoDeCasoRepository.findByAlunoId(alunoId);
-        EstudoDeCaso estudoAtivo = estudos.stream()
-                .filter(e -> StatusEstudoCaso.ATIVO.equals(e.getStatus()))
-                .findFirst()
-                .orElseGet(() -> estudos.isEmpty() ? null : estudos.get(estudos.size() - 1));
+        EstudoDeCaso estudoAtivo = buscarEstudoVigente(alunoId);
 
         int totalPeis = peiRepository.findByAcompanhamento_Aluno_Id(alunoId).size();
         int totalPeas = peaRepository.findByAcompanhamento_Aluno_Id(alunoId).size();
@@ -94,22 +90,18 @@ public class ProntuarioService {
     }
 
     @Transactional(readOnly = true)
-    public com.br.CLAI.dto.response.HistoricoSocioemocionalResponseDTO buscarHistoricoSocioemocional(UUID alunoId) {
+    public HistoricoSocioemocionalResponseDTO buscarHistoricoSocioemocional(UUID alunoId) {
         Aluno aluno = alunoRepository.findById(alunoId)
                 .orElseThrow(() -> new NaoEncontradoException("Estudante não encontrado com o ID: " + alunoId));
 
-        List<EstudoDeCaso> estudos = estudoDeCasoRepository.findByAlunoId(alunoId);
-        EstudoDeCaso estudoAtivo = estudos.stream()
-                .filter(e -> StatusEstudoCaso.ATIVO.equals(e.getStatus()))
-                .findFirst()
-                .orElseGet(() -> estudos.isEmpty() ? null : estudos.get(estudos.size() - 1));
+        EstudoDeCaso estudoAtivo = buscarEstudoVigente(alunoId);
 
         UUID estudoId = estudoAtivo != null ? estudoAtivo.getId() : null;
         String historicoFamiliar = estudoAtivo != null ? estudoAtivo.getHistoricoFamiliar() : null;
         String historicoSocioemocional = estudoAtivo != null ? estudoAtivo.getHistoricoSocioemocional() : null;
         LocalDateTime atualizadoEm = estudoAtivo != null ? estudoAtivo.getAtualizadoEm() : aluno.getAtualizadoEm();
 
-        return new com.br.CLAI.dto.response.HistoricoSocioemocionalResponseDTO(
+        return new HistoricoSocioemocionalResponseDTO(
                 aluno.getId(),
                 aluno.getNomeCompleto(),
                 aluno.getMatricula(),
@@ -118,5 +110,10 @@ public class ProntuarioService {
                 historicoSocioemocional,
                 atualizadoEm
         );
+    }
+
+    private EstudoDeCaso buscarEstudoVigente(UUID alunoId) {
+        return OrdenacaoAuditoria.selecionarEstudoVigente(estudoDeCasoRepository.findByAlunoId(alunoId))
+                .orElse(null);
     }
 }

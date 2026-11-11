@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -76,12 +75,6 @@ public class TimelineService {
             );
         }
 
-        eventos.sort(
-                Comparator
-                        .comparing(TimelineEventDTO::dataCriacao)
-                        .thenComparing(TimelineEventDTO::id)
-        );
-
-        return eventos;
+        return OrdenacaoAuditoria.ordenarEventosTimeline(eventos);
     }
 }
