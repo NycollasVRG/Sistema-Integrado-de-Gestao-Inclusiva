@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Eye, Search, UserRoundX, Pencil, Users, UserRoundPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { ModalEstudante } from '../components/ModalEstudante';
 import { ModalInativarEstudante } from '../components/ModalInativarEstudante';
 import { GestaoEstudantesService } from '../services/gestaoEstudantesService';
-import type { EstudanteResumo, PaginaEstudantes, TagDificuldadeDTO } from '../types/gestaoEstudantes';
+import type { EstudanteResumo, PaginaEstudantes } from '../types/gestaoEstudantes';
 
 interface Props {
   onAbrirProntuario: (estudante: EstudanteResumo) => void;
@@ -16,7 +16,10 @@ const paginaVazia: PaginaEstudantes = {
 };
 
 export function GestaoEstudantes({ onAbrirProntuario }: Props) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { isAcessoFuncional } = useAuth();
+  const mensagemInicial = (location.state as { mensagemSucesso?: string } | null)?.mensagemSucesso ?? '';
   const [busca, setBusca] = useState('');
   const [buscaDebounced, setBuscaDebounced] = useState('');
   const [curso, setCurso] = useState('');
@@ -27,15 +30,15 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
   const [dados, setDados] = useState<PaginaEstudantes>(paginaVazia);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
-  const [mensagem, setMensagem] = useState('');
+  const [mensagem, setMensagem] = useState(mensagemInicial);
   const [revisao, setRevisao] = useState(0);
-  const [modalCadastroAberto, setModalCadastroAberto] = useState(false);
-  const [estudanteEdicao, setEstudanteEdicao] = useState<EstudanteResumo | null>(null);
   const [estudanteInativacao, setEstudanteInativacao] = useState<EstudanteResumo | null>(null);
-  const [abrindoEdicao, setAbrindoEdicao] = useState(false);
-  const [tagsDisponiveis, setTagsDisponiveis] = useState<TagDificuldadeDTO[]>([]);
-  const [erroTags, setErroTags] = useState('');
-  const [carregandoTags, setCarregandoTags] = useState(true);
+
+  useEffect(() => {
+    if (mensagemInicial) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [mensagemInicial, location.pathname, navigate]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setBuscaDebounced(busca), 350);
@@ -66,51 +69,9 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
     return () => controlador.abort();
   }, [buscaDebounced, curso, turma, tag, ativo, pagina, revisao]);
 
-  // Busca o catálogo de todas as tags após o login JWT, sem depender
-  // das tags dos estudantes já carregados na página.
-  useEffect(() => {
-    const controlador = new AbortController();
-    setCarregandoTags(true);
-    setErroTags('');
-    GestaoEstudantesService.listarTags(controlador.signal)
-      .then((tags) => {
-        if (!controlador.signal.aborted) setTagsDisponiveis(tags);
-      })
-      .catch((falha: unknown) => {
-        if (controlador.signal.aborted) return;
-        setErroTags(falha instanceof Error ? falha.message : 'Erro ao carregar as tags.');
-        setTagsDisponiveis([]);
-      })
-      .finally(() => {
-        if (!controlador.signal.aborted) setCarregandoTags(false);
-      });
-    return () => controlador.abort();
-  }, []);
-
   function alterarFiltro(setter: (novoValor: string) => void, valor: string) {
     setter(valor);
     setPagina(0);
-  }
-
-  function aposSalvar(mensagemSucesso: string) {
-    setModalCadastroAberto(false);
-    setEstudanteEdicao(null);
-    setMensagem(mensagemSucesso);
-    setPagina(0);
-    setRevisao((valor) => valor + 1);
-  }
-
-  async function editar(estudante: EstudanteResumo) {
-    setMensagem('');
-    setAbrindoEdicao(true);
-    try {
-      const registroAtualizado = await GestaoEstudantesService.buscarPorId(estudante.id);
-      setEstudanteEdicao(registroAtualizado);
-    } catch (falha: unknown) {
-      setErro(falha instanceof Error ? falha.message : 'Não foi possível abrir a edição.');
-    } finally {
-      setAbrindoEdicao(false);
-    }
   }
 
   function aposInativar(mensagemSucesso: string) {
@@ -130,7 +91,7 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
         <div className="flex flex-wrap gap-3 items-center">
           <span className="inline-flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4 text-ifpb-teal" /> {dados.totalElements} estudantes no filtro</span>
           {!isAcessoFuncional && (
-            <button type="button" onClick={() => { setModalCadastroAberto(true); setMensagem(''); }}
+            <button type="button" onClick={() => navigate('/estudantes/novo')}
               className="inline-flex items-center gap-2 rounded-lg bg-ifpb-teal hover:bg-ifpb-tealHover px-4 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors shadow-xs">
               <UserRoundPlus className="w-4 h-4" /> Novo estudante
             </button>
@@ -139,11 +100,6 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
       </div>
 
       {mensagem && <p role="status" className="rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 p-3 text-sm">{mensagem}</p>}
-      {erroTags && (
-        <p role="alert" className="rounded-lg bg-amber-50 text-amber-900 border border-amber-200 p-3 text-sm">
-          Não foi possível carregar as tags de dificuldade: {erroTags}
-        </p>
-      )}
 
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 space-y-4">
         <div>
@@ -242,11 +198,10 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
                         <>
                           <button
                             type="button"
-                            onClick={() => { void editar(estudante); }}
-                            disabled={abrindoEdicao}
+                            onClick={() => navigate(`/estudantes/${estudante.id}/editar`)}
                             title="Editar estudante"
                             aria-label={`Editar ${estudante.nomeCompleto}`}
-                            className="rounded p-1.5 text-gray-500 hover:text-ifpb-teal hover:bg-emerald-50 disabled:opacity-40 cursor-pointer transition-colors"
+                            className="rounded p-1.5 text-gray-500 hover:text-ifpb-teal hover:bg-emerald-50 cursor-pointer transition-colors"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
@@ -292,14 +247,6 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
         </div>
       </div>
 
-      {modalCadastroAberto && (
-        <ModalEstudante aberto estudante={null} tagsDisponiveis={tagsDisponiveis} carregandoTags={carregandoTags}
-          aoFechar={() => setModalCadastroAberto(false)} aoSalvar={aposSalvar} />
-      )}
-      {estudanteEdicao && (
-        <ModalEstudante aberto estudante={estudanteEdicao} tagsDisponiveis={tagsDisponiveis} carregandoTags={carregandoTags}
-          aoFechar={() => setEstudanteEdicao(null)} aoSalvar={aposSalvar} />
-      )}
       {estudanteInativacao && (
         <ModalInativarEstudante estudante={estudanteInativacao}
           aoFechar={() => setEstudanteInativacao(null)} aoConfirmar={aposInativar} />

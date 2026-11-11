@@ -103,7 +103,7 @@ export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
                       to="/estudantes"
                       onClick={() => setMenuAberto(false)}
                       className={`flex items-start gap-3 p-2.5 rounded-lg text-sm transition-colors cursor-pointer ${
-                        location.pathname === '/estudantes'
+                        location.pathname.startsWith('/estudantes')
                           ? 'bg-ifpb-tealLight text-ifpb-teal font-semibold'
                           : 'text-gray-700 hover:bg-gray-50'
                       }`}

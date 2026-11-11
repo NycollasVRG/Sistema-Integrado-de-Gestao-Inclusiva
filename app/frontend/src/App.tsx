@@ -43,6 +43,7 @@ import { ModalAcessoNegadoLGPD } from './components/ModalAcessoNegadoLGPD';
 import { useAuth } from './contexts/AuthContext';
 import { PainelAdminUsuarios } from './pages/PainelAdminUsuarios';
 import { SecaoProntuarioRbac } from './components/SecaoProntuarioRbac';
+import { FormularioEstudante } from './pages/FormularioEstudante';
 
 export const App: React.FC = () => {
   const navigate = useNavigate();
@@ -526,6 +527,19 @@ export const App: React.FC = () => {
     navigate('/');
   };
 
+  const handleEstudanteSalvo = (estudante: EstudanteResumo) => {
+    if (alunoSelecionado?.id === estudante.id) {
+      setAlunoSelecionado({
+        id: estudante.id,
+        nome: estudante.nomeCompleto,
+        matricula: estudante.matricula,
+        curso: estudante.curso,
+        turma: estudante.turma,
+      });
+      void carregarHeader(estudante.id);
+    }
+  };
+
   const isLogin = location.pathname === '/login';
 
   return (
@@ -548,6 +562,10 @@ export const App: React.FC = () => {
           subTitle={
             location.pathname.startsWith('/admin')
               ? 'Gestão de Acessos e Usuários (RBAC)'
+              : location.pathname === '/estudantes/novo'
+              ? 'Cadastro de Estudante'
+              : location.pathname.startsWith('/estudantes/') && location.pathname.endsWith('/editar')
+              ? 'Edição de Estudante'
               : location.pathname === '/estudantes'
               ? 'Gestão de Estudantes'
               : location.pathname === '/estudo-de-caso'
@@ -580,6 +598,24 @@ export const App: React.FC = () => {
             <Route
               path="/estudantes"
               element={<AreaGestaoEstudantes onAbrirProntuario={abrirProntuarioDaListagem} />}
+            />
+            <Route
+              path="/estudantes/novo"
+              element={
+                <FormularioEstudante
+                  onNotificar={adicionarToast}
+                  onEstudanteSalvo={handleEstudanteSalvo}
+                />
+              }
+            />
+            <Route
+              path="/estudantes/:id/editar"
+              element={
+                <FormularioEstudante
+                  onNotificar={adicionarToast}
+                  onEstudanteSalvo={handleEstudanteSalvo}
+                />
+              }
             />
 
           <Route
