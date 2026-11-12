@@ -27,19 +27,32 @@ public interface AlunoRepository extends JpaRepository<Aluno, UUID> {
     boolean existsByMatriculaAndIdNot(String matricula, UUID id);
 
     /**
-     * Listagem paginada com filtros combinados (AND).
-     * Filtro vazio ("") = ignorado. O service sempre envia os textos em minúsculo e nunca null
-     * (null em parâmetro String quebra o LOWER/LIKE no PostgreSQL).
+     * Listagem paginada com filtros combinados (AND) e busca incremental em todos os filtros textuais.
+     * Filtro vazio ("") = ignorado. O service envia os parâmetros em minúsculo, sem acentos,
+     * com curingas escapados ('!') e nunca null (null em String quebra funções de texto no PostgreSQL).
      */
     @Query("""
             SELECT a FROM Aluno a
             WHERE a.ativo = :ativo
-              AND (:termo = '' OR LOWER(a.nomeCompleto) LIKE CONCAT('%', :termo, '%')
-                               OR LOWER(a.matricula) LIKE CONCAT('%', :termo, '%'))
-              AND (:curso = '' OR LOWER(a.curso) = :curso)
-              AND (:turma = '' OR LOWER(a.turma) = :turma)
+              AND (:termo = '' OR LOWER(FUNCTION('translate', a.nomeCompleto,
+                                    'ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑÝŸáàâãäéèêëíìîïóòôõöúùûüçñýÿ',
+                                    'aaaaaeeeeiiiiooooouuuucnyyaaaaaeeeeiiiiooooouuuucnyy')) LIKE CONCAT('%', :termo, '%') ESCAPE '!'
+                               OR LOWER(FUNCTION('translate', a.matricula,
+                                    'ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑÝŸáàâãäéèêëíìîïóòôõöúùûüçñýÿ',
+                                    'aaaaaeeeeiiiiooooouuuucnyyaaaaaeeeeiiiiooooouuuucnyy')) LIKE CONCAT('%', :termo, '%') ESCAPE '!')
+              AND (:curso = '' OR LOWER(FUNCTION('translate', a.curso,
+                                    'ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑÝŸáàâãäéèêëíìîïóòôõöúùûüçñýÿ',
+                                    'aaaaaeeeeiiiiooooouuuucnyyaaaaaeeeeiiiiooooouuuucnyy')) LIKE CONCAT('%', :curso, '%') ESCAPE '!')
+              AND (:turma = '' OR LOWER(FUNCTION('translate', a.turma,
+                                    'ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑÝŸáàâãäéèêëíìîïóòôõöúùûüçñýÿ',
+                                    'aaaaaeeeeiiiiooooouuuucnyyaaaaaeeeeiiiiooooouuuucnyy')) LIKE CONCAT('%', :turma, '%') ESCAPE '!')
               AND (:tag = '' OR EXISTS (
-                    SELECT t.id FROM a.tagsDificuldade t WHERE LOWER(t.nome) = :tag))
+                    SELECT 1 FROM Aluno a2
+                    JOIN a2.tagsDificuldade t
+                    WHERE a2.id = a.id
+                      AND LOWER(FUNCTION('translate', t.nome,
+                            'ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑÝŸáàâãäéèêëíìîïóòôõöúùûüçñýÿ',
+                            'aaaaaeeeeiiiiooooouuuucnyyaaaaaeeeeiiiiooooouuuucnyy')) LIKE CONCAT('%', :tag, '%') ESCAPE '!'))
             """)
     Page<Aluno> buscarComFiltros(@Param("termo") String termo,
                                  @Param("curso") String curso,

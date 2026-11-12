@@ -21,10 +21,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -103,7 +105,20 @@ public class AlunoService {
     }
 
     private String normalizar(String valor) {
-        return valor == null ? "" : valor.trim().toLowerCase();
+        if (valor == null) {
+            return "";
+        }
+        String trimmed = valor.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        String semAcentos = Normalizer.normalize(trimmed, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT);
+        return semAcentos
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
     }
 
     @Transactional
@@ -163,7 +178,7 @@ public class AlunoService {
         Set<UUID> idsUnicos = new LinkedHashSet<>(ids);
         List<IndicadorReutilizavel> tags = tagRepository.findAllById(idsUnicos);
         if (tags.size() != idsUnicos.size()) {
-            throw new RegraDeNegocioException("Uma ou mais tags de dificuldade informadas não foram encontradas.");
+            throw new RegraDeNegocioException("Uma ou mais tags de deficiência informadas não foram encontradas.");
         }
         return tags;
     }
