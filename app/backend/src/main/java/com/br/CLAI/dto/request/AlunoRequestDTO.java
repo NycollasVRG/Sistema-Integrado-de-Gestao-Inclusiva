@@ -31,7 +31,7 @@ public record AlunoRequestDTO(
         @NotNull(message = "O status é obrigatório")
         StatusAluno status,
 
-        @NotEmpty(message = "Informe ao menos uma tag de dificuldade")
+        @NotEmpty(message = "Informe ao menos uma tag de deficiência")
         List<@NotNull(message = "O ID da tag não pode ser nulo") UUID> tagsDificuldadeIds
 ) {
 }
