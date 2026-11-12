@@ -14,13 +14,18 @@ VALUES
     ('22222222-2222-2222-2222-222222222222', 'Aluno Teste Conflito Ativo', 'MAT-TEST-002', 'Engenharia Elétrica', 'P2', 'ATIVO', TRUE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT DO NOTHING;
 
--- 2. Indicadores Reutilizáveis de Teste (Tags de Dificuldades / Necessidades)
+-- 2. Indicadores Reutilizáveis de Teste (Tags de Deficiências / Necessidades Específicas)
 INSERT INTO sigi.indicador_reutilizavel (id, nome, descricao, deleted, criado_em, atualizado_em)
 VALUES
-    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Dificuldade de Leitura', 'Apresenta barreiras na decodificação e fluência leitora.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'TDAH', 'Déficit de Atenção e Hiperatividade.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Discalculia', 'Dificuldade específica no aprendizado de matemática.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT DO NOTHING;
+    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Deficiência Visual', 'Cegueira ou baixa visão que demanda recursos de acessibilidade visual e tecnologia assistiva.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Deficiência Auditiva', 'Perda bilateral, parcial ou total da audição, podendo demandar Libras ou recursos visuais.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Deficiência Física', 'Alteração completa ou parcial de um ou mais segmentos do corpo humano, acarretando comprometimento motor.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'Deficiência Intelectual', 'Funcionamento intelectual significativamente inferior à média, com limitações adaptativas.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Transtorno do Espectro Autista (TEA)', 'Condição do neurodesenvolvimento caracterizada por desafios na comunicação social e comportamentos repetitivos.', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE SET
+    nome = EXCLUDED.nome,
+    descricao = EXCLUDED.descricao,
+    atualizado_em = CURRENT_TIMESTAMP;
 
 -- 3. Associação de Tags aos Alunos de Teste (US 12)
 INSERT INTO sigi.aluno_tag_dificuldade (aluno_id, indicador_id)

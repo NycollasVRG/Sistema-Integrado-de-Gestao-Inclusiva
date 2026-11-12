@@ -1,19 +1,37 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Eye, Search, UserRoundX, Pencil, Users, UserRoundPlus } from 'lucide-react';
+import { Eye, Search, UserRoundX, Pencil, Users, UserRoundPlus, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ModalInativarEstudante } from '../components/ModalInativarEstudante';
 import { GestaoEstudantesService } from '../services/gestaoEstudantesService';
-import type { EstudanteResumo, PaginaEstudantes } from '../types/gestaoEstudantes';
+import type { EstudanteResumo, PaginaEstudantes, TagDificuldadeDTO } from '../types/gestaoEstudantes';
 
 interface Props {
   onAbrirProntuario: (estudante: EstudanteResumo) => void;
 }
 
+interface FiltrosTexto {
+  termo: string;
+  curso: string;
+  turma: string;
+  tag: string;
+}
+
 const TAMANHO_PAGINA = 10;
+const DEBOUNCE_FILTROS_MS = 300;
+const filtrosTextoVazios: FiltrosTexto = {
+  termo: '',
+  curso: '',
+  turma: '',
+  tag: '',
+};
 const paginaVazia: PaginaEstudantes = {
   content: [], number: 0, size: TAMANHO_PAGINA, totalElements: 0, totalPages: 0,
 };
+
+function filtrosTextoIguais(a: FiltrosTexto, b: FiltrosTexto): boolean {
+  return a.termo === b.termo && a.curso === b.curso && a.turma === b.turma && a.tag === b.tag;
+}
 
 export function GestaoEstudantes({ onAbrirProntuario }: Props) {
   const navigate = useNavigate();
@@ -21,10 +39,11 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
   const { isAcessoFuncional } = useAuth();
   const mensagemInicial = (location.state as { mensagemSucesso?: string } | null)?.mensagemSucesso ?? '';
   const [busca, setBusca] = useState('');
-  const [buscaDebounced, setBuscaDebounced] = useState('');
   const [curso, setCurso] = useState('');
   const [turma, setTurma] = useState('');
   const [tag, setTag] = useState('');
+  const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosTexto>(filtrosTextoVazios);
+  const [tagsDisponiveis, setTagsDisponiveis] = useState<TagDificuldadeDTO[]>([]);
   const [ativo, setAtivo] = useState(true);
   const [pagina, setPagina] = useState(0);
   const [dados, setDados] = useState<PaginaEstudantes>(paginaVazia);
@@ -41,16 +60,45 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
   }, [mensagemInicial, location.pathname, navigate]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setBuscaDebounced(busca), 350);
+    const controlador = new AbortController();
+    GestaoEstudantesService.listarTags(controlador.signal)
+      .then((lista) => {
+        if (!controlador.signal.aborted) {
+          setTagsDisponiveis(lista);
+        }
+      })
+      .catch(() => {
+        // Sugestões no datalist são opcionais; falha silenciosa mantém busca livre incremental.
+      });
+    return () => controlador.abort();
+  }, []);
+
+  useEffect(() => {
+    const filtrosAtuais: FiltrosTexto = { termo: busca, curso, turma, tag };
+    if (filtrosTextoIguais(filtrosAplicados, filtrosAtuais)) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setFiltrosAplicados(filtrosAtuais);
+      setPagina(0);
+    }, DEBOUNCE_FILTROS_MS);
     return () => window.clearTimeout(timer);
-  }, [busca]);
+  }, [busca, curso, turma, tag, filtrosAplicados]);
 
   useEffect(() => {
     const controlador = new AbortController();
     setCarregando(true);
     setErro('');
     GestaoEstudantesService.listar(
-      { termo: buscaDebounced, curso, turma, tag, ativo, page: pagina, size: TAMANHO_PAGINA },
+      {
+        termo: filtrosAplicados.termo,
+        curso: filtrosAplicados.curso,
+        turma: filtrosAplicados.turma,
+        tag: filtrosAplicados.tag,
+        ativo,
+        page: pagina,
+        size: TAMANHO_PAGINA,
+      },
       controlador.signal,
     )
       .then((resultado) => {
@@ -67,10 +115,33 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
       })
       .finally(() => { if (!controlador.signal.aborted) setCarregando(false); });
     return () => controlador.abort();
-  }, [buscaDebounced, curso, turma, tag, ativo, pagina, revisao]);
+  }, [filtrosAplicados, ativo, pagina, revisao]);
 
-  function alterarFiltro(setter: (novoValor: string) => void, valor: string) {
-    setter(valor);
+  const possuiFiltrosAtivos =
+    busca !== '' || curso !== '' || turma !== '' || tag !== '' || !ativo;
+
+  function aplicarFiltrosImediatamente() {
+    const filtrosAtuais: FiltrosTexto = { termo: busca, curso, turma, tag };
+    if (!filtrosTextoIguais(filtrosAplicados, filtrosAtuais)) {
+      setFiltrosAplicados(filtrosAtuais);
+    }
+    if (pagina !== 0) {
+      setPagina(0);
+    }
+  }
+
+  function alterarSituacao(novoAtivo: boolean) {
+    setAtivo(novoAtivo);
+    aplicarFiltrosImediatamente();
+  }
+
+  function limparFiltros() {
+    setBusca('');
+    setCurso('');
+    setTurma('');
+    setTag('');
+    setAtivo(true);
+    setFiltrosAplicados(filtrosTextoVazios);
     setPagina(0);
   }
 
@@ -103,34 +174,58 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
 
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 space-y-4">
         <div>
-          <label htmlFor="busca-estudante" className="block text-sm font-medium text-gray-700 mb-1">Nome ou matrícula</label>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <label htmlFor="busca-estudante" className="block text-sm font-medium text-gray-700">Nome ou matrícula</label>
+            {possuiFiltrosAtivos && (
+              <button
+                type="button"
+                onClick={limparFiltros}
+                className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-ifpb-teal cursor-pointer transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+                Limpar filtros
+              </button>
+            )}
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input id="busca-estudante" value={busca} onChange={(e) => alterarFiltro(setBusca, e.target.value)}
+            <input id="busca-estudante" value={busca} onChange={(e) => setBusca(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') aplicarFiltrosImediatamente(); }}
               placeholder="Digite o nome ou a matrícula..."
               className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal" />
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <label className="text-sm font-medium text-gray-700">Curso
-            <input value={curso} onChange={(e) => alterarFiltro(setCurso, e.target.value)} placeholder="Filtrar curso"
+            <input value={curso} onChange={(e) => setCurso(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') aplicarFiltrosImediatamente(); }}
+              placeholder="Filtrar curso"
               className="block w-full mt-1 rounded-lg border border-gray-300 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal" />
           </label>
           <label className="text-sm font-medium text-gray-700">Turma
-            <input value={turma} onChange={(e) => alterarFiltro(setTurma, e.target.value)} placeholder="Filtrar turma"
+            <input value={turma} onChange={(e) => setTurma(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') aplicarFiltrosImediatamente(); }}
+              placeholder="Filtrar turma"
               className="block w-full mt-1 rounded-lg border border-gray-300 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal" />
           </label>
           <label className="text-sm font-medium text-gray-700">Tag de deficiência
-            <input value={tag} onChange={(e) => alterarFiltro(setTag, e.target.value)} placeholder="Ex.: Deficiência Visual"
+            <input value={tag} list="tags-deficiencia-sugestoes" onChange={(e) => setTag(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') aplicarFiltrosImediatamente(); }}
+              placeholder="Ex.: Deficiência Visual"
               className="block w-full mt-1 rounded-lg border border-gray-300 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal" />
           </label>
           <label className="text-sm font-medium text-gray-700">Situação
-            <select value={ativo ? 'true' : 'false'} onChange={(e) => { setAtivo(e.target.value === 'true'); setPagina(0); }}
+            <select value={ativo ? 'true' : 'false'} onChange={(e) => alterarSituacao(e.target.value === 'true')}
               className="block w-full mt-1 rounded-lg border border-gray-300 p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal">
               <option value="true">Ativos</option><option value="false">Inativos / Evadidos</option>
             </select>
           </label>
         </div>
+        <datalist id="tags-deficiencia-sugestoes">
+          {tagsDisponiveis.map((item) => (
+            <option key={item.id ?? item.nome} value={item.nome} />
+          ))}
+        </datalist>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative">
