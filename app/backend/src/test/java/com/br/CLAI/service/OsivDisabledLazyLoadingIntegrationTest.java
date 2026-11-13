@@ -112,6 +112,7 @@ class OsivDisabledLazyLoadingIntegrationTest {
         assertMethodReadOnlyTransactional(PeaService.class.getMethod("buscarPorId", UUID.class));
         assertMethodReadOnlyTransactional(PeaService.class.getMethod("listarPorAcompanhamento", UUID.class));
         assertMethodReadOnlyTransactional(PeaService.class.getMethod("listarPorAluno", UUID.class));
+        assertMethodReadOnlyTransactional(PeaService.class.getMethod("listarPorPei", UUID.class));
 
         assertMethodReadOnlyTransactional(PeiService.class.getMethod("listarTodos"));
         assertMethodReadOnlyTransactional(PeiService.class.getMethod("buscarPorId", UUID.class));
@@ -146,10 +147,11 @@ class OsivDisabledLazyLoadingIntegrationTest {
                 "A coleção indicadores em EstudoDeCaso deve possuir @BatchSize para proteção contra N+1");
 
         // PeaRepository
-        assertEntityGraph(PeaRepository.class.getMethod("findAll"), "acompanhamento", "acompanhamento.aluno");
-        assertEntityGraph(PeaRepository.class.getMethod("findById", UUID.class), "acompanhamento", "acompanhamento.aluno");
-        assertEntityGraph(PeaRepository.class.getMethod("findByAcompanhamentoId", UUID.class), "acompanhamento", "acompanhamento.aluno");
-        assertEntityGraph(PeaRepository.class.getMethod("findByAcompanhamento_Aluno_Id", UUID.class), "acompanhamento", "acompanhamento.aluno");
+        assertEntityGraph(PeaRepository.class.getMethod("findAll"), "acompanhamento", "acompanhamento.aluno", "pei");
+        assertEntityGraph(PeaRepository.class.getMethod("findById", UUID.class), "acompanhamento", "acompanhamento.aluno", "pei");
+        assertEntityGraph(PeaRepository.class.getMethod("findByAcompanhamentoId", UUID.class), "acompanhamento", "acompanhamento.aluno", "pei");
+        assertEntityGraph(PeaRepository.class.getMethod("findByAcompanhamento_Aluno_Id", UUID.class), "acompanhamento", "acompanhamento.aluno", "pei");
+        assertEntityGraph(PeaRepository.class.getMethod("findByPeiId", UUID.class), "acompanhamento", "acompanhamento.aluno", "pei");
 
         // PeiRepository
         assertEntityGraph(PeiRepository.class.getMethod("findAll"), "acompanhamento", "acompanhamento.aluno");
