@@ -125,6 +125,25 @@ public class EstudoDeCasoService {
     }
 
     @Transactional
+    public EstudoDeCasoResponseDTO reabrir(UUID id, UUID usuarioId) {
+        validarUsuarioResponsavel(usuarioId);
+
+        EstudoDeCaso estudo = repository.findById(id)
+                .orElseThrow(() -> new NaoEncontradoException("Estudo de Caso não encontrado com o ID fornecido."));
+
+        if (StatusEstudoCaso.RASCUNHO.equals(estudo.getStatus())) {
+            throw new RegraDeNegocioException("O Estudo de Caso já se encontra em status de Rascunho.");
+        }
+
+        estudo.setStatus(StatusEstudoCaso.RASCUNHO);
+        estudo.setAtualizadoEm(java.time.LocalDateTime.now());
+        estudo.setAtualizadoPor(usuarioId);
+
+        EstudoDeCaso salvo = repository.save(estudo);
+        return mapper.toResponse(salvo);
+    }
+
+    @Transactional
     public void excluir(UUID id, UUID usuarioId) {
         validarUsuarioResponsavel(usuarioId);
 

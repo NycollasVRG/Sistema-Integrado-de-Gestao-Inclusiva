@@ -3,26 +3,38 @@ package com.br.CLAI.mapper;
 import com.br.CLAI.domain.EstudoDeCaso;
 import com.br.CLAI.domain.IndicadorReutilizavel;
 import com.br.CLAI.domain.BaseEntity;
+import com.br.CLAI.domain.Usuario;
 import com.br.CLAI.dto.request.EstudoDeCasoRequestDTO;
 import com.br.CLAI.dto.request.EstudoDeCasoUpdateDTO;
 import com.br.CLAI.dto.response.EstudoDeCasoResponseDTO;
+import com.br.CLAI.dto.response.ResponsavelAuditoriaDTO;
+import com.br.CLAI.repository.UsuarioRepository;
 import com.br.CLAI.security.RbacGuard;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
 public class EstudoDeCasoMapper {
 
     private final RbacGuard rbacGuard;
+    private final UsuarioRepository usuarioRepository;
+
+    @Autowired
+    public EstudoDeCasoMapper(RbacGuard rbacGuard, UsuarioRepository usuarioRepository) {
+        this.rbacGuard = rbacGuard;
+        this.usuarioRepository = usuarioRepository;
+    }
 
     public EstudoDeCasoMapper(RbacGuard rbacGuard) {
-        this.rbacGuard = rbacGuard;
+        this(rbacGuard, null);
     }
 
     public EstudoDeCasoMapper() {
-        this.rbacGuard = new RbacGuard();
+        this(new RbacGuard(), null);
     }
 
     public EstudoDeCasoResponseDTO toResponse(EstudoDeCaso entity) {
@@ -30,7 +42,7 @@ public class EstudoDeCasoMapper {
             return null;
         }
 
-        List<java.util.UUID> indicadoresIds = null;
+        List<UUID> indicadoresIds = null;
         if (entity.getIndicadores() != null) {
             indicadoresIds = entity.getIndicadores().stream()
                     .map(BaseEntity::getId)
@@ -46,6 +58,8 @@ public class EstudoDeCasoMapper {
             historicoSocioemocional = entity.getHistoricoSocioemocional();
         }
 
+        ResponsavelAuditoriaDTO atualizadoPor = resolverAtualizadoPor(entity.getAtualizadoPor());
+
         return new EstudoDeCasoResponseDTO(
                 entity.getId(),
                 entity.getAluno() != null ? entity.getAluno().getId() : null,
@@ -58,8 +72,22 @@ public class EstudoDeCasoMapper {
                 entity.getVersao() != null ? entity.getVersao() : 1,
                 entity.getEstudoOrigem() != null ? entity.getEstudoOrigem().getId() : null,
                 entity.getCriadoEm(),
-                entity.getAtualizadoEm()
+                entity.getAtualizadoEm(),
+                atualizadoPor
         );
+    }
+
+    private ResponsavelAuditoriaDTO resolverAtualizadoPor(UUID usuarioId) {
+        if (usuarioId == null) {
+            return null;
+        }
+        String nome = null;
+        if (usuarioRepository != null) {
+            nome = usuarioRepository.findById(usuarioId)
+                    .map(Usuario::getNome)
+                    .orElse(null);
+        }
+        return new ResponsavelAuditoriaDTO(usuarioId, nome);
     }
 
     public EstudoDeCaso toEntity(EstudoDeCasoRequestDTO dto, 
