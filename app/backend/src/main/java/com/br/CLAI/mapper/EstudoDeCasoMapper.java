@@ -51,9 +51,12 @@ public class EstudoDeCasoMapper {
                 entity.getAluno() != null ? entity.getAluno().getId() : null,
                 entity.getStatus(),
                 entity.getDiagnosticoInicial(),
+                entity.getHistorico(),
                 historicoFamiliar,
                 historicoSocioemocional,
                 indicadoresIds,
+                entity.getVersao() != null ? entity.getVersao() : 1,
+                entity.getEstudoOrigem() != null ? entity.getEstudoOrigem().getId() : null,
                 entity.getCriadoEm(),
                 entity.getAtualizadoEm()
         );
@@ -70,6 +73,7 @@ public class EstudoDeCasoMapper {
         entidade.setAluno(aluno);
         entidade.setStatus(dto.status());
         entidade.setDiagnosticoInicial(dto.diagnosticoInicial());
+        entidade.setHistorico(dto.historico());
         entidade.setHistoricoFamiliar(dto.historicoFamiliar());
         entidade.setHistoricoSocioemocional(dto.historicoSocioemocional());
         if (indicadores != null) {
@@ -88,6 +92,9 @@ public class EstudoDeCasoMapper {
 
         entidade.setStatus(dto.status());
         entidade.setDiagnosticoInicial(dto.diagnosticoInicial());
+        if (dto.historico() != null) {
+            entidade.setHistorico(dto.historico());
+        }
         if (dto.historicoFamiliar() != null) {
             entidade.setHistoricoFamiliar(dto.historicoFamiliar());
         }
