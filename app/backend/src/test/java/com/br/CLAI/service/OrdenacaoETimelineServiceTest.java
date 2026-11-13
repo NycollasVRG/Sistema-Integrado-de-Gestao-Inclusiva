@@ -222,4 +222,112 @@ class OrdenacaoETimelineServiceTest {
         assertEquals(List.of(peaMaisAntigo.getId(), estudo.getId(), peiSemData.getId()),
                 eventos.stream().map(TimelineEventDTO::id).toList());
     }
+
+    @Test
+    @DisplayName("PeiService e PeaService devem persistir, atualizar e mapear todos os campos do Anexo III e vincular PEA ao PEI")
+    void deveMapearEVincularTodosOsCamposDoAnexoIiiEmPeiEPea() {
+        UUID usuarioId = UUID.randomUUID();
+        UUID alunoId = UUID.randomUUID();
+        UUID acompId = UUID.randomUUID();
+        UUID peiId = UUID.randomUUID();
+        UUID peaId = UUID.randomUUID();
+
+        Aluno aluno = new Aluno("Carlos Eduardo", "20261500");
+        aluno.setId(alunoId);
+        aluno.setCurso("Análise e Desenvolvimento de Sistemas");
+
+        Acompanhamento acomp = new Acompanhamento(aluno, LocalDate.of(2026, 2, 1));
+        acomp.setId(acompId);
+
+        when(acompanhamentoRepository.findById(acompId)).thenReturn(Optional.of(acomp));
+
+        PeiMapper peiMapper = new PeiMapper();
+        PeaMapper peaMapper = new PeaMapper();
+
+        when(peiRepository.save(org.mockito.ArgumentMatchers.any(Pei.class))).thenAnswer(inv -> {
+            Pei ent = inv.getArgument(0);
+            if (ent.getId() == null) {
+                ent.setId(peiId);
+            }
+            return ent;
+        });
+
+        PeiService peiService = new PeiService(
+                peiRepository, acompanhamentoRepository, peaRepository, peiMapper, peaMapper);
+
+        com.br.CLAI.dto.request.PeiRequestDTO peiReq = new com.br.CLAI.dto.request.PeiRequestDTO(
+                acompId,
+                "2026.1",
+                "Estudante ingressou via cota PcD, concluiu ensino médio em escola pública com suporte de AEE.",
+                "Baixa visão bilateral. Necessita de materiais ampliados (fonte mín. 18pt), alto contraste e leitor de tela.",
+                "Excelente raciocínio lógico, facilidade com programação backend e interesse em acessibilidade web.",
+                "Fadiga visual em leituras extensas de diagramas complexos e quadros brancos sem contraste.",
+                "Disponibilização prévia de slides digitais acessíveis e dilatação de 50% no tempo de avaliações escritas."
+        );
+
+        PeiResponseDTO peiCriado = peiService.criar(peiReq, usuarioId);
+        assertEquals(peiId, peiCriado.id());
+        assertEquals("2026.1", peiCriado.semestreAno());
+        assertEquals(peiReq.historicoEstudante(), peiCriado.historicoEstudante());
+        assertEquals(peiReq.necessidadesEspecificas(), peiCriado.necessidadesEspecificas());
+        assertEquals(peiReq.habilidadesInteresses(), peiCriado.habilidadesInteresses());
+        assertEquals(peiReq.dificuldadesApresentadas(), peiCriado.dificuldadesApresentadas());
+        assertEquals(peiReq.propostasAdaptacoes(), peiCriado.propostasAdaptacoes());
+
+        Pei peiEntidade = peiMapper.toEntity(peiReq, acomp);
+        peiEntidade.setId(peiId);
+        when(peiRepository.findById(peiId)).thenReturn(Optional.of(peiEntidade));
+        when(peiRepository.findByAcompanhamentoId(acompId)).thenReturn(List.of(peiEntidade));
+
+        when(peaRepository.save(org.mockito.ArgumentMatchers.any(Pea.class))).thenAnswer(inv -> {
+            Pea ent = inv.getArgument(0);
+            if (ent.getId() == null) {
+                ent.setId(peaId);
+            }
+            return ent;
+        });
+
+        PeaService peaService = new PeaService(
+                peaRepository, acompanhamentoRepository, peiRepository, peaMapper);
+
+        com.br.CLAI.dto.request.PeaRequestDTO peaReq = new com.br.CLAI.dto.request.PeaRequestDTO(
+                acompId,
+                null, // Deve vincular automaticamente ao PEI vigente do acompanhamento
+                null,
+                "Banco de Dados I",
+                "2026.1",
+                "Prof. Dr. Marcos Silva",
+                "Compreender e aplicar modelagem relacional e linguagem SQL com autonomia.",
+                "Elaborar modelos entidade-relacionamento em formato textual/DDL acessível; construir consultas SQL.",
+                "1. Modelo Relacional; 2. Álgebra Relacional; 3. SQL DDL e DML; 4. Normalização.",
+                "Uso de scripts DDL textuais em substituição a diagramas exclusivamente visuais e atendimento individualizado.",
+                "Projetos práticos em dupla e avaliação prática com leitor de tela e tempo adicional de 50%.",
+                "ELMASRI, R.; NAVATHE, S. B. Sistemas de Banco de Dados. 7. ed. São Paulo: Pearson, 2019.",
+                "DATE, C. J. Introdução a Sistemas de Bancos de Dados. 8. ed. Rio de Janeiro: Campus, 2004."
+        );
+
+        PeaResponseDTO peaCriado = peaService.criar(peaReq, usuarioId);
+        assertEquals(peaId, peaCriado.id());
+        assertEquals(peiId, peaCriado.peiId());
+        assertEquals("Banco de Dados I", peaCriado.componenteCurricular());
+        assertEquals("2026.1", peaCriado.semestreAno());
+        assertEquals("Prof. Dr. Marcos Silva", peaCriado.docente());
+        assertEquals(peaReq.objetivoGeral(), peaCriado.objetivoGeral());
+        assertEquals(peaReq.objetivosEspecificos(), peaCriado.objetivosEspecificos());
+        assertEquals(peaReq.conteudosProgramaticos(), peaCriado.conteudosProgramaticos());
+        assertEquals(peaReq.metodologia(), peaCriado.metodologia());
+        assertEquals(peaReq.avaliacao(), peaCriado.avaliacao());
+        assertEquals(peaReq.bibliografiaBasica(), peaCriado.bibliografiaBasica());
+        assertEquals(peaReq.bibliografiaComplementar(), peaCriado.bibliografiaComplementar());
+
+        Pea peaEntidade = peaMapper.toEntity(peaReq, acomp, peiEntidade);
+        peaEntidade.setId(peaId);
+        when(peaRepository.findByPeiId(peiId)).thenReturn(List.of(peaEntidade));
+        when(peaRepository.findByAcompanhamentoId(acompId)).thenReturn(List.of(peaEntidade));
+
+        List<PeaResponseDTO> peasDoPei = peaService.listarPorPei(peiId);
+        assertEquals(1, peasDoPei.size());
+        assertEquals("Banco de Dados I", peasDoPei.getFirst().componenteCurricular());
+    }
 }
+

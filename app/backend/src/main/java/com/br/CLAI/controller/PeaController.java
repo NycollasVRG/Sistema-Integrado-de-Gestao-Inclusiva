@@ -68,6 +68,16 @@ public class PeaController {
         );
     }
 
+    @GetMapping("/pei/{peiId}")
+    public ResponseEntity<List<PeaResponseDTO>> listarPorPei(
+            @PathVariable UUID peiId) {
+
+        return ResponseEntity.ok(
+                service.listarPorPei(peiId)
+        );
+    }
+
+
     @PostMapping
     public ResponseEntity<PeaResponseDTO> criar(
             @Valid @RequestBody PeaRequestDTO dto,

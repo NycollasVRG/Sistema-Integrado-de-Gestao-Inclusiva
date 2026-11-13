@@ -13,16 +13,19 @@ import java.util.UUID;
 public interface PeaRepository extends JpaRepository<Pea, UUID> {
 
     @Override
-    @EntityGraph(attributePaths = {"acompanhamento", "acompanhamento.aluno"})
+    @EntityGraph(attributePaths = {"acompanhamento", "acompanhamento.aluno", "pei"})
     List<Pea> findAll();
 
     @Override
-    @EntityGraph(attributePaths = {"acompanhamento", "acompanhamento.aluno"})
+    @EntityGraph(attributePaths = {"acompanhamento", "acompanhamento.aluno", "pei"})
     Optional<Pea> findById(UUID id);
 
-    @EntityGraph(attributePaths = {"acompanhamento", "acompanhamento.aluno"})
+    @EntityGraph(attributePaths = {"acompanhamento", "acompanhamento.aluno", "pei"})
     List<Pea> findByAcompanhamentoId(UUID acompanhamentoId);
 
-    @EntityGraph(attributePaths = {"acompanhamento", "acompanhamento.aluno"})
+    @EntityGraph(attributePaths = {"acompanhamento", "acompanhamento.aluno", "pei"})
     List<Pea> findByAcompanhamento_Aluno_Id(UUID alunoId);
-}
+
+    @EntityGraph(attributePaths = {"acompanhamento", "acompanhamento.aluno", "pei"})
+    List<Pea> findByPeiId(UUID peiId);
+}

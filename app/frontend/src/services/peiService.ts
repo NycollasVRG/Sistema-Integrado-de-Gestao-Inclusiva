@@ -21,7 +21,11 @@ export class PeiService {
   static async criar(dto: PeiRequestDTO): Promise<PeiResponseDTO> {
     const payload: PeiRequestDTO = {
       acompanhamentoId: dto.acompanhamentoId,
+      semestreAno: dto.semestreAno?.trim() || null,
+      historicoEstudante: dto.historicoEstudante?.trim() || null,
+      necessidadesEspecificas: dto.necessidadesEspecificas?.trim() || null,
       habilidadesInteresses: dto.habilidadesInteresses.trim(),
+      dificuldadesApresentadas: dto.dificuldadesApresentadas?.trim() || null,
       propostasAdaptacoes: dto.propostasAdaptacoes.trim(),
     };
     const res = await apiFetch(this.baseUrl, {
@@ -36,7 +40,13 @@ export class PeiService {
 
   static async atualizar(id: string, dto: PeiUpdateDTO): Promise<PeiResponseDTO> {
     const payload: PeiUpdateDTO = {
+      semestreAno: dto.semestreAno !== undefined ? (dto.semestreAno?.trim() || '') : undefined,
+      historicoEstudante: dto.historicoEstudante !== undefined ? (dto.historicoEstudante?.trim() || '') : undefined,
+      necessidadesEspecificas:
+        dto.necessidadesEspecificas !== undefined ? (dto.necessidadesEspecificas?.trim() || '') : undefined,
       habilidadesInteresses: dto.habilidadesInteresses !== undefined ? dto.habilidadesInteresses.trim() : undefined,
+      dificuldadesApresentadas:
+        dto.dificuldadesApresentadas !== undefined ? (dto.dificuldadesApresentadas?.trim() || '') : undefined,
       propostasAdaptacoes: dto.propostasAdaptacoes !== undefined ? dto.propostasAdaptacoes.trim() : undefined,
     };
     const res = await apiFetch(`${this.baseUrl}/${encodeURIComponent(id)}`, {
@@ -55,3 +65,4 @@ export class PeiService {
     });
   }
 }
+
