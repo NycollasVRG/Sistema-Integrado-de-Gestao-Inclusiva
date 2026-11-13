@@ -28,10 +28,10 @@ import type { EstudanteResumo } from './types/gestaoEstudantes';
 import { getTimeline } from './services/timelineService';
 import { FormularioPea } from './components/FormularioPea';
 import { PeaService } from './services/peaService';
-import type { PeiResponseDTO } from './types/pei';
+import type { DadosFormularioPei, PeiResponseDTO } from './types/pei';
 import type { AlunoHeaderData } from './types/alunoHeader';
 import type { TimelineEventDTO } from './types/timeline';
-import type { PeaResponseDTO } from './types/pea';
+import type { DadosFormularioPea, PeaResponseDTO } from './types/pea';
 import type {
   AlunoModalData,
   ProntuarioModalTipo,
@@ -347,21 +347,26 @@ const AppConteudo: React.FC = () => {
     [navigate]
   );
 
-  const handleSalvarPei = async (habilidadesInteresses: string, propostasAdaptacoes: string) => {
+  const handleSalvarPei = async (dados: DadosFormularioPei) => {
     if (!alunoSelecionado) return;
     setIsLoading(true);
     try {
-      const hab = habilidadesInteresses.trim();
-      const prop = propostasAdaptacoes.trim();
+      const payload = {
+        semestreAno: dados.semestreAno.trim(),
+        historicoEstudante: dados.historicoEstudante.trim(),
+        necessidadesEspecificas: dados.necessidadesEspecificas.trim(),
+        habilidadesInteresses: dados.habilidadesInteresses.trim(),
+        dificuldadesApresentadas: dados.dificuldadesApresentadas.trim(),
+        propostasAdaptacoes: dados.propostasAdaptacoes.trim(),
+      };
       let resultado: PeiResponseDTO;
       if (peiAtual) {
-        resultado = await PeiService.atualizar(peiAtual.id, { habilidadesInteresses: hab, propostasAdaptacoes: prop });
+        resultado = await PeiService.atualizar(peiAtual.id, payload);
       } else {
         const acomp = await PeiService.buscarAcompanhamentoPorAluno(alunoSelecionado.id);
         resultado = await PeiService.criar({
           acompanhamentoId: acomp.id,
-          habilidadesInteresses: hab,
-          propostasAdaptacoes: prop,
+          ...payload,
         });
       }
       setPeiAtual(resultado);
@@ -376,20 +381,23 @@ const AppConteudo: React.FC = () => {
     }
   };
 
-  const handleSalvarPea = async (dados: {
-    objetivoGeral: string;
-    metodologia: string;
-    avaliacao: string;
-    disciplinaId: string | null;
-  }) => {
+  const handleSalvarPea = async (dados: DadosFormularioPea) => {
     if (!alunoSelecionado) return;
     setIsLoading(true);
 
     try {
-      const objetivo = dados.objetivoGeral.trim();
+      const peiId = dados.peiId || peiAtual?.id || null;
+      const disciplinaId = dados.disciplinaId ? dados.disciplinaId.trim() : null;
+      const componenteCurricular = dados.componenteCurricular.trim();
+      const semestreAno = dados.semestreAno.trim();
+      const docente = dados.docente.trim();
+      const objetivoGeral = dados.objetivoGeral.trim();
+      const objetivosEspecificos = dados.objetivosEspecificos.trim();
+      const conteudosProgramaticos = dados.conteudosProgramaticos.trim();
       const metodologia = dados.metodologia.trim();
       const avaliacao = dados.avaliacao.trim();
-      const disciplinaId = dados.disciplinaId ? dados.disciplinaId.trim() : null;
+      const bibliografiaBasica = dados.bibliografiaBasica.trim();
+      const bibliografiaComplementar = dados.bibliografiaComplementar.trim();
 
       let resultado: PeaResponseDTO;
 
@@ -397,10 +405,18 @@ const AppConteudo: React.FC = () => {
         resultado = await PeaService.atualizar(
           peaAtual.id,
           {
+            peiId,
             disciplinaId,
-            objetivoGeral: objetivo,
+            componenteCurricular,
+            semestreAno,
+            docente,
+            objetivoGeral,
+            objetivosEspecificos,
+            conteudosProgramaticos,
             metodologia,
             avaliacao,
+            bibliografiaBasica,
+            bibliografiaComplementar,
           }
         );
       } else {
@@ -421,10 +437,18 @@ const AppConteudo: React.FC = () => {
 
         resultado = await PeaService.criar({
           acompanhamentoId,
+          peiId,
           disciplinaId,
-          objetivoGeral: objetivo,
+          componenteCurricular,
+          semestreAno,
+          docente,
+          objetivoGeral,
+          objetivosEspecificos,
+          conteudosProgramaticos,
           metodologia,
           avaliacao,
+          bibliografiaBasica,
+          bibliografiaComplementar,
         });
       }
 
@@ -845,6 +869,11 @@ const AppConteudo: React.FC = () => {
                     aluno={alunoSelecionado}
                     peiExistente={peiAtual}
                     dificuldades={dificuldadesDoEstudo}
+                    peasVinculados={peasDoAluno}
+                    onAbrirPea={(pea) => {
+                      setPeaAtual(pea ?? null);
+                      navigate(`/estudantes/${alunoSelecionado.id}/pea`);
+                    }}
                     onSalvar={handleSalvarPei}
                     onVoltar={() => irParaProntuario(alunoSelecionado.id)}
                     isLoading={isLoading}
@@ -870,6 +899,7 @@ const AppConteudo: React.FC = () => {
                     onSelecionarPea={(pea) => setPeaAtual(pea)}
                     onNovoPea={() => setPeaAtual(null)}
                     peiId={peiAtual?.id}
+                    peiSemestreAno={peiAtual?.semestreAno}
                     onSalvar={handleSalvarPea}
                     onVoltar={() => irParaProntuario(alunoSelecionado.id)}
                     isLoading={isLoading}
