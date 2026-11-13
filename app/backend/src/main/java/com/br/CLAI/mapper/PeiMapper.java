@@ -14,15 +14,35 @@ public class PeiMapper {
 
         return new Pei(
                 acompanhamento,
+                dto.semestreAno(),
+                dto.historicoEstudante(),
+                dto.necessidadesEspecificas(),
                 dto.habilidadesInteresses(),
+                dto.dificuldadesApresentadas(),
                 dto.propostasAdaptacoes()
         );
     }
 
     public void updateEntityFromDto(Pei pei, PeiUpdateDTO dto) {
 
+        if (dto.semestreAno() != null) {
+            pei.setSemestreAno(dto.semestreAno());
+        }
+
+        if (dto.historicoEstudante() != null) {
+            pei.setHistoricoEstudante(dto.historicoEstudante());
+        }
+
+        if (dto.necessidadesEspecificas() != null) {
+            pei.setNecessidadesEspecificas(dto.necessidadesEspecificas());
+        }
+
         if (dto.habilidadesInteresses() != null) {
             pei.setHabilidadesInteresses(dto.habilidadesInteresses());
+        }
+
+        if (dto.dificuldadesApresentadas() != null) {
+            pei.setDificuldadesApresentadas(dto.dificuldadesApresentadas());
         }
 
         if (dto.propostasAdaptacoes() != null) {
@@ -41,10 +61,15 @@ public class PeiMapper {
                 pei.getAcompanhamento() != null && pei.getAcompanhamento().getAluno() != null
                         ? pei.getAcompanhamento().getAluno().getId()
                         : null,
+                pei.getSemestreAno(),
+                pei.getHistoricoEstudante(),
+                pei.getNecessidadesEspecificas(),
                 pei.getHabilidadesInteresses(),
+                pei.getDificuldadesApresentadas(),
                 pei.getPropostasAdaptacoes(),
                 pei.getCriadoEm(),
                 pei.getAtualizadoEm()
         );
     }
 }
+
