@@ -18,7 +18,10 @@ import org.springframework.security.authentication.AuthenticationCredentialsNotF
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -49,23 +52,67 @@ public class EstudoDeCasoService {
         // Validação TA2.3
         validator.validarConclusao(dto);
 
-        // Validação TA2.4
-        if (repository.existsByAlunoIdAndStatus(dto.alunoId(), StatusEstudoCaso.ATIVO)) {
-            throw new RegraDeNegocioException("Já existe um Estudo de Caso ATIVO para este aluno.");
-        }
-
         Aluno aluno = alunoRepository.findById(dto.alunoId())
                 .orElseThrow(() -> new RegraDeNegocioException("Aluno não encontrado."));
 
         List<IndicadorReutilizavel> indicadores = buscarEValidarIndicadores(dto.indicadoresIds());
+        List<EstudoDeCaso> estudosExistentes = repository.findByAlunoId(dto.alunoId());
 
         // Utilizando o toEntity do Mapper
         EstudoDeCaso entidade = mapper.toEntity(dto, aluno, indicadores);
+        aplicarVersionamentoEEncerrarAtivoAnterior(entidade, estudosExistentes, usuarioId);
         entidade.setCriadoPor(usuarioId);
         entidade.setAtualizadoPor(usuarioId);
 
         EstudoDeCaso salvo = repository.save(entidade);
         return mapper.toResponse(salvo);
+    }
+
+    private void aplicarVersionamentoEEncerrarAtivoAnterior(
+            EstudoDeCaso novoEstudo,
+            List<EstudoDeCaso> estudosExistentes,
+            UUID usuarioId) {
+
+        if (estudosExistentes == null || estudosExistentes.isEmpty()) {
+            novoEstudo.setVersao(1);
+            novoEstudo.setEstudoOrigem(null);
+            return;
+        }
+
+        // TA2.4: Garante apenas 1 Estudo ATIVO simultâneo por aluno encerrando o ativo anterior
+        for (EstudoDeCaso existente : estudosExistentes) {
+            if (StatusEstudoCaso.ATIVO.equals(existente.getStatus())) {
+                existente.setStatus(StatusEstudoCaso.ENCERRADO);
+                existente.setAtualizadoEm(LocalDateTime.now());
+                existente.setAtualizadoPor(usuarioId);
+                repository.saveAndFlush(existente);
+            }
+        }
+
+        int maiorVersao = estudosExistentes.stream()
+                .map(EstudoDeCaso::getVersao)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .max()
+                .orElse(1);
+
+        novoEstudo.setVersao(Math.max(maiorVersao, 1) + 1);
+        novoEstudo.setEstudoOrigem(resolverEstudoOrigem(estudosExistentes));
+    }
+
+    private EstudoDeCaso resolverEstudoOrigem(List<EstudoDeCaso> estudosExistentes) {
+        EstudoDeCaso candidato = estudosExistentes.stream()
+                .min(Comparator
+                        .comparing((EstudoDeCaso e) -> e.getEstudoOrigem() == null ? 0 : 1)
+                        .thenComparingInt(e -> e.getVersao() != null ? e.getVersao() : Integer.MAX_VALUE)
+                        .thenComparing(EstudoDeCaso::getCriadoEm, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(EstudoDeCaso::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .orElse(null);
+
+        if (candidato == null) {
+            return null;
+        }
+        return candidato.getEstudoOrigem() != null ? candidato.getEstudoOrigem() : candidato;
     }
 
     @Transactional(readOnly = true)
