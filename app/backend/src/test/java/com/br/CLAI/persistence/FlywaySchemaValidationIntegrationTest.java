@@ -53,6 +53,8 @@ class FlywaySchemaValidationIntegrationTest {
                 "V1__create_initial_schema.sql",
                 "V2__constraints_indexes_and_comments.sql",
                 "V3__alinhamento_anexo_iii_pei_pea.sql",
+                "V4__evolucao_estudo_caso_versionamento_e_historico.sql",
+                "V5__evolucao_plano_acao_anexo_iii.sql",
                 "R__01_seed_us11_rbac.sql",
                 "R__02_seed_us02_estudo_caso.sql",
                 "R__03_seed_us03_planejamento_pedagogico.sql"
@@ -74,7 +76,7 @@ class FlywaySchemaValidationIntegrationTest {
     }
 
     @Test
-    @DisplayName("Perfil prd: Flyway aplica apenas db/migration (V1, V2 e V3) sem inserir dados fictícios")
+    @DisplayName("Perfil prd: Flyway aplica apenas db/migration (V1 a V5) sem inserir dados fictícios")
     void deveExecutarApenasMigrationsEstruturaisSemSeedsParaPrd() throws Exception {
         String baseUrl = postgres.getJdbcUrl();
         try (Connection conn = DriverManager.getConnection(baseUrl, postgres.getUsername(), postgres.getPassword());
@@ -100,7 +102,9 @@ class FlywaySchemaValidationIntegrationTest {
         assertEquals(List.of(
                 "V1__create_initial_schema.sql",
                 "V2__constraints_indexes_and_comments.sql",
-                "V3__alinhamento_anexo_iii_pei_pea.sql"
+                "V3__alinhamento_anexo_iii_pei_pea.sql",
+                "V4__evolucao_estudo_caso_versionamento_e_historico.sql",
+                "V5__evolucao_plano_acao_anexo_iii.sql"
         ), scriptsPrd);
 
         try (Connection prdConn = DriverManager.getConnection(prdUrl, postgres.getUsername(), postgres.getPassword());

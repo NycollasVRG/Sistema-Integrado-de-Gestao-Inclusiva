@@ -13,11 +13,15 @@ public record EstudoDeCasoResponseDTO(
         UUID alunoId,
         StatusEstudoCaso status,
         String diagnosticoInicial,
+        String historico,
         String historicoFamiliar,
         String historicoSocioemocional,
         List<UUID> indicadoresIds,
+        Integer versao,
+        UUID estudoOrigemId,
         LocalDateTime criadoEm,
-        LocalDateTime atualizadoEm
+        LocalDateTime atualizadoEm,
+        ResponsavelAuditoriaDTO atualizadoPor
 ) {
     public EstudoDeCasoResponseDTO(
             UUID id,
@@ -28,6 +32,37 @@ public record EstudoDeCasoResponseDTO(
             LocalDateTime criadoEm,
             LocalDateTime atualizadoEm
     ) {
-        this(id, alunoId, status, diagnosticoInicial, null, null, indicadoresIds, criadoEm, atualizadoEm);
+        this(id, alunoId, status, diagnosticoInicial, null, null, null, indicadoresIds, 1, null, criadoEm, atualizadoEm, null);
+    }
+
+    public EstudoDeCasoResponseDTO(
+            UUID id,
+            UUID alunoId,
+            StatusEstudoCaso status,
+            String diagnosticoInicial,
+            String historicoFamiliar,
+            String historicoSocioemocional,
+            List<UUID> indicadoresIds,
+            LocalDateTime criadoEm,
+            LocalDateTime atualizadoEm
+    ) {
+        this(id, alunoId, status, diagnosticoInicial, null, historicoFamiliar, historicoSocioemocional, indicadoresIds, 1, null, criadoEm, atualizadoEm, null);
+    }
+
+    public EstudoDeCasoResponseDTO(
+            UUID id,
+            UUID alunoId,
+            StatusEstudoCaso status,
+            String diagnosticoInicial,
+            String historico,
+            String historicoFamiliar,
+            String historicoSocioemocional,
+            List<UUID> indicadoresIds,
+            Integer versao,
+            UUID estudoOrigemId,
+            LocalDateTime criadoEm,
+            LocalDateTime atualizadoEm
+    ) {
+        this(id, alunoId, status, diagnosticoInicial, historico, historicoFamiliar, historicoSocioemocional, indicadoresIds, versao, estudoOrigemId, criadoEm, atualizadoEm, null);
     }
 }

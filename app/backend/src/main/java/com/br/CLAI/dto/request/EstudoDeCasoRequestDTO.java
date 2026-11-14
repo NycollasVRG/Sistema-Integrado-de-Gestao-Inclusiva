@@ -15,6 +15,8 @@ public record EstudoDeCasoRequestDTO(
 
         String diagnosticoInicial,
 
+        String historico,
+
         String historicoFamiliar,
 
         String historicoSocioemocional,
@@ -27,6 +29,17 @@ public record EstudoDeCasoRequestDTO(
             String diagnosticoInicial,
             List<UUID> indicadoresIds
     ) {
-        this(alunoId, status, diagnosticoInicial, null, null, indicadoresIds);
+        this(alunoId, status, diagnosticoInicial, null, null, null, indicadoresIds);
+    }
+
+    public EstudoDeCasoRequestDTO(
+            UUID alunoId,
+            StatusEstudoCaso status,
+            String diagnosticoInicial,
+            String historicoFamiliar,
+            String historicoSocioemocional,
+            List<UUID> indicadoresIds
+    ) {
+        this(alunoId, status, diagnosticoInicial, null, historicoFamiliar, historicoSocioemocional, indicadoresIds);
     }
 }

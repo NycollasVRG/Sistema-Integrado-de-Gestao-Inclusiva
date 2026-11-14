@@ -45,6 +45,10 @@ final class OrdenacaoAuditoria {
 
     private static final Comparator<EstudoDeCaso> POR_VIGENCIA_ESTUDO =
             Comparator.comparingInt((EstudoDeCaso e) -> prioridadeStatus(e.getStatus()))
+                    .thenComparing(
+                            EstudoDeCaso::getVersao,
+                            Comparator.nullsLast(Comparator.reverseOrder())
+                    )
                     .thenComparing(POR_ATUALIZACAO_DESC);
 
     private static final Comparator<TimelineEventDTO> POR_TIMELINE_CRONOLOGICA =

@@ -22,11 +22,21 @@ public class EstudoDeCaso extends BaseEntity {
     @Column(name = "diagnostico_inicial", columnDefinition = "TEXT")
     private String diagnosticoInicial;
 
+    @Column(name = "historico", columnDefinition = "TEXT")
+    private String historico;
+
     @Column(name = "historico_familiar", columnDefinition = "TEXT")
     private String historicoFamiliar;
 
     @Column(name = "historico_socioemocional", columnDefinition = "TEXT")
     private String historicoSocioemocional;
+
+    @Column(name = "versao", nullable = false)
+    private Integer versao = 1;
+
+    @ManyToOne
+    @JoinColumn(name = "estudo_origem_id")
+    private EstudoDeCaso estudoOrigem;
 
     @ManyToMany
     @JoinTable(
@@ -45,6 +55,7 @@ public class EstudoDeCaso extends BaseEntity {
         this.aluno = aluno;
         this.status = status;
         this.diagnosticoInicial = diagnosticoInicial;
+        this.versao = 1;
     }
 
     public Aluno getAluno() {
@@ -71,6 +82,14 @@ public class EstudoDeCaso extends BaseEntity {
         this.diagnosticoInicial = diagnosticoInicial;
     }
 
+    public String getHistorico() {
+        return historico;
+    }
+
+    public void setHistorico(String historico) {
+        this.historico = historico;
+    }
+
     public List<IndicadorReutilizavel> getIndicadores() {
         return indicadores;
     }
@@ -93,5 +112,21 @@ public class EstudoDeCaso extends BaseEntity {
 
     public void setHistoricoSocioemocional(String historicoSocioemocional) {
         this.historicoSocioemocional = historicoSocioemocional;
+    }
+
+    public Integer getVersao() {
+        return versao;
+    }
+
+    public void setVersao(Integer versao) {
+        this.versao = versao;
+    }
+
+    public EstudoDeCaso getEstudoOrigem() {
+        return estudoOrigem;
+    }
+
+    public void setEstudoOrigem(EstudoDeCaso estudoOrigem) {
+        this.estudoOrigem = estudoOrigem;
     }
 }

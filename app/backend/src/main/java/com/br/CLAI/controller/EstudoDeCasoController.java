@@ -67,6 +67,16 @@ public class EstudoDeCasoController {
         return ResponseEntity.ok(response);
     }
 
+    @PatchMapping("/{id}/reabrir")
+    public ResponseEntity<EstudoDeCasoResponseDTO> reabrirEstudoDeCaso(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwtAutenticado) {
+
+        UUID usuarioId = rbacGuard.exigirUsuarioAutenticadoId(jwtAutenticado);
+        EstudoDeCasoResponseDTO response = service.reabrir(id, usuarioId);
+        return ResponseEntity.ok(response);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluirEstudoDeCaso(
             @PathVariable UUID id,
