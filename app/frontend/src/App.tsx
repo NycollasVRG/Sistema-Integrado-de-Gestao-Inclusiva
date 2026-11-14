@@ -40,6 +40,7 @@ import type {
   Aluno,
   DadosFormularioEstudo,
   EstudoDeCasoResponseDTO,
+  EstudoDeCasoUpdateDTO,
   IndicadorReutilizavel,
   ProblemDetailRFC9457,
 } from './types/estudoDeCaso';
@@ -60,6 +61,14 @@ function resumoParaAluno(estudante: EstudanteResumo): Aluno {
     curso: estudante.curso,
     turma: estudante.turma,
   };
+}
+
+function ehEstudoConcluido(estudo: EstudoDeCasoResponseDTO): boolean {
+  return estudo.status === 'ATIVO' || estudo.status === 'ENCERRADO';
+}
+
+function ordenarPorVersaoDesc(estudos: EstudoDeCasoResponseDTO[]): EstudoDeCasoResponseDTO[] {
+  return [...estudos].sort((a, b) => (b.versao ?? 1) - (a.versao ?? 1));
 }
 
 const RedirecionarParaProntuario: React.FC = () => {
@@ -114,6 +123,9 @@ const AppConteudo: React.FC = () => {
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
   const [indicadores, setIndicadores] = useState<IndicadorReutilizavel[]>([]);
   const [estudoAtual, setEstudoAtual] = useState<EstudoDeCasoResponseDTO | null>(null);
+  const [estudosDoAluno, setEstudosDoAluno] = useState<EstudoDeCasoResponseDTO[]>([]);
+  const [estudoEmFocoId, setEstudoEmFocoId] = useState<string | null>(null);
+  const [iniciandoNovaVersao, setIniciandoNovaVersao] = useState<boolean>(false);
   const [peiAtual, setPeiAtual] = useState<PeiResponseDTO | null>(null);
   const [peaAtual, setPeaAtual] = useState<PeaResponseDTO | null>(null);
   const [peasDoAluno, setPeasDoAluno] = useState<PeaResponseDTO[]>([]);
@@ -163,20 +175,50 @@ const AppConteudo: React.FC = () => {
     }, 5000);
   }, [removerToast]);
 
+  // Aplica a lista de estudos: versões (mais recente primeiro) e estudo vigente segundo o backend
+  const aplicarEstudos = useCallback((estudos: EstudoDeCasoResponseDTO[]) => {
+    setEstudosDoAluno(ordenarPorVersaoDesc(estudos));
+    setEstudoAtual(estudos.length > 0 ? estudos[0] : null);
+  }, []);
+
   const carregarEstudosDoAluno = useCallback(async (alunoId: string, signal?: AbortSignal) => {
     setCarregandoEstudo(true);
     try {
       const estudos = await EstudoDeCasoService.listarPorAluno(alunoId, signal);
       if (signal?.aborted) return;
-      setEstudoAtual(estudos && estudos.length > 0 ? estudos[0] : null);
+      aplicarEstudos(estudos ?? []);
     } catch (e: unknown) {
       if (signal?.aborted) return;
       console.error('Erro ao buscar estudos do aluno:', e);
       setEstudoAtual(null);
+      setEstudosDoAluno([]);
     } finally {
       if (!signal?.aborted) setCarregandoEstudo(false);
     }
-  }, []);
+  }, [aplicarEstudos]);
+
+  // Recarrega as versões sem exibir o loading de tela (preserva o formulário montado).
+  // Garante que o backend (que encerra a versão ATIVO anterior) seja a fonte da verdade (TA2.4).
+  const sincronizarEstudos = useCallback(
+    async (alunoId: string, focar?: EstudoDeCasoResponseDTO) => {
+      if (focar) {
+        setEstudoEmFocoId(focar.id);
+        setIniciandoNovaVersao(false);
+      }
+      try {
+        aplicarEstudos(await EstudoDeCasoService.listarPorAluno(alunoId));
+      } catch (e: unknown) {
+        console.error('Erro ao sincronizar versões do estudo:', e);
+        if (focar) {
+          setEstudoAtual(focar);
+          setEstudosDoAluno((prev) =>
+            ordenarPorVersaoDesc([...prev.filter((estudo) => estudo.id !== focar.id), focar])
+          );
+        }
+      }
+    },
+    [aplicarEstudos]
+  );
 
   const carregarPeiDoAluno = useCallback(async (alunoId: string, signal?: AbortSignal) => {
     setLoadingPei(true);
@@ -307,10 +349,15 @@ const AppConteudo: React.FC = () => {
     ultimoAlunoCarregadoRef.current = routeAlunoId;
 
     const carregarProntuario = async () => {
+      // Recarga completa: volta o foco para a versão mais recente do Estudo de Caso
+      setEstudoEmFocoId(null);
+      setIniciandoNovaVersao(false);
+
       if (mudouAluno) {
         alunoSelecionadoRef.current = null;
         setAlunoSelecionado(null);
         setEstudoAtual(null);
+        setEstudosDoAluno([]);
         setPeiAtual(null);
         setPeaAtual(null);
         setPeasDoAluno([]);
@@ -481,10 +528,22 @@ const AppConteudo: React.FC = () => {
     }
   };
 
+  // Persiste o formulário: atualiza a versão em foco ou cria o primeiro estudo / uma nova versão (TA2.4)
+  const persistirEstudo = (
+    alunoId: string,
+    payload: EstudoDeCasoUpdateDTO
+  ): Promise<EstudoDeCasoResponseDTO> => {
+    if (estudoEmFoco) return EstudoDeCasoService.atualizar(estudoEmFoco.id, payload);
+    const novo = { alunoId, ...payload };
+    return iniciandoNovaVersao
+      ? EstudoDeCasoService.criarNovaAvaliacao(novo)
+      : EstudoDeCasoService.criar(novo);
+  };
+
   // Ação: Salvar Rascunho
   const handleSalvarRascunho = async (dados: DadosFormularioEstudo) => {
     if (!alunoSelecionado) return;
-    if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
+    if (estudoEmFoco && ehEstudoConcluido(estudoEmFoco)) {
       adicionarToast(
         'erro',
         'Operação Não Permitida',
@@ -494,17 +553,14 @@ const AppConteudo: React.FC = () => {
     }
     setIsLoading(true);
     try {
-      const payload = {
-        status: 'RASCUNHO' as const,
+      const resultado = await persistirEstudo(alunoSelecionado.id, {
+        status: 'RASCUNHO',
         diagnosticoInicial: dados.diagnostico.trim(),
         historico: dados.historico.trim(),
         indicadoresIds: dados.indicadoresIds,
-      };
-      const resultado: EstudoDeCasoResponseDTO = estudoAtual
-        ? await EstudoDeCasoService.atualizar(estudoAtual.id, payload)
-        : await EstudoDeCasoService.criar({ alunoId: alunoSelecionado.id, ...payload });
+      });
 
-      setEstudoAtual(resultado);
+      await sincronizarEstudos(alunoSelecionado.id, resultado);
       await carregarTimeline(alunoSelecionado.id);
       adicionarToast(
         'sucesso',
@@ -526,7 +582,7 @@ const AppConteudo: React.FC = () => {
   // Ação: Concluir Estudo de Caso (Após validação de front TA2.3)
   const handleConcluir = async (dados: DadosFormularioEstudo) => {
     if (!alunoSelecionado) return;
-    if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
+    if (estudoEmFoco && ehEstudoConcluido(estudoEmFoco)) {
       adicionarToast(
         'erro',
         'Operação Não Permitida',
@@ -537,17 +593,14 @@ const AppConteudo: React.FC = () => {
     setIsLoading(true);
     try {
       // A versão vigente concluída é ATIVO; versões substituídas são encerradas pelo backend (TA2.4).
-      const payload = {
-        status: 'ATIVO' as const,
+      const resultado = await persistirEstudo(alunoSelecionado.id, {
+        status: 'ATIVO',
         diagnosticoInicial: dados.diagnostico.trim(),
         historico: dados.historico.trim(),
         indicadoresIds: dados.indicadoresIds,
-      };
-      const resultado: EstudoDeCasoResponseDTO = estudoAtual
-        ? await EstudoDeCasoService.atualizar(estudoAtual.id, payload)
-        : await EstudoDeCasoService.criar({ alunoId: alunoSelecionado.id, ...payload });
+      });
 
-      setEstudoAtual(resultado);
+      await sincronizarEstudos(alunoSelecionado.id, resultado);
       await carregarTimeline(alunoSelecionado.id);
       irParaProntuario(alunoSelecionado.id);
       adicionarToast(
@@ -573,7 +626,7 @@ const AppConteudo: React.FC = () => {
     setIsLoading(true);
     try {
       const resultado = await EstudoDeCasoService.reabrir(estudoId);
-      setEstudoAtual(resultado);
+      await sincronizarEstudos(alunoSelecionado.id, resultado);
       await carregarTimeline(alunoSelecionado.id);
       adicionarToast(
         'sucesso',
@@ -594,18 +647,19 @@ const AppConteudo: React.FC = () => {
 
   // Ação: Descartar Rascunho (DELETE)
   const handleExcluirRascunho = async () => {
-    if (!estudoAtual || !alunoSelecionado) return;
+    if (!estudoEmFoco || !alunoSelecionado) return;
 
     setIsLoading(true);
     try {
-      await EstudoDeCasoService.excluir(estudoAtual.id);
-      setEstudoAtual(null);
+      await EstudoDeCasoService.excluir(estudoEmFoco.id);
+      setEstudoEmFocoId(null);
+      await sincronizarEstudos(alunoSelecionado.id);
       await carregarTimeline(alunoSelecionado.id);
       irParaProntuario(alunoSelecionado.id);
       adicionarToast(
         'sucesso',
         'Rascunho Descartado',
-        'O rascunho foi removido. O status do estudo voltou para Pendente.'
+        'O rascunho foi removido. As versões anteriores do estudo foram preservadas.'
       );
     } catch (err: unknown) {
       const prob = err as Partial<ProblemDetailRFC9457>;
@@ -628,6 +682,39 @@ const AppConteudo: React.FC = () => {
     );
   };
 
+  // TA2.4: versões do Estudo de Caso (mais recente primeiro) e versão em foco no formulário
+  const estudoMaisRecente = estudosDoAluno[0] ?? null;
+  const estudoEmFoco: EstudoDeCasoResponseDTO | null = iniciandoNovaVersao
+    ? null
+    : (estudosDoAluno.find((e) => e.id === estudoEmFocoId) ?? estudoMaisRecente);
+  const estudoMaisRecenteConcluido = !!estudoMaisRecente && ehEstudoConcluido(estudoMaisRecente);
+  // Só a versão mais recente pode ser reaberta; versões anteriores ficam como histórico somente leitura
+  const podeReabrirEstudoEmFoco =
+    !!estudoEmFoco && ehEstudoConcluido(estudoEmFoco) && estudoEmFoco.id === estudoMaisRecente?.id;
+  const podeIniciarNovaAvaliacao = !iniciandoNovaVersao && estudoMaisRecenteConcluido;
+
+  const handleSelecionarVersao = (estudoId: string) => {
+    setIniciandoNovaVersao(false);
+    setEstudoEmFocoId(estudoId);
+  };
+
+  const handleIniciarNovaAvaliacao = () => {
+    if (!estudoMaisRecenteConcluido) {
+      adicionarToast(
+        'alerta',
+        'Nova Avaliação Indisponível',
+        'Conclua o Estudo de Caso em andamento antes de iniciar uma nova avaliação.'
+      );
+      return;
+    }
+    setIniciandoNovaVersao(true);
+  };
+
+  const handleCancelarNovaAvaliacao = () => {
+    setIniciandoNovaVersao(false);
+    setEstudoEmFocoId(estudoMaisRecente?.id ?? null);
+  };
+
   const dificuldadesDoEstudo = estudoAtual
     ? indicadores.filter((ind) => (estudoAtual.indicadoresIds ?? []).includes(ind.id))
     : [];
@@ -645,6 +732,9 @@ const AppConteudo: React.FC = () => {
   const abrirProntuarioDaListagem = (estudante: EstudanteResumo) => {
     if (alunoSelecionado?.id !== estudante.id) {
       setEstudoAtual(null);
+      setEstudosDoAluno([]);
+      setEstudoEmFocoId(null);
+      setIniciandoNovaVersao(false);
       setPeiAtual(null);
       setPeaAtual(null);
       setPeasDoAluno([]);
@@ -933,12 +1023,17 @@ const AppConteudo: React.FC = () => {
                 ) : (
                   <FormularioEstudoDeCaso
                     aluno={alunoSelecionado}
-                    estudoExistente={estudoAtual}
+                    estudoExistente={estudoEmFoco}
+                    versoes={estudosDoAluno}
+                    novaAvaliacaoEmAndamento={iniciandoNovaVersao}
                     indicadoresDisponiveis={indicadores}
                     onSalvarRascunho={handleSalvarRascunho}
                     onConcluir={handleConcluir}
-                    onExcluirRascunho={estudoAtual?.status === 'RASCUNHO' ? handleExcluirRascunho : undefined}
-                    onReabrir={handleReabrirEstudo}
+                    onExcluirRascunho={estudoEmFoco?.status === 'RASCUNHO' ? handleExcluirRascunho : undefined}
+                    onReabrir={podeReabrirEstudoEmFoco ? handleReabrirEstudo : undefined}
+                    onSelecionarVersao={handleSelecionarVersao}
+                    onNovaAvaliacao={podeIniciarNovaAvaliacao ? handleIniciarNovaAvaliacao : undefined}
+                    onCancelarNovaAvaliacao={handleCancelarNovaAvaliacao}
                     onVoltar={() => irParaProntuario(alunoSelecionado.id)}
                     isLoading={isLoading}
                   />
@@ -973,9 +1068,11 @@ const AppConteudo: React.FC = () => {
         indicadoresDisponiveis={indicadores}
         estudoExistente={estudoAtual}
         onSuccess={async (estudo, modo) => {
-          setEstudoAtual(estudo);
           if (alunoSelecionado) {
+            await sincronizarEstudos(alunoSelecionado.id, estudo);
             await carregarTimeline(alunoSelecionado.id);
+          } else {
+            setEstudoAtual(estudo);
           }
           adicionarToast(
             'sucesso',

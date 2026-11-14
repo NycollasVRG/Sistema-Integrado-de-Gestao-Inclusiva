@@ -4,6 +4,7 @@ import type {
   DadosFormularioEstudo,
   EstudoDeCasoResponseDTO,
   IndicadorReutilizavel,
+  StatusEstudoCaso,
 } from '../types/estudoDeCaso';
 import { ConfirmModal } from './ConfirmModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +24,8 @@ import {
   Unlock,
   History,
   User,
+  GitBranch,
+  FilePlus2,
 } from 'lucide-react';
 
 const MSG_DIAGNOSTICO_OBRIGATORIO =
@@ -32,20 +35,40 @@ const MSG_HISTORICO_OBRIGATORIO =
 const MSG_INDICADORES_OBRIGATORIO =
   'Selecione pelo menos uma Deficiência/Indicador identificada para o aluno.';
 
+const VALOR_NOVA_AVALIACAO = '__NOVA_AVALIACAO__';
+
+const ROTULO_STATUS: Record<StatusEstudoCaso, string> = {
+  ATIVO: 'Ativo',
+  ENCERRADO: 'Encerrado',
+  RASCUNHO: 'Rascunho',
+};
+
 function formatarDataHora(valor?: string): string | null {
   if (!valor) return null;
   const data = new Date(valor);
   return Number.isNaN(data.getTime()) ? null : data.toLocaleString('pt-BR');
 }
 
+function rotuloVersao(estudo: EstudoDeCasoResponseDTO): string {
+  const data = formatarDataHora(estudo.atualizadoEm ?? estudo.criadoEm);
+  return `v${estudo.versao ?? 1} — ${ROTULO_STATUS[estudo.status]}${data ? ` — ${data}` : ''}`;
+}
+
 interface FormularioEstudoDeCasoProps {
   aluno: Aluno;
+  /** Versão em foco; null em estudo inédito ou durante uma nova avaliação ainda não salva. */
   estudoExistente: EstudoDeCasoResponseDTO | null;
+  /** Todas as versões do aluno, da mais recente para a mais antiga. */
+  versoes?: EstudoDeCasoResponseDTO[];
+  novaAvaliacaoEmAndamento?: boolean;
   indicadoresDisponiveis: IndicadorReutilizavel[];
   onSalvarRascunho: (dados: DadosFormularioEstudo) => Promise<void>;
   onConcluir: (dados: DadosFormularioEstudo) => Promise<void>;
   onExcluirRascunho?: () => Promise<void>;
   onReabrir?: (estudoId: string) => Promise<void>;
+  onSelecionarVersao?: (estudoId: string) => void;
+  onNovaAvaliacao?: () => void;
+  onCancelarNovaAvaliacao?: () => void;
   onVoltar: () => void;
   isLoading?: boolean;
 }
@@ -53,11 +76,16 @@ interface FormularioEstudoDeCasoProps {
 export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
   aluno,
   estudoExistente,
+  versoes = [],
+  novaAvaliacaoEmAndamento = false,
   indicadoresDisponiveis,
   onSalvarRascunho,
   onConcluir,
   onExcluirRascunho,
   onReabrir,
+  onSelecionarVersao,
+  onNovaAvaliacao,
+  onCancelarNovaAvaliacao,
   onVoltar,
   isLoading = false,
 }) => {
@@ -71,7 +99,7 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
   const [erroIndicadores, setErroIndicadores] = useState<string | null>(null);
   const [tentouConcluir, setTentouConcluir] = useState<boolean>(false);
   const [confirmarDescarte, setConfirmarDescarte] = useState<boolean>(false);
-  const [confirmarSaida, setConfirmarSaida] = useState<boolean>(false);
+  const [acaoPendente, setAcaoPendente] = useState<(() => void) | null>(null);
   const [confirmarReabertura, setConfirmarReabertura] = useState<boolean>(false);
 
   // TA11.3: só Restrição Moderada ou superior E campos presentes no JSON.
@@ -163,6 +191,11 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
   // Estudo concluído é somente leitura até ser reaberto (TA2.2)
   const somenteLeitura = isConcluido;
 
+  // TA2.4: versão em foco que não é a mais recente fica preservada como histórico (read-only)
+  const versaoHistorica =
+    !!estudoExistente && versoes.length > 0 && estudoExistente.id !== versoes[0].id;
+  const proximaVersao = (versoes[0]?.versao ?? 0) + 1;
+
   const dataUltimaAlteracao = formatarDataHora(estudoExistente?.atualizadoEm);
 
   const isDirty =
@@ -172,13 +205,16 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
       JSON.stringify(indicadoresSelecionados) !==
         JSON.stringify(estudoExistente?.indicadoresIds || []));
 
-  const handleVoltar = () => {
+  // Exige confirmação antes de qualquer ação que descarte alterações não salvas
+  const comConfirmacaoDeDescarte = (acao: () => void) => {
     if (isDirty) {
-      setConfirmarSaida(true);
+      setAcaoPendente(() => acao);
       return;
     }
-    onVoltar();
+    acao();
   };
+
+  const handleVoltar = () => comConfirmacaoDeDescarte(onVoltar);
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden space-y-0">
@@ -202,7 +238,9 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
                   ? somenteLeitura
                     ? 'Visualização de Estudo de Caso'
                     : 'Edição de Estudo de Caso'
-                  : 'Novo Estudo de Caso'}
+                  : novaAvaliacaoEmAndamento
+                    ? 'Nova Avaliação do Estudo de Caso'
+                    : 'Novo Estudo de Caso'}
               </h2>
             </div>
             <p className="text-xs text-green-100 mt-0.5">
@@ -215,6 +253,11 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
 
         {/* Status Atual do Documento */}
         <div className="flex items-center space-x-2">
+          {(estudoExistente || novaAvaliacaoEmAndamento) && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white">
+              v{novaAvaliacaoEmAndamento ? proximaVersao : (estudoExistente?.versao ?? 1)}
+            </span>
+          )}
           {isRascunho && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-400 text-amber-950">
               <Clock className="w-3.5 h-3.5 mr-1" />
@@ -224,16 +267,78 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
           {isConcluido && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-300 text-emerald-950">
               <Check className="w-3.5 h-3.5 mr-1" />
-              Concluído
+              {versaoHistorica ? 'Histórico' : 'Concluído'}
             </span>
           )}
           {!estudoExistente && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white">
-              Novo Documento
+              {novaAvaliacaoEmAndamento ? 'Nova Avaliação' : 'Novo Documento'}
             </span>
           )}
         </div>
       </div>
+
+      {/* TA2.4: Seletor de versões do Estudo de Caso e Nova Avaliação */}
+      {(versoes.length > 0 || novaAvaliacaoEmAndamento) && (
+        <div className="bg-emerald-50/70 border-b border-emerald-100 px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <GitBranch className="w-4 h-4 text-ifpb-teal shrink-0" />
+            <label
+              htmlFor="seletor-versao-estudo"
+              className="text-xs font-bold text-gray-700 uppercase"
+            >
+              Versões do Estudo de Caso ({versoes.length}):
+            </label>
+            <select
+              id="seletor-versao-estudo"
+              value={novaAvaliacaoEmAndamento ? VALOR_NOVA_AVALIACAO : (estudoExistente?.id ?? '')}
+              disabled={isLoading || !onSelecionarVersao}
+              onChange={(e) => {
+                const valor = e.target.value;
+                if (valor === VALOR_NOVA_AVALIACAO || valor === estudoExistente?.id) return;
+                comConfirmacaoDeDescarte(() => onSelecionarVersao?.(valor));
+              }}
+              className="px-3 py-1.5 text-xs font-semibold bg-white border border-gray-300 rounded-lg shadow-2xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-ifpb-tealLight disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {novaAvaliacaoEmAndamento && (
+                <option value={VALOR_NOVA_AVALIACAO}>
+                  v{proximaVersao} — Nova avaliação (não salva)
+                </option>
+              )}
+              {versoes.map((versao) => (
+                <option key={versao.id} value={versao.id}>
+                  {rotuloVersao(versao)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {novaAvaliacaoEmAndamento && onCancelarNovaAvaliacao && (
+              <button
+                type="button"
+                onClick={() => comConfirmacaoDeDescarte(onCancelarNovaAvaliacao)}
+                disabled={isLoading}
+                className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancelar Nova Avaliação
+              </button>
+            )}
+            {onNovaAvaliacao && !novaAvaliacaoEmAndamento && (
+              <button
+                type="button"
+                onClick={() => comConfirmacaoDeDescarte(onNovaAvaliacao)}
+                disabled={isLoading}
+                className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-white bg-ifpb-teal hover:bg-ifpb-tealHover rounded-lg shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Preserva a versão atual como histórico e inicia uma nova versão para edição"
+              >
+                <FilePlus2 className="w-3.5 h-3.5 mr-1.5" />
+                Nova Avaliação (Nova Versão)
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Caixa de Orientação Institucional */}
       <div className="bg-[#EEF1EC] border-b border-[#DDE5DB] px-6 py-3 text-xs text-ifpb-dark flex items-start space-x-2">
@@ -245,15 +350,26 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
         </div>
       </div>
 
-      {/* Aviso de Somente Leitura: estudo concluído só é editável após reabertura (TA2.2) */}
+      {/* Aviso de Somente Leitura: versão histórica (TA2.4) ou estudo concluído (TA2.2) */}
       {somenteLeitura && (
         <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-3 text-xs text-emerald-800 flex items-start space-x-2">
           <Lock className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
           <p>
-            <span className="font-semibold">Estudo de Caso concluído — visualização somente leitura.</span>{' '}
-            {onReabrir
-              ? 'Para alterar o documento, utilize "Reabrir Estudo de Caso". A reabertura é registrada na auditoria.'
-              : 'O documento finalizado não pode mais ser editado. Para alterá-lo, entre em contato com a coordenação.'}
+            {versaoHistorica ? (
+              <>
+                <span className="font-semibold">
+                  Versão {estudoExistente?.versao ?? 1} preservada como histórico — somente leitura.
+                </span>{' '}
+                Selecione a versão mais recente para continuar a edição.
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">Estudo de Caso concluído — visualização somente leitura.</span>{' '}
+                {onReabrir
+                  ? 'Para alterar o documento, utilize "Reabrir Estudo de Caso". A reabertura é registrada na auditoria.'
+                  : 'O documento finalizado não pode mais ser editado. Para alterá-lo, entre em contato com a coordenação.'}
+              </>
+            )}
           </p>
         </div>
       )}
@@ -557,18 +673,19 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
         </div>
       </form>
 
-      {confirmarSaida && (
+      {acaoPendente && (
         <ConfirmModal
           titulo="Descartar alterações?"
-          mensagem="Existem alterações não salvas no Estudo de Caso. Deseja realmente sair e descartar as alterações?"
-          textoConfirmar="Descartar e Sair"
+          mensagem="Existem alterações não salvas no Estudo de Caso. Deseja realmente continuar e descartar as alterações?"
+          textoConfirmar="Descartar e Continuar"
           textoCancelar="Continuar Editando"
           variante="perigo"
           onConfirmar={() => {
-            setConfirmarSaida(false);
-            onVoltar();
+            const acao = acaoPendente;
+            setAcaoPendente(null);
+            acao();
           }}
-          onCancelar={() => setConfirmarSaida(false)}
+          onCancelar={() => setAcaoPendente(null)}
         />
       )}
 
