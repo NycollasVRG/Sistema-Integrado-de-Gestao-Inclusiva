@@ -38,6 +38,7 @@ import type {
 } from './types/prontuarioAcoes';
 import type {
   Aluno,
+  DadosFormularioEstudo,
   EstudoDeCasoResponseDTO,
   IndicadorReutilizavel,
   ProblemDetailRFC9457,
@@ -481,34 +482,27 @@ const AppConteudo: React.FC = () => {
   };
 
   // Ação: Salvar Rascunho
-  const handleSalvarRascunho = async (diagnostico: string, indicadoresIds: string[]) => {
+  const handleSalvarRascunho = async (dados: DadosFormularioEstudo) => {
     if (!alunoSelecionado) return;
     if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
       adicionarToast(
         'erro',
         'Operação Não Permitida',
-        'Não é permitido reverter um Estudo de Caso concluído para Rascunho.'
+        'Não é permitido reverter um Estudo de Caso concluído para Rascunho. Utilize "Reabrir Estudo de Caso".'
       );
       return;
     }
     setIsLoading(true);
     try {
-      const diag = diagnostico.trim();
-      let resultado: EstudoDeCasoResponseDTO;
-      if (estudoAtual) {
-        resultado = await EstudoDeCasoService.atualizar(estudoAtual.id, {
-          status: 'RASCUNHO',
-          diagnosticoInicial: diag,
-          indicadoresIds,
-        });
-      } else {
-        resultado = await EstudoDeCasoService.criar({
-          alunoId: alunoSelecionado.id,
-          status: 'RASCUNHO',
-          diagnosticoInicial: diag,
-          indicadoresIds,
-        });
-      }
+      const payload = {
+        status: 'RASCUNHO' as const,
+        diagnosticoInicial: dados.diagnostico.trim(),
+        historico: dados.historico.trim(),
+        indicadoresIds: dados.indicadoresIds,
+      };
+      const resultado: EstudoDeCasoResponseDTO = estudoAtual
+        ? await EstudoDeCasoService.atualizar(estudoAtual.id, payload)
+        : await EstudoDeCasoService.criar({ alunoId: alunoSelecionado.id, ...payload });
 
       setEstudoAtual(resultado);
       await carregarTimeline(alunoSelecionado.id);
@@ -530,34 +524,28 @@ const AppConteudo: React.FC = () => {
   };
 
   // Ação: Concluir Estudo de Caso (Após validação de front TA2.3)
-  const handleConcluir = async (diagnostico: string, indicadoresIds: string[]) => {
+  const handleConcluir = async (dados: DadosFormularioEstudo) => {
     if (!alunoSelecionado) return;
     if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
       adicionarToast(
         'erro',
         'Operação Não Permitida',
-        'Não é permitido alterar um Estudo de Caso já concluído.'
+        'Não é permitido alterar um Estudo de Caso já concluído. Utilize "Reabrir Estudo de Caso".'
       );
       return;
     }
     setIsLoading(true);
     try {
-      const diag = diagnostico.trim();
-      let resultado: EstudoDeCasoResponseDTO;
-      if (estudoAtual) {
-        resultado = await EstudoDeCasoService.atualizar(estudoAtual.id, {
-          status: 'ENCERRADO',
-          diagnosticoInicial: diag,
-          indicadoresIds,
-        });
-      } else {
-        resultado = await EstudoDeCasoService.criar({
-          alunoId: alunoSelecionado.id,
-          status: 'ENCERRADO',
-          diagnosticoInicial: diag,
-          indicadoresIds,
-        });
-      }
+      // A versão vigente concluída é ATIVO; versões substituídas são encerradas pelo backend (TA2.4).
+      const payload = {
+        status: 'ATIVO' as const,
+        diagnosticoInicial: dados.diagnostico.trim(),
+        historico: dados.historico.trim(),
+        indicadoresIds: dados.indicadoresIds,
+      };
+      const resultado: EstudoDeCasoResponseDTO = estudoAtual
+        ? await EstudoDeCasoService.atualizar(estudoAtual.id, payload)
+        : await EstudoDeCasoService.criar({ alunoId: alunoSelecionado.id, ...payload });
 
       setEstudoAtual(resultado);
       await carregarTimeline(alunoSelecionado.id);
@@ -573,6 +561,31 @@ const AppConteudo: React.FC = () => {
         'erro',
         prob?.title || 'Falha ao Concluir',
         prob?.detail || 'Ocorreu um erro ao concluir o estudo de caso.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Ação: Reabrir Estudo de Caso concluído (TA2.2) - volta para RASCUNHO com auditoria
+  const handleReabrirEstudo = async (estudoId: string) => {
+    if (!alunoSelecionado) return;
+    setIsLoading(true);
+    try {
+      const resultado = await EstudoDeCasoService.reabrir(estudoId);
+      setEstudoAtual(resultado);
+      await carregarTimeline(alunoSelecionado.id);
+      adicionarToast(
+        'sucesso',
+        'Estudo de Caso Reaberto',
+        'O estudo voltou para Rascunho e a reabertura foi registrada na auditoria.'
+      );
+    } catch (err: unknown) {
+      const prob = err as Partial<ProblemDetailRFC9457>;
+      adicionarToast(
+        'erro',
+        prob?.title || 'Falha ao Reabrir',
+        prob?.detail || 'Não foi possível reabrir o Estudo de Caso.'
       );
     } finally {
       setIsLoading(false);
@@ -925,6 +938,7 @@ const AppConteudo: React.FC = () => {
                     onSalvarRascunho={handleSalvarRascunho}
                     onConcluir={handleConcluir}
                     onExcluirRascunho={estudoAtual?.status === 'RASCUNHO' ? handleExcluirRascunho : undefined}
+                    onReabrir={handleReabrirEstudo}
                     onVoltar={() => irParaProntuario(alunoSelecionado.id)}
                     isLoading={isLoading}
                   />

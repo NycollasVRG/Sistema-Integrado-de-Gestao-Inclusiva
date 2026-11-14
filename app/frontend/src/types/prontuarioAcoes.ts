@@ -50,6 +50,7 @@ export interface NovoEstudoRapidoRequestDTO {
   alunoId: string;
   status: StatusEstudoCaso;
   diagnosticoInicial: string;
+  historico: string;
   indicadoresIds: string[];
 }
 

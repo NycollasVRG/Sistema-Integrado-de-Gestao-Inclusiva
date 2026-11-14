@@ -48,11 +48,15 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
   const [diagnostico, setDiagnostico] = useState<string>(
     isRascunhoExistente ? estudoExistente?.diagnosticoInicial || '' : ''
   );
+  const [historico, setHistorico] = useState<string>(
+    isRascunhoExistente ? estudoExistente?.historico || '' : ''
+  );
   const [indicadoresSelecionados, setIndicadoresSelecionados] = useState<string[]>(
     isRascunhoExistente ? estudoExistente?.indicadoresIds || [] : []
   );
 
   const [erroDiagnostico, setErroDiagnostico] = useState<string | null>(null);
+  const [erroHistorico, setErroHistorico] = useState<string | null>(null);
   const [erroIndicadores, setErroIndicadores] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [modoEnvio, setModoEnvio] = useState<'RASCUNHO' | 'ENCERRADO' | null>(null);
@@ -60,6 +64,7 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
   const handleFechar = () => {
     if (isSubmitting) return;
     setErroDiagnostico(null);
+    setErroHistorico(null);
     setErroIndicadores(null);
     onClose();
   };
@@ -86,31 +91,33 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
     }
 
     if (modo === 'ENCERRADO') {
-      let possuiErro = false;
+      const diagnosticoInvalido = !diagnostico.trim();
+      const historicoInvalido = !historico.trim();
+      const indicadoresInvalidos = indicadoresSelecionados.length === 0;
 
-      if (!diagnostico.trim()) {
-        setErroDiagnostico(
-          'O Diagnóstico Inicial é obrigatório para concluir o Estudo de Caso.'
-        );
-        possuiErro = true;
-      } else {
-        setErroDiagnostico(null);
-      }
+      setErroDiagnostico(
+        diagnosticoInvalido
+          ? 'O Diagnóstico Inicial é obrigatório para concluir o Estudo de Caso.'
+          : null
+      );
+      setErroHistorico(
+        historicoInvalido ? 'O Histórico é obrigatório para concluir o Estudo de Caso.' : null
+      );
+      setErroIndicadores(
+        indicadoresInvalidos
+          ? 'Selecione pelo menos uma Deficiência/Indicador identificada para o aluno.'
+          : null
+      );
 
-      if (indicadoresSelecionados.length === 0) {
-        setErroIndicadores(
-          'Selecione pelo menos uma Deficiência/Indicador identificada para o aluno.'
-        );
-        possuiErro = true;
-      } else {
-        setErroIndicadores(null);
-      }
-
-      if (possuiErro) return;
+      if (diagnosticoInvalido || historicoInvalido || indicadoresInvalidos) return;
     } else {
       setErroDiagnostico(null);
+      setErroHistorico(null);
       setErroIndicadores(null);
     }
+
+    // Conclusão gera a versão vigente (ATIVO); o rótulo 'ENCERRADO' do modo é apenas de UI.
+    const statusEnvio = modo === 'ENCERRADO' ? 'ATIVO' : 'RASCUNHO';
 
     setModoEnvio(modo);
     setIsSubmitting(true);
@@ -119,15 +126,17 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
 
       if (isRascunhoExistente && estudoExistente) {
         resultado = await EstudoDeCasoService.atualizar(estudoExistente.id, {
-          status: modo,
+          status: statusEnvio,
           diagnosticoInicial: diagnostico.trim(),
+          historico: historico.trim(),
           indicadoresIds: indicadoresSelecionados,
         });
       } else {
         resultado = await ProntuarioService.criarEstudoRapido({
           alunoId: aluno.id,
-          status: modo,
+          status: statusEnvio,
           diagnosticoInicial: diagnostico.trim(),
+          historico: historico.trim(),
           indicadoresIds: indicadoresSelecionados,
         });
       }
@@ -236,12 +245,47 @@ export const ModalNovoEstudo: React.FC<ModalNovoEstudoProps> = ({
         )}
       </div>
 
-      {/* Campo 2: Indicadores Reutilizáveis */}
+      {/* Campo 2: Histórico (obrigatório na conclusão - TA2.3) */}
+      <div>
+        <label
+          htmlFor="modal-estudo-historico"
+          className="block text-xs font-bold text-ifpb-dark mb-1"
+        >
+          2. Histórico <span className="text-ifpb-red">*</span>
+        </label>
+        <p className="text-[11px] text-gray-500 mb-2">
+          Registre o histórico escolar e de acompanhamento do estudante.
+        </p>
+        <textarea
+          id="modal-estudo-historico"
+          rows={3}
+          value={historico}
+          onChange={(e) => {
+            setHistorico(e.target.value);
+            if (e.target.value.trim()) setErroHistorico(null);
+          }}
+          placeholder="Descreva o histórico do estudante..."
+          disabled={isSubmitting || isConcluidoExistente}
+          className={`w-full p-3 rounded-lg text-xs border bg-white text-gray-800 focus:outline-none focus:ring-2 resize-y disabled:bg-gray-100 disabled:cursor-not-allowed ${
+            erroHistorico
+              ? 'border-ifpb-red focus:ring-red-200'
+              : 'border-gray-300 focus:ring-ifpb-teal/30 focus:border-ifpb-teal'
+          }`}
+        />
+        {erroHistorico && (
+          <p className="mt-1.5 text-xs text-ifpb-red flex items-center">
+            <AlertTriangle className="w-3.5 h-3.5 mr-1 shrink-0" />
+            {erroHistorico}
+          </p>
+        )}
+      </div>
+
+      {/* Campo 3: Indicadores Reutilizáveis */}
       <div>
         <div className="flex items-center justify-between mb-1">
           <label className="text-xs font-bold text-ifpb-dark flex items-center">
             <Tag className="w-3.5 h-3.5 mr-1.5 text-ifpb-teal" />
-            2. Deficiências / Indicadores Identificados{' '}
+            3. Deficiências / Indicadores Identificados{' '}
             <span className="text-ifpb-red ml-1">*</span>
           </label>
           <span className="text-[11px] font-semibold text-ifpb-teal bg-ifpb-tealLight px-2 py-0.5 rounded-full">

@@ -14,6 +14,12 @@ export interface IndicadorReutilizavel {
   descricao?: string;
 }
 
+export interface DadosFormularioEstudo {
+  diagnostico: string;
+  historico: string;
+  indicadoresIds: string[];
+}
+
 export interface ResponsavelAuditoriaDTO {
   id: string;
   nome: string | null;
