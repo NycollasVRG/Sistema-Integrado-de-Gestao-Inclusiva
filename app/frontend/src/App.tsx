@@ -28,10 +28,13 @@ import type { EstudanteResumo } from './types/gestaoEstudantes';
 import { getTimeline } from './services/timelineService';
 import { FormularioPea } from './components/FormularioPea';
 import { PeaService } from './services/peaService';
+import { FormularioPlanoAcao } from './components/FormularioPlanoAcao';
+import { PlanoAcaoService } from './services/planoAcaoService';
 import type { DadosFormularioPei, PeiResponseDTO } from './types/pei';
 import type { AlunoHeaderData } from './types/alunoHeader';
 import type { TimelineEventDTO } from './types/timeline';
 import type { DadosFormularioPea, PeaResponseDTO } from './types/pea';
+import type { DadosFormularioPlanoAcao, PlanoAcaoResponseDTO } from './types/planoAcao';
 import type {
   AlunoModalData,
   ProntuarioModalTipo,
@@ -113,11 +116,13 @@ const AppConteudo: React.FC = () => {
   const matchEstudo = useMatch('/estudantes/:id/estudo-de-caso');
   const matchPei = useMatch('/estudantes/:id/pei');
   const matchPea = useMatch('/estudantes/:id/pea');
+  const matchPlanoAcao = useMatch('/estudantes/:id/plano-de-acao');
   const routeAlunoId =
     matchProntuario?.params?.id ??
     matchEstudo?.params?.id ??
     matchPei?.params?.id ??
     matchPea?.params?.id ??
+    matchPlanoAcao?.params?.id ??
     null;
 
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
@@ -129,10 +134,13 @@ const AppConteudo: React.FC = () => {
   const [peiAtual, setPeiAtual] = useState<PeiResponseDTO | null>(null);
   const [peaAtual, setPeaAtual] = useState<PeaResponseDTO | null>(null);
   const [peasDoAluno, setPeasDoAluno] = useState<PeaResponseDTO[]>([]);
+  const [planosAcaoDoAluno, setPlanosAcaoDoAluno] = useState<PlanoAcaoResponseDTO[]>([]);
+  const [planoAcaoEmFocoId, setPlanoAcaoEmFocoId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [carregandoEstudo, setCarregandoEstudo] = useState<boolean>(false);
   const [loadingPei, setLoadingPei] = useState<boolean>(false);
   const [loadingPea, setLoadingPea] = useState<boolean>(false);
+  const [loadingPlanoAcao, setLoadingPlanoAcao] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [termoBusca, setTermoBusca] = useState<string>('');
   const [header, setHeader] = useState<AlunoHeaderData | null>(null);
@@ -260,6 +268,35 @@ const AppConteudo: React.FC = () => {
     }
   }, [adicionarToast]);
 
+  const carregarPlanosAcaoDoAluno = useCallback(async (alunoId: string, signal?: AbortSignal) => {
+    setLoadingPlanoAcao(true);
+    try {
+      const planos = await PlanoAcaoService.listarPorAluno(alunoId, signal);
+      if (signal?.aborted) return;
+      setPlanosAcaoDoAluno(planos);
+      setPlanoAcaoEmFocoId((prev) =>
+        prev === '__novo__' || (prev && planos.some((p) => p.id === prev))
+          ? prev
+          : (planos[0]?.id ?? null)
+      );
+    } catch (erro: unknown) {
+      if (signal?.aborted) return;
+      console.error('Erro ao buscar Planos de Ação do aluno:', erro);
+      setPlanosAcaoDoAluno([]);
+      setPlanoAcaoEmFocoId(null);
+      if (pathnameRef.current.endsWith('/plano-de-acao')) {
+        const prob = erro as Partial<ProblemDetailRFC9457>;
+        adicionarToast(
+          'erro',
+          prob?.title || 'Erro ao carregar Plano de Ação',
+          prob?.detail || 'Não foi possível consultar os planos de ação do aluno.'
+        );
+      }
+    } finally {
+      if (!signal?.aborted) setLoadingPlanoAcao(false);
+    }
+  }, [adicionarToast]);
+
   const carregarHeader = useCallback(async (alunoId: string, signal?: AbortSignal) => {
     setLoadingHeader(true);
     setErrorHeader(null);
@@ -361,6 +398,8 @@ const AppConteudo: React.FC = () => {
         setPeiAtual(null);
         setPeaAtual(null);
         setPeasDoAluno([]);
+        setPlanosAcaoDoAluno([]);
+        setPlanoAcaoEmFocoId(null);
         setHeader(null);
         setTimeline([]);
       }
@@ -370,6 +409,7 @@ const AppConteudo: React.FC = () => {
         carregarEstudosDoAluno(routeAlunoId, signal),
         carregarPeiDoAluno(routeAlunoId, signal),
         carregarPeaDoAluno(routeAlunoId, signal),
+        carregarPlanosAcaoDoAluno(routeAlunoId, signal),
         carregarTimeline(routeAlunoId, signal),
       ]);
     };
@@ -387,6 +427,7 @@ const AppConteudo: React.FC = () => {
     carregarEstudosDoAluno,
     carregarPeiDoAluno,
     carregarPeaDoAluno,
+    carregarPlanosAcaoDoAluno,
     carregarTimeline,
   ]);
 
@@ -673,13 +714,116 @@ const AppConteudo: React.FC = () => {
     }
   };
 
+  const estudoConcluidoParaPlanoAcao =
+    estudosDoAluno.some(ehEstudoConcluido) || (!!estudoAtual && ehEstudoConcluido(estudoAtual));
+
+  const planoAcaoEmFoco: PlanoAcaoResponseDTO | null =
+    planoAcaoEmFocoId === '__novo__'
+      ? null
+      : (planosAcaoDoAluno.find((p) => p.id === planoAcaoEmFocoId) ?? planosAcaoDoAluno[0] ?? null);
+
   const handleCriarPlanoAcao = () => {
     if (!alunoSelecionado) return;
-    adicionarToast(
-      'sucesso',
-      'Iniciando Plano de Ação (US 03)',
-      `O aluno ${alunoSelecionado.nome} possui Estudo de Caso concluído e está apto para elaboração do Plano de Ação.`
-    );
+    if (!estudoConcluidoParaPlanoAcao) {
+      adicionarToast(
+        'alerta',
+        'Plano de Ação Bloqueado',
+        'É necessário concluir o Estudo de Caso antes de criar ou editar o Plano de Ação.'
+      );
+      return;
+    }
+    setPlanoAcaoEmFocoId(planosAcaoDoAluno[0]?.id ?? '__novo__');
+    navigate(`/estudantes/${alunoSelecionado.id}/plano-de-acao`);
+  };
+
+  const handleSalvarPlanoAcao = async (dados: DadosFormularioPlanoAcao) => {
+    if (!alunoSelecionado) return;
+    setIsLoading(true);
+    try {
+      const payload = {
+        demandasIdentificadas: dados.demandasIdentificadas.trim(),
+        propostasIntervencao: dados.propostasIntervencao.trim(),
+        componenteCurricular: dados.componenteCurricular.trim() || null,
+        semestreAno: dados.semestreAno.trim() || null,
+        docente: dados.docente.trim() || null,
+        objetivoGeral: dados.objetivoGeral.trim() || null,
+        objetivosEspecificos: dados.objetivosEspecificos.trim() || null,
+        conteudosProgramaticos: dados.conteudosProgramaticos.trim() || null,
+        metodologia: dados.metodologia.trim() || null,
+        avaliacao: dados.avaliacao.trim() || null,
+        bibliografiaBasica: dados.bibliografiaBasica.trim() || null,
+        bibliografiaComplementar: dados.bibliografiaComplementar.trim() || null,
+      };
+
+      let resultado: PlanoAcaoResponseDTO;
+      if (planoAcaoEmFoco) {
+        resultado = await PlanoAcaoService.atualizar(planoAcaoEmFoco.id, payload);
+        setPlanosAcaoDoAluno((prev) =>
+          prev.map((item) => (item.id === resultado.id ? resultado : item))
+        );
+      } else {
+        let acompanhamentoId =
+          peiAtual?.acompanhamentoId ||
+          peasDoAluno[0]?.acompanhamentoId ||
+          planosAcaoDoAluno[0]?.acompanhamentoId;
+        if (!acompanhamentoId) {
+          const acomp = await PlanoAcaoService.buscarAcompanhamentoPorAluno(alunoSelecionado.id);
+          acompanhamentoId = acomp.id;
+        }
+        resultado = await PlanoAcaoService.criar({
+          acompanhamentoId,
+          ...payload,
+        });
+        setPlanosAcaoDoAluno((prev) => [resultado, ...prev]);
+      }
+
+      setPlanoAcaoEmFocoId(resultado.id);
+      await carregarTimeline(alunoSelecionado.id);
+      const referencia =
+        resultado.componenteCurricular || resultado.semestreAno || 'Anexo III';
+      adicionarToast(
+        'sucesso',
+        planoAcaoEmFoco ? 'Plano de Ação Atualizado' : 'Plano de Ação Criado',
+        `Plano de Ação (${referencia}) salvo com sucesso.`
+      );
+    } catch (err: unknown) {
+      const prob = err as Partial<ProblemDetailRFC9457>;
+      adicionarToast(
+        'erro',
+        prob?.title || 'Falha ao Salvar Plano de Ação',
+        prob?.detail || 'Não foi possível salvar o Plano de Ação.'
+      );
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExcluirPlanoAcao = async (planoId: string) => {
+    if (!alunoSelecionado) return;
+    setIsLoading(true);
+    try {
+      await PlanoAcaoService.excluir(planoId);
+      const restantes = planosAcaoDoAluno.filter((item) => item.id !== planoId);
+      setPlanosAcaoDoAluno(restantes);
+      setPlanoAcaoEmFocoId(restantes[0]?.id ?? '__novo__');
+      await carregarTimeline(alunoSelecionado.id);
+      adicionarToast(
+        'sucesso',
+        'Plano de Ação Excluído',
+        'O registro foi removido com sucesso.'
+      );
+    } catch (err: unknown) {
+      const prob = err as Partial<ProblemDetailRFC9457>;
+      adicionarToast(
+        'erro',
+        prob?.title || 'Falha ao Excluir Plano de Ação',
+        prob?.detail || 'Não foi possível excluir o Plano de Ação.'
+      );
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // TA2.4: versões do Estudo de Caso (mais recente primeiro) e versão em foco no formulário
@@ -738,6 +882,8 @@ const AppConteudo: React.FC = () => {
       setPeiAtual(null);
       setPeaAtual(null);
       setPeasDoAluno([]);
+      setPlanosAcaoDoAluno([]);
+      setPlanoAcaoEmFocoId(null);
       setTimeline([]);
     }
     setErroAlunoRota(null);
@@ -748,6 +894,7 @@ const AppConteudo: React.FC = () => {
     setCarregandoEstudo(true);
     setLoadingPei(true);
     setLoadingPea(true);
+    setLoadingPlanoAcao(true);
     const resumo = resumoParaAluno(estudante);
     alunoSelecionadoRef.current = resumo;
     ultimoAlunoCarregadoRef.current = estudante.id;
@@ -800,7 +947,9 @@ const AppConteudo: React.FC = () => {
                 ? 'Plano Educacional Individualizado (PEI)'
                 : matchPea || location.pathname === '/pea'
                   ? 'Plano de Ensino Adaptado (PEA)'
-                  : 'Ficha do Estudante'
+                  : matchPlanoAcao || location.pathname === '/plano-de-acao'
+                    ? 'Plano de Ação (Anexo III)'
+                    : 'Ficha do Estudante'
           }
         />
       )}
@@ -869,6 +1018,19 @@ const AppConteudo: React.FC = () => {
               element={
                 <Navigate
                   to={alunoSelecionado ? `/estudantes/${alunoSelecionado.id}/pea` : '/estudantes'}
+                  replace
+                />
+              }
+            />
+            <Route
+              path="/plano-de-acao"
+              element={
+                <Navigate
+                  to={
+                    alunoSelecionado
+                      ? `/estudantes/${alunoSelecionado.id}/plano-de-acao`
+                      : '/estudantes'
+                  }
                   replace
                 />
               }
@@ -944,6 +1106,7 @@ const AppConteudo: React.FC = () => {
                       indicadores={indicadores}
                       onAbrirFormularioEstudo={() => navigate(`/estudantes/${alunoSelecionado.id}/estudo-de-caso`)}
                       onCriarPlanoAcao={handleCriarPlanoAcao}
+                      quantidadePlanosAcao={planosAcaoDoAluno.length}
                       peiAtual={peiAtual}
                       onAbrirFormularioPei={() => navigate(`/estudantes/${alunoSelecionado.id}/pei`)}
                       onAbrirFormularioPea={() => navigate(`/estudantes/${alunoSelecionado.id}/pea`)}
@@ -1004,6 +1167,37 @@ const AppConteudo: React.FC = () => {
                     peiId={peiAtual?.id}
                     peiSemestreAno={peiAtual?.semestreAno}
                     onSalvar={handleSalvarPea}
+                    onVoltar={() => irParaProntuario(alunoSelecionado.id)}
+                    isLoading={isLoading}
+                  />
+                )
+              }
+            />
+            <Route
+              path="/estudantes/:id/plano-de-acao"
+              element={
+                erroAlunoRota ? (
+                  <CardErroEstudante
+                    mensagem={erroAlunoRota}
+                    onVoltar={() => navigate('/estudantes')}
+                  />
+                ) : !alunoSelecionado || loadingPlanoAcao || carregandoEstudo ? (
+                  <CardCarregamento mensagem="Carregando Plano de Ação..." />
+                ) : !estudoConcluidoParaPlanoAcao && planosAcaoDoAluno.length === 0 ? (
+                  <CardErroEstudante
+                    mensagem="O Plano de Ação só pode ser elaborado após a conclusão do Estudo de Caso (TA2.1)."
+                    onVoltar={() => irParaProntuario(alunoSelecionado.id)}
+                  />
+                ) : (
+                  <FormularioPlanoAcao
+                    key={planoAcaoEmFoco?.id ?? 'novo'}
+                    aluno={alunoSelecionado}
+                    planoExistente={planoAcaoEmFoco}
+                    planosExistentes={planosAcaoDoAluno}
+                    onSelecionarPlano={(planoId) => setPlanoAcaoEmFocoId(planoId)}
+                    onNovoPlano={() => setPlanoAcaoEmFocoId('__novo__')}
+                    onSalvar={handleSalvarPlanoAcao}
+                    onExcluir={handleExcluirPlanoAcao}
                     onVoltar={() => irParaProntuario(alunoSelecionado.id)}
                     isLoading={isLoading}
                   />
