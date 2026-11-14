@@ -28,17 +28,22 @@ import type { EstudanteResumo } from './types/gestaoEstudantes';
 import { getTimeline } from './services/timelineService';
 import { FormularioPea } from './components/FormularioPea';
 import { PeaService } from './services/peaService';
+import { FormularioPlanoAcao } from './components/FormularioPlanoAcao';
+import { PlanoAcaoService } from './services/planoAcaoService';
 import type { DadosFormularioPei, PeiResponseDTO } from './types/pei';
 import type { AlunoHeaderData } from './types/alunoHeader';
 import type { TimelineEventDTO } from './types/timeline';
 import type { DadosFormularioPea, PeaResponseDTO } from './types/pea';
+import type { DadosFormularioPlanoAcao, PlanoAcaoResponseDTO } from './types/planoAcao';
 import type {
   AlunoModalData,
   ProntuarioModalTipo,
 } from './types/prontuarioAcoes';
 import type {
   Aluno,
+  DadosFormularioEstudo,
   EstudoDeCasoResponseDTO,
+  EstudoDeCasoUpdateDTO,
   IndicadorReutilizavel,
   ProblemDetailRFC9457,
 } from './types/estudoDeCaso';
@@ -59,6 +64,14 @@ function resumoParaAluno(estudante: EstudanteResumo): Aluno {
     curso: estudante.curso,
     turma: estudante.turma,
   };
+}
+
+function ehEstudoConcluido(estudo: EstudoDeCasoResponseDTO): boolean {
+  return estudo.status === 'ATIVO' || estudo.status === 'ENCERRADO';
+}
+
+function ordenarPorVersaoDesc(estudos: EstudoDeCasoResponseDTO[]): EstudoDeCasoResponseDTO[] {
+  return [...estudos].sort((a, b) => (b.versao ?? 1) - (a.versao ?? 1));
 }
 
 const RedirecionarParaProntuario: React.FC = () => {
@@ -103,23 +116,31 @@ const AppConteudo: React.FC = () => {
   const matchEstudo = useMatch('/estudantes/:id/estudo-de-caso');
   const matchPei = useMatch('/estudantes/:id/pei');
   const matchPea = useMatch('/estudantes/:id/pea');
+  const matchPlanoAcao = useMatch('/estudantes/:id/plano-de-acao');
   const routeAlunoId =
     matchProntuario?.params?.id ??
     matchEstudo?.params?.id ??
     matchPei?.params?.id ??
     matchPea?.params?.id ??
+    matchPlanoAcao?.params?.id ??
     null;
 
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
   const [indicadores, setIndicadores] = useState<IndicadorReutilizavel[]>([]);
   const [estudoAtual, setEstudoAtual] = useState<EstudoDeCasoResponseDTO | null>(null);
+  const [estudosDoAluno, setEstudosDoAluno] = useState<EstudoDeCasoResponseDTO[]>([]);
+  const [estudoEmFocoId, setEstudoEmFocoId] = useState<string | null>(null);
+  const [iniciandoNovaVersao, setIniciandoNovaVersao] = useState<boolean>(false);
   const [peiAtual, setPeiAtual] = useState<PeiResponseDTO | null>(null);
   const [peaAtual, setPeaAtual] = useState<PeaResponseDTO | null>(null);
   const [peasDoAluno, setPeasDoAluno] = useState<PeaResponseDTO[]>([]);
+  const [planosAcaoDoAluno, setPlanosAcaoDoAluno] = useState<PlanoAcaoResponseDTO[]>([]);
+  const [planoAcaoEmFocoId, setPlanoAcaoEmFocoId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [carregandoEstudo, setCarregandoEstudo] = useState<boolean>(false);
   const [loadingPei, setLoadingPei] = useState<boolean>(false);
   const [loadingPea, setLoadingPea] = useState<boolean>(false);
+  const [loadingPlanoAcao, setLoadingPlanoAcao] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [termoBusca, setTermoBusca] = useState<string>('');
   const [header, setHeader] = useState<AlunoHeaderData | null>(null);
@@ -162,20 +183,50 @@ const AppConteudo: React.FC = () => {
     }, 5000);
   }, [removerToast]);
 
+  // Aplica a lista de estudos: versões (mais recente primeiro) e estudo vigente segundo o backend
+  const aplicarEstudos = useCallback((estudos: EstudoDeCasoResponseDTO[]) => {
+    setEstudosDoAluno(ordenarPorVersaoDesc(estudos));
+    setEstudoAtual(estudos.length > 0 ? estudos[0] : null);
+  }, []);
+
   const carregarEstudosDoAluno = useCallback(async (alunoId: string, signal?: AbortSignal) => {
     setCarregandoEstudo(true);
     try {
       const estudos = await EstudoDeCasoService.listarPorAluno(alunoId, signal);
       if (signal?.aborted) return;
-      setEstudoAtual(estudos && estudos.length > 0 ? estudos[0] : null);
+      aplicarEstudos(estudos ?? []);
     } catch (e: unknown) {
       if (signal?.aborted) return;
       console.error('Erro ao buscar estudos do aluno:', e);
       setEstudoAtual(null);
+      setEstudosDoAluno([]);
     } finally {
       if (!signal?.aborted) setCarregandoEstudo(false);
     }
-  }, []);
+  }, [aplicarEstudos]);
+
+  // Recarrega as versões sem exibir o loading de tela (preserva o formulário montado).
+  // Garante que o backend (que encerra a versão ATIVO anterior) seja a fonte da verdade (TA2.4).
+  const sincronizarEstudos = useCallback(
+    async (alunoId: string, focar?: EstudoDeCasoResponseDTO) => {
+      if (focar) {
+        setEstudoEmFocoId(focar.id);
+        setIniciandoNovaVersao(false);
+      }
+      try {
+        aplicarEstudos(await EstudoDeCasoService.listarPorAluno(alunoId));
+      } catch (e: unknown) {
+        console.error('Erro ao sincronizar versões do estudo:', e);
+        if (focar) {
+          setEstudoAtual(focar);
+          setEstudosDoAluno((prev) =>
+            ordenarPorVersaoDesc([...prev.filter((estudo) => estudo.id !== focar.id), focar])
+          );
+        }
+      }
+    },
+    [aplicarEstudos]
+  );
 
   const carregarPeiDoAluno = useCallback(async (alunoId: string, signal?: AbortSignal) => {
     setLoadingPei(true);
@@ -214,6 +265,35 @@ const AppConteudo: React.FC = () => {
       }
     } finally {
       if (!signal?.aborted) setLoadingPea(false);
+    }
+  }, [adicionarToast]);
+
+  const carregarPlanosAcaoDoAluno = useCallback(async (alunoId: string, signal?: AbortSignal) => {
+    setLoadingPlanoAcao(true);
+    try {
+      const planos = await PlanoAcaoService.listarPorAluno(alunoId, signal);
+      if (signal?.aborted) return;
+      setPlanosAcaoDoAluno(planos);
+      setPlanoAcaoEmFocoId((prev) =>
+        prev === '__novo__' || (prev && planos.some((p) => p.id === prev))
+          ? prev
+          : (planos[0]?.id ?? null)
+      );
+    } catch (erro: unknown) {
+      if (signal?.aborted) return;
+      console.error('Erro ao buscar Planos de Ação do aluno:', erro);
+      setPlanosAcaoDoAluno([]);
+      setPlanoAcaoEmFocoId(null);
+      if (pathnameRef.current.endsWith('/plano-de-acao')) {
+        const prob = erro as Partial<ProblemDetailRFC9457>;
+        adicionarToast(
+          'erro',
+          prob?.title || 'Erro ao carregar Plano de Ação',
+          prob?.detail || 'Não foi possível consultar os planos de ação do aluno.'
+        );
+      }
+    } finally {
+      if (!signal?.aborted) setLoadingPlanoAcao(false);
     }
   }, [adicionarToast]);
 
@@ -306,13 +386,20 @@ const AppConteudo: React.FC = () => {
     ultimoAlunoCarregadoRef.current = routeAlunoId;
 
     const carregarProntuario = async () => {
+      // Recarga completa: volta o foco para a versão mais recente do Estudo de Caso
+      setEstudoEmFocoId(null);
+      setIniciandoNovaVersao(false);
+
       if (mudouAluno) {
         alunoSelecionadoRef.current = null;
         setAlunoSelecionado(null);
         setEstudoAtual(null);
+        setEstudosDoAluno([]);
         setPeiAtual(null);
         setPeaAtual(null);
         setPeasDoAluno([]);
+        setPlanosAcaoDoAluno([]);
+        setPlanoAcaoEmFocoId(null);
         setHeader(null);
         setTimeline([]);
       }
@@ -322,6 +409,7 @@ const AppConteudo: React.FC = () => {
         carregarEstudosDoAluno(routeAlunoId, signal),
         carregarPeiDoAluno(routeAlunoId, signal),
         carregarPeaDoAluno(routeAlunoId, signal),
+        carregarPlanosAcaoDoAluno(routeAlunoId, signal),
         carregarTimeline(routeAlunoId, signal),
       ]);
     };
@@ -339,6 +427,7 @@ const AppConteudo: React.FC = () => {
     carregarEstudosDoAluno,
     carregarPeiDoAluno,
     carregarPeaDoAluno,
+    carregarPlanosAcaoDoAluno,
     carregarTimeline,
   ]);
 
@@ -480,37 +569,39 @@ const AppConteudo: React.FC = () => {
     }
   };
 
+  // Persiste o formulário: atualiza a versão em foco ou cria o primeiro estudo / uma nova versão (TA2.4)
+  const persistirEstudo = (
+    alunoId: string,
+    payload: EstudoDeCasoUpdateDTO
+  ): Promise<EstudoDeCasoResponseDTO> => {
+    if (estudoEmFoco) return EstudoDeCasoService.atualizar(estudoEmFoco.id, payload);
+    const novo = { alunoId, ...payload };
+    return iniciandoNovaVersao
+      ? EstudoDeCasoService.criarNovaAvaliacao(novo)
+      : EstudoDeCasoService.criar(novo);
+  };
+
   // Ação: Salvar Rascunho
-  const handleSalvarRascunho = async (diagnostico: string, indicadoresIds: string[]) => {
+  const handleSalvarRascunho = async (dados: DadosFormularioEstudo) => {
     if (!alunoSelecionado) return;
-    if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
+    if (estudoEmFoco && ehEstudoConcluido(estudoEmFoco)) {
       adicionarToast(
         'erro',
         'Operação Não Permitida',
-        'Não é permitido reverter um Estudo de Caso concluído para Rascunho.'
+        'Não é permitido reverter um Estudo de Caso concluído para Rascunho. Utilize "Reabrir Estudo de Caso".'
       );
       return;
     }
     setIsLoading(true);
     try {
-      const diag = diagnostico.trim();
-      let resultado: EstudoDeCasoResponseDTO;
-      if (estudoAtual) {
-        resultado = await EstudoDeCasoService.atualizar(estudoAtual.id, {
-          status: 'RASCUNHO',
-          diagnosticoInicial: diag,
-          indicadoresIds,
-        });
-      } else {
-        resultado = await EstudoDeCasoService.criar({
-          alunoId: alunoSelecionado.id,
-          status: 'RASCUNHO',
-          diagnosticoInicial: diag,
-          indicadoresIds,
-        });
-      }
+      const resultado = await persistirEstudo(alunoSelecionado.id, {
+        status: 'RASCUNHO',
+        diagnosticoInicial: dados.diagnostico.trim(),
+        historico: dados.historico.trim(),
+        indicadoresIds: dados.indicadoresIds,
+      });
 
-      setEstudoAtual(resultado);
+      await sincronizarEstudos(alunoSelecionado.id, resultado);
       await carregarTimeline(alunoSelecionado.id);
       adicionarToast(
         'sucesso',
@@ -530,36 +621,27 @@ const AppConteudo: React.FC = () => {
   };
 
   // Ação: Concluir Estudo de Caso (Após validação de front TA2.3)
-  const handleConcluir = async (diagnostico: string, indicadoresIds: string[]) => {
+  const handleConcluir = async (dados: DadosFormularioEstudo) => {
     if (!alunoSelecionado) return;
-    if (estudoAtual?.status === 'ENCERRADO' || estudoAtual?.status === 'ATIVO') {
+    if (estudoEmFoco && ehEstudoConcluido(estudoEmFoco)) {
       adicionarToast(
         'erro',
         'Operação Não Permitida',
-        'Não é permitido alterar um Estudo de Caso já concluído.'
+        'Não é permitido alterar um Estudo de Caso já concluído. Utilize "Reabrir Estudo de Caso".'
       );
       return;
     }
     setIsLoading(true);
     try {
-      const diag = diagnostico.trim();
-      let resultado: EstudoDeCasoResponseDTO;
-      if (estudoAtual) {
-        resultado = await EstudoDeCasoService.atualizar(estudoAtual.id, {
-          status: 'ENCERRADO',
-          diagnosticoInicial: diag,
-          indicadoresIds,
-        });
-      } else {
-        resultado = await EstudoDeCasoService.criar({
-          alunoId: alunoSelecionado.id,
-          status: 'ENCERRADO',
-          diagnosticoInicial: diag,
-          indicadoresIds,
-        });
-      }
+      // A versão vigente concluída é ATIVO; versões substituídas são encerradas pelo backend (TA2.4).
+      const resultado = await persistirEstudo(alunoSelecionado.id, {
+        status: 'ATIVO',
+        diagnosticoInicial: dados.diagnostico.trim(),
+        historico: dados.historico.trim(),
+        indicadoresIds: dados.indicadoresIds,
+      });
 
-      setEstudoAtual(resultado);
+      await sincronizarEstudos(alunoSelecionado.id, resultado);
       await carregarTimeline(alunoSelecionado.id);
       irParaProntuario(alunoSelecionado.id);
       adicionarToast(
@@ -579,20 +661,46 @@ const AppConteudo: React.FC = () => {
     }
   };
 
+  // Ação: Reabrir Estudo de Caso concluído (TA2.2) - volta para RASCUNHO com auditoria
+  const handleReabrirEstudo = async (estudoId: string) => {
+    if (!alunoSelecionado) return;
+    setIsLoading(true);
+    try {
+      const resultado = await EstudoDeCasoService.reabrir(estudoId);
+      await sincronizarEstudos(alunoSelecionado.id, resultado);
+      await carregarTimeline(alunoSelecionado.id);
+      adicionarToast(
+        'sucesso',
+        'Estudo de Caso Reaberto',
+        'O estudo voltou para Rascunho e a reabertura foi registrada na auditoria.'
+      );
+    } catch (err: unknown) {
+      const prob = err as Partial<ProblemDetailRFC9457>;
+      adicionarToast(
+        'erro',
+        prob?.title || 'Falha ao Reabrir',
+        prob?.detail || 'Não foi possível reabrir o Estudo de Caso.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Ação: Descartar Rascunho (DELETE)
   const handleExcluirRascunho = async () => {
-    if (!estudoAtual || !alunoSelecionado) return;
+    if (!estudoEmFoco || !alunoSelecionado) return;
 
     setIsLoading(true);
     try {
-      await EstudoDeCasoService.excluir(estudoAtual.id);
-      setEstudoAtual(null);
+      await EstudoDeCasoService.excluir(estudoEmFoco.id);
+      setEstudoEmFocoId(null);
+      await sincronizarEstudos(alunoSelecionado.id);
       await carregarTimeline(alunoSelecionado.id);
       irParaProntuario(alunoSelecionado.id);
       adicionarToast(
         'sucesso',
         'Rascunho Descartado',
-        'O rascunho foi removido. O status do estudo voltou para Pendente.'
+        'O rascunho foi removido. As versões anteriores do estudo foram preservadas.'
       );
     } catch (err: unknown) {
       const prob = err as Partial<ProblemDetailRFC9457>;
@@ -606,13 +714,149 @@ const AppConteudo: React.FC = () => {
     }
   };
 
+  const estudoConcluidoParaPlanoAcao =
+    estudosDoAluno.some(ehEstudoConcluido) || (!!estudoAtual && ehEstudoConcluido(estudoAtual));
+
+  const planoAcaoEmFoco: PlanoAcaoResponseDTO | null =
+    planoAcaoEmFocoId === '__novo__'
+      ? null
+      : (planosAcaoDoAluno.find((p) => p.id === planoAcaoEmFocoId) ?? planosAcaoDoAluno[0] ?? null);
+
   const handleCriarPlanoAcao = () => {
     if (!alunoSelecionado) return;
-    adicionarToast(
-      'sucesso',
-      'Iniciando Plano de Ação (US 03)',
-      `O aluno ${alunoSelecionado.nome} possui Estudo de Caso concluído e está apto para elaboração do Plano de Ação.`
-    );
+    if (!estudoConcluidoParaPlanoAcao) {
+      adicionarToast(
+        'alerta',
+        'Plano de Ação Bloqueado',
+        'É necessário concluir o Estudo de Caso antes de criar ou editar o Plano de Ação.'
+      );
+      return;
+    }
+    setPlanoAcaoEmFocoId(planosAcaoDoAluno[0]?.id ?? '__novo__');
+    navigate(`/estudantes/${alunoSelecionado.id}/plano-de-acao`);
+  };
+
+  const handleSalvarPlanoAcao = async (dados: DadosFormularioPlanoAcao) => {
+    if (!alunoSelecionado) return;
+    setIsLoading(true);
+    try {
+      const payload = {
+        demandasIdentificadas: dados.demandasIdentificadas.trim(),
+        propostasIntervencao: dados.propostasIntervencao.trim(),
+        componenteCurricular: dados.componenteCurricular.trim() || null,
+        semestreAno: dados.semestreAno.trim() || null,
+        docente: dados.docente.trim() || null,
+        objetivoGeral: dados.objetivoGeral.trim() || null,
+        objetivosEspecificos: dados.objetivosEspecificos.trim() || null,
+        conteudosProgramaticos: dados.conteudosProgramaticos.trim() || null,
+        metodologia: dados.metodologia.trim() || null,
+        avaliacao: dados.avaliacao.trim() || null,
+        bibliografiaBasica: dados.bibliografiaBasica.trim() || null,
+        bibliografiaComplementar: dados.bibliografiaComplementar.trim() || null,
+      };
+
+      let resultado: PlanoAcaoResponseDTO;
+      if (planoAcaoEmFoco) {
+        resultado = await PlanoAcaoService.atualizar(planoAcaoEmFoco.id, payload);
+        setPlanosAcaoDoAluno((prev) =>
+          prev.map((item) => (item.id === resultado.id ? resultado : item))
+        );
+      } else {
+        let acompanhamentoId =
+          peiAtual?.acompanhamentoId ||
+          peasDoAluno[0]?.acompanhamentoId ||
+          planosAcaoDoAluno[0]?.acompanhamentoId;
+        if (!acompanhamentoId) {
+          const acomp = await PlanoAcaoService.buscarAcompanhamentoPorAluno(alunoSelecionado.id);
+          acompanhamentoId = acomp.id;
+        }
+        resultado = await PlanoAcaoService.criar({
+          acompanhamentoId,
+          ...payload,
+        });
+        setPlanosAcaoDoAluno((prev) => [resultado, ...prev]);
+      }
+
+      setPlanoAcaoEmFocoId(resultado.id);
+      await carregarTimeline(alunoSelecionado.id);
+      const referencia =
+        resultado.componenteCurricular || resultado.semestreAno || 'Anexo III';
+      adicionarToast(
+        'sucesso',
+        planoAcaoEmFoco ? 'Plano de Ação Atualizado' : 'Plano de Ação Criado',
+        `Plano de Ação (${referencia}) salvo com sucesso.`
+      );
+    } catch (err: unknown) {
+      const prob = err as Partial<ProblemDetailRFC9457>;
+      adicionarToast(
+        'erro',
+        prob?.title || 'Falha ao Salvar Plano de Ação',
+        prob?.detail || 'Não foi possível salvar o Plano de Ação.'
+      );
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExcluirPlanoAcao = async (planoId: string) => {
+    if (!alunoSelecionado) return;
+    setIsLoading(true);
+    try {
+      await PlanoAcaoService.excluir(planoId);
+      const restantes = planosAcaoDoAluno.filter((item) => item.id !== planoId);
+      setPlanosAcaoDoAluno(restantes);
+      setPlanoAcaoEmFocoId(restantes[0]?.id ?? '__novo__');
+      await carregarTimeline(alunoSelecionado.id);
+      adicionarToast(
+        'sucesso',
+        'Plano de Ação Excluído',
+        'O registro foi removido com sucesso.'
+      );
+    } catch (err: unknown) {
+      const prob = err as Partial<ProblemDetailRFC9457>;
+      adicionarToast(
+        'erro',
+        prob?.title || 'Falha ao Excluir Plano de Ação',
+        prob?.detail || 'Não foi possível excluir o Plano de Ação.'
+      );
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // TA2.4: versões do Estudo de Caso (mais recente primeiro) e versão em foco no formulário
+  const estudoMaisRecente = estudosDoAluno[0] ?? null;
+  const estudoEmFoco: EstudoDeCasoResponseDTO | null = iniciandoNovaVersao
+    ? null
+    : (estudosDoAluno.find((e) => e.id === estudoEmFocoId) ?? estudoMaisRecente);
+  const estudoMaisRecenteConcluido = !!estudoMaisRecente && ehEstudoConcluido(estudoMaisRecente);
+  // Só a versão mais recente pode ser reaberta; versões anteriores ficam como histórico somente leitura
+  const podeReabrirEstudoEmFoco =
+    !!estudoEmFoco && ehEstudoConcluido(estudoEmFoco) && estudoEmFoco.id === estudoMaisRecente?.id;
+  const podeIniciarNovaAvaliacao = !iniciandoNovaVersao && estudoMaisRecenteConcluido;
+
+  const handleSelecionarVersao = (estudoId: string) => {
+    setIniciandoNovaVersao(false);
+    setEstudoEmFocoId(estudoId);
+  };
+
+  const handleIniciarNovaAvaliacao = () => {
+    if (!estudoMaisRecenteConcluido) {
+      adicionarToast(
+        'alerta',
+        'Nova Avaliação Indisponível',
+        'Conclua o Estudo de Caso em andamento antes de iniciar uma nova avaliação.'
+      );
+      return;
+    }
+    setIniciandoNovaVersao(true);
+  };
+
+  const handleCancelarNovaAvaliacao = () => {
+    setIniciandoNovaVersao(false);
+    setEstudoEmFocoId(estudoMaisRecente?.id ?? null);
   };
 
   const dificuldadesDoEstudo = estudoAtual
@@ -632,9 +876,14 @@ const AppConteudo: React.FC = () => {
   const abrirProntuarioDaListagem = (estudante: EstudanteResumo) => {
     if (alunoSelecionado?.id !== estudante.id) {
       setEstudoAtual(null);
+      setEstudosDoAluno([]);
+      setEstudoEmFocoId(null);
+      setIniciandoNovaVersao(false);
       setPeiAtual(null);
       setPeaAtual(null);
       setPeasDoAluno([]);
+      setPlanosAcaoDoAluno([]);
+      setPlanoAcaoEmFocoId(null);
       setTimeline([]);
     }
     setErroAlunoRota(null);
@@ -645,6 +894,7 @@ const AppConteudo: React.FC = () => {
     setCarregandoEstudo(true);
     setLoadingPei(true);
     setLoadingPea(true);
+    setLoadingPlanoAcao(true);
     const resumo = resumoParaAluno(estudante);
     alunoSelecionadoRef.current = resumo;
     ultimoAlunoCarregadoRef.current = estudante.id;
@@ -697,7 +947,9 @@ const AppConteudo: React.FC = () => {
                 ? 'Plano Educacional Individualizado (PEI)'
                 : matchPea || location.pathname === '/pea'
                   ? 'Plano de Ensino Adaptado (PEA)'
-                  : 'Ficha do Estudante'
+                  : matchPlanoAcao || location.pathname === '/plano-de-acao'
+                    ? 'Plano de Ação (Anexo III)'
+                    : 'Ficha do Estudante'
           }
         />
       )}
@@ -766,6 +1018,19 @@ const AppConteudo: React.FC = () => {
               element={
                 <Navigate
                   to={alunoSelecionado ? `/estudantes/${alunoSelecionado.id}/pea` : '/estudantes'}
+                  replace
+                />
+              }
+            />
+            <Route
+              path="/plano-de-acao"
+              element={
+                <Navigate
+                  to={
+                    alunoSelecionado
+                      ? `/estudantes/${alunoSelecionado.id}/plano-de-acao`
+                      : '/estudantes'
+                  }
                   replace
                 />
               }
@@ -841,6 +1106,7 @@ const AppConteudo: React.FC = () => {
                       indicadores={indicadores}
                       onAbrirFormularioEstudo={() => navigate(`/estudantes/${alunoSelecionado.id}/estudo-de-caso`)}
                       onCriarPlanoAcao={handleCriarPlanoAcao}
+                      quantidadePlanosAcao={planosAcaoDoAluno.length}
                       peiAtual={peiAtual}
                       onAbrirFormularioPei={() => navigate(`/estudantes/${alunoSelecionado.id}/pei`)}
                       onAbrirFormularioPea={() => navigate(`/estudantes/${alunoSelecionado.id}/pea`)}
@@ -908,6 +1174,37 @@ const AppConteudo: React.FC = () => {
               }
             />
             <Route
+              path="/estudantes/:id/plano-de-acao"
+              element={
+                erroAlunoRota ? (
+                  <CardErroEstudante
+                    mensagem={erroAlunoRota}
+                    onVoltar={() => navigate('/estudantes')}
+                  />
+                ) : !alunoSelecionado || loadingPlanoAcao || carregandoEstudo ? (
+                  <CardCarregamento mensagem="Carregando Plano de Ação..." />
+                ) : !estudoConcluidoParaPlanoAcao && planosAcaoDoAluno.length === 0 ? (
+                  <CardErroEstudante
+                    mensagem="O Plano de Ação só pode ser elaborado após a conclusão do Estudo de Caso (TA2.1)."
+                    onVoltar={() => irParaProntuario(alunoSelecionado.id)}
+                  />
+                ) : (
+                  <FormularioPlanoAcao
+                    key={planoAcaoEmFoco?.id ?? 'novo'}
+                    aluno={alunoSelecionado}
+                    planoExistente={planoAcaoEmFoco}
+                    planosExistentes={planosAcaoDoAluno}
+                    onSelecionarPlano={(planoId) => setPlanoAcaoEmFocoId(planoId)}
+                    onNovoPlano={() => setPlanoAcaoEmFocoId('__novo__')}
+                    onSalvar={handleSalvarPlanoAcao}
+                    onExcluir={handleExcluirPlanoAcao}
+                    onVoltar={() => irParaProntuario(alunoSelecionado.id)}
+                    isLoading={isLoading}
+                  />
+                )
+              }
+            />
+            <Route
               path="/estudantes/:id/estudo-de-caso"
               element={
                 erroAlunoRota ? (
@@ -920,11 +1217,17 @@ const AppConteudo: React.FC = () => {
                 ) : (
                   <FormularioEstudoDeCaso
                     aluno={alunoSelecionado}
-                    estudoExistente={estudoAtual}
+                    estudoExistente={estudoEmFoco}
+                    versoes={estudosDoAluno}
+                    novaAvaliacaoEmAndamento={iniciandoNovaVersao}
                     indicadoresDisponiveis={indicadores}
                     onSalvarRascunho={handleSalvarRascunho}
                     onConcluir={handleConcluir}
-                    onExcluirRascunho={estudoAtual?.status === 'RASCUNHO' ? handleExcluirRascunho : undefined}
+                    onExcluirRascunho={estudoEmFoco?.status === 'RASCUNHO' ? handleExcluirRascunho : undefined}
+                    onReabrir={podeReabrirEstudoEmFoco ? handleReabrirEstudo : undefined}
+                    onSelecionarVersao={handleSelecionarVersao}
+                    onNovaAvaliacao={podeIniciarNovaAvaliacao ? handleIniciarNovaAvaliacao : undefined}
+                    onCancelarNovaAvaliacao={handleCancelarNovaAvaliacao}
                     onVoltar={() => irParaProntuario(alunoSelecionado.id)}
                     isLoading={isLoading}
                   />
@@ -959,9 +1262,11 @@ const AppConteudo: React.FC = () => {
         indicadoresDisponiveis={indicadores}
         estudoExistente={estudoAtual}
         onSuccess={async (estudo, modo) => {
-          setEstudoAtual(estudo);
           if (alunoSelecionado) {
+            await sincronizarEstudos(alunoSelecionado.id, estudo);
             await carregarTimeline(alunoSelecionado.id);
+          } else {
+            setEstudoAtual(estudo);
           }
           adicionarToast(
             'sucesso',

@@ -9,6 +9,7 @@ interface TelaAlunoProps {
   indicadores: IndicadorReutilizavel[];
   onAbrirFormularioEstudo: () => void;
   onCriarPlanoAcao: () => void;
+  quantidadePlanosAcao?: number;
   peiAtual?: PeiResponseDTO | null;
   onAbrirFormularioPei?: () => void;
   onAbrirFormularioPea?: () => void;
@@ -20,6 +21,7 @@ export const TelaAluno: React.FC<TelaAlunoProps> = ({
   indicadores,
   onAbrirFormularioEstudo,
   onCriarPlanoAcao,
+  quantidadePlanosAcao = 0,
   peiAtual = null,
   onAbrirFormularioPei,
   onAbrirFormularioPea,
@@ -214,13 +216,21 @@ export const TelaAluno: React.FC<TelaAlunoProps> = ({
                     </div>
                   </div>
 
+                  {quantidadePlanosAcao > 0 && (
+                    <p className="text-xs text-emerald-800">
+                      {quantidadePlanosAcao === 1
+                        ? '1 Plano de Ação registrado para este estudante.'
+                        : `${quantidadePlanosAcao} Planos de Ação registrados para este estudante.`}
+                    </p>
+                  )}
+
                   <button
                     type="button"
                     onClick={onCriarPlanoAcao}
                     className="w-full py-2.5 px-4 rounded-md text-xs font-bold bg-ifpb-teal hover:bg-ifpb-tealHover text-white shadow transition-all duration-150 flex items-center justify-center space-x-2 cursor-pointer"
                   >
                     <PlusCircle className="w-4 h-4 text-white" />
-                    <span>Criar Plano de Ação</span>
+                    <span>{quantidadePlanosAcao > 0 ? 'Abrir Plano de Ação' : 'Criar Plano de Ação'}</span>
                   </button>
                 </div>
               )}

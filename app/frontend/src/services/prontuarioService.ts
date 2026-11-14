@@ -78,6 +78,7 @@ export class ProntuarioService {
       alunoId: dto.alunoId,
       status: dto.status,
       diagnosticoInicial: dto.diagnosticoInicial,
+      historico: dto.historico,
       indicadoresIds: dto.indicadoresIds,
     });
   }
