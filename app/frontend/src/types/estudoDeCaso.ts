@@ -14,16 +14,27 @@ export interface IndicadorReutilizavel {
   descricao?: string;
 }
 
+export interface ResponsavelAuditoriaDTO {
+  id: string;
+  nome: string | null;
+}
+
 export interface EstudoDeCasoRequestDTO {
   alunoId: string;
   status: StatusEstudoCaso;
   diagnosticoInicial?: string | null;
+  historico?: string | null;
+  historicoFamiliar?: string | null;
+  historicoSocioemocional?: string | null;
   indicadoresIds: string[];
 }
 
 export interface EstudoDeCasoUpdateDTO {
   status: StatusEstudoCaso;
   diagnosticoInicial?: string | null;
+  historico?: string | null;
+  historicoFamiliar?: string | null;
+  historicoSocioemocional?: string | null;
   indicadoresIds: string[];
 }
 
@@ -32,12 +43,16 @@ export interface EstudoDeCasoResponseDTO {
   alunoId: string;
   status: StatusEstudoCaso;
   diagnosticoInicial: string | null;
+  historico?: string | null;
   /** TA11.3: ausentes no JSON para perfis ACESSO_FUNCIONAL. */
   historicoFamiliar?: string | null;
   historicoSocioemocional?: string | null;
   indicadoresIds: string[];
+  versao?: number;
+  estudoOrigemId?: string | null;
   criadoEm?: string;
   atualizadoEm?: string;
+  atualizadoPor?: ResponsavelAuditoriaDTO | null;
 }
 
 export interface ProblemDetailRFC9457 {
