@@ -1,9 +1,11 @@
 package com.br.CLAI.service;
 
+import com.br.CLAI.domain.Atendimento;
 import com.br.CLAI.domain.EstudoDeCaso;
 import com.br.CLAI.domain.Pea;
 import com.br.CLAI.domain.Pei;
 import com.br.CLAI.dto.response.TimelineEventDTO;
+import com.br.CLAI.repository.AtendimentoRepository;
 import com.br.CLAI.repository.EstudoDeCasoRepository;
 import com.br.CLAI.repository.PeaRepository;
 import com.br.CLAI.repository.PeiRepository;
@@ -20,15 +22,18 @@ public class TimelineService {
     private final EstudoDeCasoRepository estudoDeCasoRepository;
     private final PeiRepository peiRepository;
     private final PeaRepository peaRepository;
+    private final AtendimentoRepository atendimentoRepository;
 
     public TimelineService(
             EstudoDeCasoRepository estudoDeCasoRepository,
             PeiRepository peiRepository,
-            PeaRepository peaRepository) {
+            PeaRepository peaRepository,
+            AtendimentoRepository atendimentoRepository) {
 
         this.estudoDeCasoRepository = estudoDeCasoRepository;
         this.peiRepository = peiRepository;
         this.peaRepository = peaRepository;
+        this.atendimentoRepository = atendimentoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -71,6 +76,19 @@ public class TimelineService {
                             pea.getId(),
                             "PEA",
                             pea.getCriadoEm()
+                    )
+            );
+        }
+
+        List<Atendimento> atendimentos =
+                atendimentoRepository.findByAlunoId(alunoId);
+
+        for (Atendimento atendimento : atendimentos) {
+            eventos.add(
+                    new TimelineEventDTO(
+                            atendimento.getId(),
+                            "ATENDIMENTO",
+                            atendimento.getCriadoEm()
                     )
             );
         }

@@ -2,10 +2,12 @@ package com.br.CLAI.service;
 
 import com.br.CLAI.domain.Acompanhamento;
 import com.br.CLAI.domain.Aluno;
+import com.br.CLAI.domain.Atendimento;
 import com.br.CLAI.domain.EstudoDeCaso;
 import com.br.CLAI.domain.Pea;
 import com.br.CLAI.domain.Pei;
 import com.br.CLAI.domain.enums.StatusEstudoCaso;
+import com.br.CLAI.domain.enums.TipoAtendimento;
 import com.br.CLAI.dto.response.EstudoDeCasoResponseDTO;
 import com.br.CLAI.dto.response.HistoricoSocioemocionalResponseDTO;
 import com.br.CLAI.dto.response.PeaResponseDTO;
@@ -18,6 +20,7 @@ import com.br.CLAI.mapper.PeiMapper;
 import com.br.CLAI.repository.AcompanhamentoRepository;
 import com.br.CLAI.repository.AlunoRepository;
 import com.br.CLAI.repository.AnexoEstudanteRepository;
+import com.br.CLAI.repository.AtendimentoRepository;
 import com.br.CLAI.repository.EstudoDeCasoRepository;
 import com.br.CLAI.repository.IndicadorReutilizavelRepository;
 import com.br.CLAI.repository.PeaRepository;
@@ -63,6 +66,9 @@ class OrdenacaoETimelineServiceTest {
 
     @Mock
     private AnexoEstudanteRepository anexoEstudanteRepository;
+
+    @Mock
+    private AtendimentoRepository atendimentoRepository;
 
     @Mock
     private RbacGuard rbacGuard;
@@ -216,11 +222,57 @@ class OrdenacaoETimelineServiceTest {
         when(peiRepository.findByAcompanhamento_Aluno_Id(alunoId)).thenReturn(List.of(peiSemData));
         when(peaRepository.findByAcompanhamento_Aluno_Id(alunoId)).thenReturn(List.of(peaMaisAntigo));
 
-        TimelineService timelineService = new TimelineService(estudoDeCasoRepository, peiRepository, peaRepository);
+        when(atendimentoRepository.findByAlunoId(alunoId)).thenReturn(List.of());
+
+        TimelineService timelineService = new TimelineService(
+                estudoDeCasoRepository, peiRepository, peaRepository, atendimentoRepository);
         List<TimelineEventDTO> eventos = timelineService.buscarPorAluno(alunoId);
 
         assertEquals(List.of(peaMaisAntigo.getId(), estudo.getId(), peiSemData.getId()),
                 eventos.stream().map(TimelineEventDTO::id).toList());
+    }
+
+    @Test
+    @DisplayName("TimelineService deve incluir Atendimentos com tipo ATENDIMENTO intercalados em ordem cronológica")
+    void deveIncluirAtendimentosNaTimelineEmOrdemCronologica() {
+        UUID alunoId = UUID.randomUUID();
+        Aluno aluno = new Aluno("Estudante Timeline", "2026004");
+        aluno.setId(alunoId);
+        Acompanhamento acomp = new Acompanhamento(aluno, LocalDate.of(2026, 1, 1));
+
+        EstudoDeCaso estudo = new EstudoDeCaso(aluno, StatusEstudoCaso.ENCERRADO, "Diag");
+        estudo.setId(UUID.randomUUID());
+        estudo.setCriadoEm(LocalDateTime.of(2026, 1, 5, 12, 0));
+
+        Pei pei = new Pei(acomp, "Hab", "Prop");
+        pei.setId(UUID.randomUUID());
+        pei.setCriadoEm(LocalDateTime.of(2026, 1, 20, 12, 0));
+
+        Atendimento atendimentoAntes = new Atendimento(
+                aluno, TipoAtendimento.PEDAGOGICO, LocalDate.of(2026, 1, 3), "Prof. A", "Relato 1", null);
+        atendimentoAntes.setId(UUID.randomUUID());
+        atendimentoAntes.setCriadoEm(LocalDateTime.of(2026, 1, 3, 9, 0));
+
+        Atendimento atendimentoEntre = new Atendimento(
+                aluno, TipoAtendimento.PSICOLOGICO, LocalDate.of(2026, 1, 10), "Prof. B", "Relato 2", "Retorno");
+        atendimentoEntre.setId(UUID.randomUUID());
+        atendimentoEntre.setCriadoEm(LocalDateTime.of(2026, 1, 10, 9, 0));
+
+        when(estudoDeCasoRepository.findByAlunoId(alunoId)).thenReturn(List.of(estudo));
+        when(peiRepository.findByAcompanhamento_Aluno_Id(alunoId)).thenReturn(List.of(pei));
+        when(peaRepository.findByAcompanhamento_Aluno_Id(alunoId)).thenReturn(List.of());
+        // Retorno propositalmente fora de ordem: a ordenação é responsabilidade do TimelineService
+        when(atendimentoRepository.findByAlunoId(alunoId))
+                .thenReturn(List.of(atendimentoEntre, atendimentoAntes));
+
+        TimelineService timelineService = new TimelineService(
+                estudoDeCasoRepository, peiRepository, peaRepository, atendimentoRepository);
+        List<TimelineEventDTO> eventos = timelineService.buscarPorAluno(alunoId);
+
+        assertEquals(List.of(atendimentoAntes.getId(), estudo.getId(), atendimentoEntre.getId(), pei.getId()),
+                eventos.stream().map(TimelineEventDTO::id).toList());
+        assertEquals(List.of("ATENDIMENTO", "ESTUDO_DE_CASO", "ATENDIMENTO", "PEI"),
+                eventos.stream().map(TimelineEventDTO::tipo).toList());
     }
 
     @Test
