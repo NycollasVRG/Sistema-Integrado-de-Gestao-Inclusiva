@@ -42,7 +42,7 @@ class FlywaySchemaValidationIntegrationTest {
     private UsuarioRepository usuarioRepository;
 
     @Test
-    @DisplayName("Perfil dev: Flyway aplica V1, V2 e seeds R__01..03 e Hibernate validate passa")
+    @DisplayName("Perfil dev: Flyway aplica V1 a V6 e seeds R__01..03 e Hibernate validate passa")
     void deveExecutarMigrationsESeedsDevEValidarSchemaJpa() {
         List<String> scriptsAplicados = Arrays.stream(flyway.info().applied())
                 .map(MigrationInfo::getScript)
@@ -55,6 +55,7 @@ class FlywaySchemaValidationIntegrationTest {
                 "V3__alinhamento_anexo_iii_pei_pea.sql",
                 "V4__evolucao_estudo_caso_versionamento_e_historico.sql",
                 "V5__evolucao_plano_acao_anexo_iii.sql",
+                "V6__create_rai_and_notificacao.sql",
                 "R__01_seed_us11_rbac.sql",
                 "R__02_seed_us02_estudo_caso.sql",
                 "R__03_seed_us03_planejamento_pedagogico.sql"
@@ -64,7 +65,8 @@ class FlywaySchemaValidationIntegrationTest {
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'sigi' AND table_type = 'BASE TABLE'",
                 Integer.class
         );
-        assertEquals(12, totalTabelasSigi, "11 tabelas de domínio + flyway_schema_history no schema sigi.");
+        assertEquals(14, totalTabelasSigi,
+                "13 tabelas de domínio (incluindo rai e notificacao) + flyway_schema_history no schema sigi.");
 
         Integer indiceEstudoAtivo = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'sigi' AND indexname = 'idx_estudo_caso_ativo'",
@@ -76,7 +78,7 @@ class FlywaySchemaValidationIntegrationTest {
     }
 
     @Test
-    @DisplayName("Perfil prd: Flyway aplica apenas db/migration (V1 a V5) sem inserir dados fictícios")
+    @DisplayName("Perfil prd: Flyway aplica apenas db/migration (V1 a V6) sem inserir dados fictícios")
     void deveExecutarApenasMigrationsEstruturaisSemSeedsParaPrd() throws Exception {
         String baseUrl = postgres.getJdbcUrl();
         try (Connection conn = DriverManager.getConnection(baseUrl, postgres.getUsername(), postgres.getPassword());
@@ -104,7 +106,8 @@ class FlywaySchemaValidationIntegrationTest {
                 "V2__constraints_indexes_and_comments.sql",
                 "V3__alinhamento_anexo_iii_pei_pea.sql",
                 "V4__evolucao_estudo_caso_versionamento_e_historico.sql",
-                "V5__evolucao_plano_acao_anexo_iii.sql"
+                "V5__evolucao_plano_acao_anexo_iii.sql",
+                "V6__create_rai_and_notificacao.sql"
         ), scriptsPrd);
 
         try (Connection prdConn = DriverManager.getConnection(prdUrl, postgres.getUsername(), postgres.getPassword());
