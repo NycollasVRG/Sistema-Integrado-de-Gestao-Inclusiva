@@ -39,6 +39,12 @@ export function StudentHeader({ header }: StudentHeaderProps) {
               <span className="font-medium text-gray-700">Curso:</span>{" "}
               {header.curso}
             </p>
+            {header.turma && (
+              <p className="text-sm text-gray-600">
+                <span className="font-medium text-gray-700">Turma:</span>{" "}
+                {header.turma}
+              </p>
+            )}
           </div>
 
           {header.tagsDificuldade && header.tagsDificuldade.length > 0 && (

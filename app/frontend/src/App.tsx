@@ -315,10 +315,10 @@ const AppConteudo: React.FC = () => {
       const err = e as { message?: string; status?: number };
       const msg = err?.message || 'Erro ao carregar dados do estudante.';
       setErrorHeader(msg);
-      setHeader(null);
       if (err?.status === 404 || alunoSelecionadoRef.current?.id !== alunoId) {
         alunoSelecionadoRef.current = null;
         ultimoAlunoCarregadoRef.current = null;
+        setHeader(null);
         setErroAlunoRota(msg);
         setAlunoSelecionado(null);
       }
@@ -376,9 +376,13 @@ const AppConteudo: React.FC = () => {
     };
   }, [autenticado]);
 
-  // Carrega ou recarrega o prontuário sempre que entrar em uma rota de estudante (inclusive mesmo ID ou F5)
+  // Carrega ou recarrega o prontuário sempre que entrar em uma rota de estudante (inclusive mesmo ID em foco ou F5 - TA12.3)
   useEffect(() => {
-    if (!autenticado || !routeAlunoId) return;
+    if (!autenticado) {
+      ultimoAlunoCarregadoRef.current = null;
+      return;
+    }
+    if (!routeAlunoId) return;
 
     const controlador = new AbortController();
     const { signal } = controlador;
@@ -869,12 +873,14 @@ const AppConteudo: React.FC = () => {
     nome: header?.nome || alunoSelecionado?.nome || 'Estudante',
     matricula: header?.matricula || alunoSelecionado?.matricula || '',
     curso: header?.curso || alunoSelecionado?.curso || 'Não informado',
-    turma: alunoSelecionado?.turma || '',
+    turma: header?.turma || alunoSelecionado?.turma || '',
   };
 
-  // US12: seleciona o aluno na listagem, força recarga completa e navega para rota parametrizada.
+  // US12 / TA12.3: seleciona o aluno na listagem, atualiza imediatamente o cabeçalho
+  // mesmo se o estudante já estava em foco e força recarga completa na rota parametrizada.
   const abrirProntuarioDaListagem = (estudante: EstudanteResumo) => {
-    if (alunoSelecionado?.id !== estudante.id) {
+    const mudouAluno = alunoSelecionadoRef.current?.id !== estudante.id;
+    if (mudouAluno) {
       setEstudoAtual(null);
       setEstudosDoAluno([]);
       setEstudoEmFocoId(null);
@@ -895,6 +901,7 @@ const AppConteudo: React.FC = () => {
     setLoadingPei(true);
     setLoadingPea(true);
     setLoadingPlanoAcao(true);
+
     const resumo = resumoParaAluno(estudante);
     alunoSelecionadoRef.current = resumo;
     ultimoAlunoCarregadoRef.current = estudante.id;
@@ -905,11 +912,15 @@ const AppConteudo: React.FC = () => {
   };
 
   const handleEstudanteSalvo = (estudante: EstudanteResumo) => {
-    if (alunoSelecionado?.id === estudante.id) {
+    const mesmoEstudanteEmFoco =
+      alunoSelecionadoRef.current?.id === estudante.id ||
+      ultimoAlunoCarregadoRef.current === estudante.id;
+    if (mesmoEstudanteEmFoco) {
       const resumo = resumoParaAluno(estudante);
       alunoSelecionadoRef.current = resumo;
       setAlunoSelecionado(resumo);
       setHeader(estudanteParaHeader(estudante));
+      setRevisaoProntuario((v) => v + 1);
     }
   };
 
@@ -1114,7 +1125,10 @@ const AppConteudo: React.FC = () => {
 
                     {/* US 09 / TA11.2 e TA11.3: históricos sensíveis e anexos com RBAC visual */}
                     <div className="mt-6">
-                      <SecaoProntuarioRbac key={alunoSelecionado.id} alunoId={alunoSelecionado.id} />
+                      <SecaoProntuarioRbac
+                        key={`${alunoSelecionado.id}-${revisaoProntuario}`}
+                        alunoId={alunoSelecionado.id}
+                      />
                     </div>
                   </>
                 )

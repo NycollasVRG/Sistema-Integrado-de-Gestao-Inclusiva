@@ -16,6 +16,7 @@ export function estudanteParaHeader(aluno: EstudanteResumo): AlunoHeaderData {
     fotoUrl: null,
     matricula: aluno.matricula,
     curso: aluno.curso,
+    turma: aluno.turma || null,
     tagsDificuldade: aluno.tagsDificuldade.map((tag) => tag.nome),
   };
 }
