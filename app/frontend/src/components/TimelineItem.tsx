@@ -14,6 +14,10 @@ function getEventLabel(tipo: TimelineEventType): string {
       return "PEA";
     case "ATENDIMENTO":
       return "Atendimento";
+    case "RAI":
+      return "RAI — Relatório de Acompanhamento Individualizado";
+    case "RAE":
+      return "RAE — Relatório de Atendimento Educacional";
     default:
       return "Registro";
   }

@@ -1,4 +1,4 @@
-import { Calendar, ClipboardList, FileText, Stethoscope } from "lucide-react";
+import { Calendar, ClipboardList, FileBarChart, FileText, Stethoscope } from "lucide-react";
 import type { TimelineEventDTO, TimelineEventType } from "../types/timeline";
 import { TimelineItem } from "./TimelineItem";
 
@@ -20,6 +20,9 @@ function getEventIcon(tipo: TimelineEventType) {
       return <ClipboardList className={baseClasses} aria-hidden="true" />;
     case "ATENDIMENTO":
       return <Stethoscope className={baseClasses} aria-hidden="true" />;
+    case "RAI":
+    case "RAE":
+      return <FileBarChart className={baseClasses} aria-hidden="true" />;
     default:
       return <Calendar className={baseClasses} aria-hidden="true" />;
   }
