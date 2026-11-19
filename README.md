@@ -400,7 +400,7 @@ Rastreabilidade unificada de todo o ciclo assistencial do discente em ordem cron
 
 | Método | Endpoint | Cabeçalho | Descrição |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/alunos/{alunoId}/timeline` | `Authorization: Bearer <token>` | Recupera a lista ordenada de intervenções, atendimentos, elaboração de PEI/PEA e atualizações de estudos de caso |
+| `GET` | `/api/alunos/{alunoId}/timeline` | `Authorization: Bearer <token>` | Recupera a lista ordenada de intervenções, atendimentos, PEI/PEA, estudos de caso e relatórios RAI/RAE emitidos |
 
 ---
 
@@ -425,6 +425,33 @@ Upload e download seguro de documentos pedagógicos e laudos médicos com cifrag
 * **Header Institucional Oficial:** Identidade visual do IFPB, indicação de campus (CLAI Cajazeiras/Sousa) e acessibilidade integrada com o componente flutuante **VLibras**.
 * **Notificações Flutuantes (Toast Alert):** Feedback em tempo real com suporte a mensagens de erro padronizadas pelo protocolo **RFC 9457**.
 * **Modo Offline / Fallback Integrado:** Possibilidade de execução da interface em modo de demonstração via `localStorage` sem backend ativo (controlado pela flag `VITE_USE_LOCAL_FALLBACK`).
+
+---
+
+### 4.12. Módulo de Relatórios (RAI/RAE) e Notificações (US 03 / US 09 / US 01 / US 08 / US 10)
+
+| Método | Endpoint | Descrição |
+| :--- | :--- | :--- |
+| `POST` | `/api/rais` | Emite um RAI bimestral (ou RAE, via `tipoRelatorio: "RAE"`). Com `indicativoRegressao: true`, gera automaticamente notificação pendente ao perfil `COORDENADOR` para revisão do PEI (**TA3.3**). O registro passa a compor a Linha do Tempo (**TA9.2/TA9.3**). |
+| `GET` | `/api/rais/aluno/{alunoId}` | Lista os relatórios emitidos para o estudante, em ordem cronológica. |
+| `GET` | `/api/rais/{id}` | Detalha um relatório emitido. |
+| `POST` | `/api/notificacoes` | Cria notificação genérica por perfil (reutilizável pelas US 01, US 08 e US 10). |
+| `GET` | `/api/notificacoes?perfil=COORDENADOR&apenasNaoLidas=true` | Lista notificações do perfil, opcionalmente apenas pendentes. |
+| `PATCH` | `/api/notificacoes/{id}/ler` | Marca uma notificação como lida. |
+
+**Payload de emissão (TA3.3):**
+
+```json
+{
+  "alunoId": "11111111-1111-1111-1111-111111111111",
+  "peiId": "33333333-3333-3333-3333-333333333333",
+  "acompanhamentoId": "44444444-4444-4444-4444-444444444444",
+  "tipoRelatorio": "RAI",
+  "bimestre": 2,
+  "indicativoRegressao": true,
+  "descricao": "Indicativo de regressão nas metas do PEI."
+}
+```
 
 ---
 
