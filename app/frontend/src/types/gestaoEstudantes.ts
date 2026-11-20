@@ -11,6 +11,7 @@ export interface EstudanteResumo {
   matricula: string;
   curso: string;
   turma: string;
+  fotoUrl?: string | null;
   status: 'ATIVO' | 'INATIVO' | 'EVADIDO' | string;
   ativo: boolean;
   tagsDificuldade: TagDificuldadeDTO[];
@@ -21,6 +22,7 @@ export interface DadosEstudanteFormulario {
   matricula: string;
   curso: string;
   turma: string;
+  fotoUrl: string;
   status: 'ATIVO' | 'INATIVO' | 'EVADIDO';
   tagsDificuldadeIds: string[];
 }

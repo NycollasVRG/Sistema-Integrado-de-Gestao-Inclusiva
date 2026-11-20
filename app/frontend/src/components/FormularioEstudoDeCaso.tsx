@@ -7,6 +7,7 @@ import type {
   StatusEstudoCaso,
 } from '../types/estudoDeCaso';
 import { ConfirmModal } from './ConfirmModal';
+import { PainelLaudosMedicosEstudoCaso } from './PainelLaudosMedicosEstudoCaso';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Save,
@@ -672,6 +673,9 @@ export const FormularioEstudoDeCaso: React.FC<FormularioEstudoDeCasoProps> = ({
           </div>
         </div>
       </form>
+
+      {/* Seção de Laudos Médicos (LAUDO_MEDICO) com RBAC dinâmico por cargo gerenciado pela Coordenação da CLAI */}
+      <PainelLaudosMedicosEstudoCaso key={aluno.id} alunoId={aluno.id} />
 
       {acaoPendente && (
         <ConfirmModal

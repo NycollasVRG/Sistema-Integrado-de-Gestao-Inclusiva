@@ -1,13 +1,20 @@
 package com.br.CLAI.domain;
 
+import com.br.CLAI.domain.enums.Role;
 import com.br.CLAI.domain.enums.TipoClassificacaoAnexo;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "anexo_estudante", schema = "sigi")
@@ -38,6 +45,21 @@ public class AnexoEstudante extends BaseEntity {
 
     @Column(name = "iv", length = 64)
     private String iv;
+
+    /**
+     * Cargos (Roles) explicitamente liberados pela Coordenação da CLAI para visualizar/baixar
+     * este anexo quando classificado como LAUDO_MEDICO. Por padrão vazio (acesso restrito ao COORDENADOR).
+     */
+    @ElementCollection(targetClass = Role.class)
+    @CollectionTable(
+            name = "anexo_role_permitida",
+            schema = "sigi",
+            joinColumns = @JoinColumn(name = "anexo_estudante_id")
+    )
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 50)
+    @BatchSize(size = 50)
+    private Set<Role> rolesPermitidas = new LinkedHashSet<>();
 
     public AnexoEstudante() {
     }
@@ -128,5 +150,27 @@ public class AnexoEstudante extends BaseEntity {
 
     public void setIv(String iv) {
         this.iv = iv;
+    }
+
+    public Set<Role> getRolesPermitidas() {
+        return rolesPermitidas;
+    }
+
+    public void setRolesPermitidas(Set<Role> rolesPermitidas) {
+        this.rolesPermitidas = rolesPermitidas != null ? new LinkedHashSet<>(rolesPermitidas) : new LinkedHashSet<>();
+    }
+
+    /**
+     * Regra de acesso para LAUDO_MEDICO: o Coordenador(a) da CLAI sempre possui acesso padrão;
+     * demais cargos dependem de liberação explícita em rolesPermitidas.
+     */
+    public boolean isRolePermitidaParaLaudo(Role role) {
+        if (role == null) {
+            return false;
+        }
+        if (role == Role.COORDENADOR) {
+            return true;
+        }
+        return rolesPermitidas != null && rolesPermitidas.contains(role);
     }
 }

@@ -4,6 +4,7 @@ import com.br.CLAI.domain.Aluno;
 import com.br.CLAI.domain.AnexoEstudante;
 import com.br.CLAI.domain.Usuario;
 import com.br.CLAI.domain.enums.NivelRestricao;
+import com.br.CLAI.domain.enums.Role;
 import com.br.CLAI.domain.enums.TipoClassificacaoAnexo;
 import com.br.CLAI.dto.response.AnexoEstudanteResponseDTO;
 import com.br.CLAI.exception.AcessoNegadoException;
@@ -12,12 +13,17 @@ import com.br.CLAI.exception.RegraDeNegocioException;
 import com.br.CLAI.repository.AlunoRepository;
 import com.br.CLAI.repository.AnexoEstudanteRepository;
 import com.br.CLAI.security.RbacGuard;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -33,16 +39,27 @@ public class AnexoEstudanteService {
     private final AnexoEstudanteRepository anexoEstudanteRepository;
     private final AlunoRepository alunoRepository;
     private final CryptoStorageService cryptoStorageService;
-    private final RbacGuard rbacGuard = new RbacGuard();
+    private final RbacGuard rbacGuard;
 
     public AnexoEstudanteService(
             AnexoEstudanteRepository anexoEstudanteRepository,
             AlunoRepository alunoRepository,
             CryptoStorageService cryptoStorageService
     ) {
+        this(anexoEstudanteRepository, alunoRepository, cryptoStorageService, new RbacGuard());
+    }
+
+    @Autowired
+    public AnexoEstudanteService(
+            AnexoEstudanteRepository anexoEstudanteRepository,
+            AlunoRepository alunoRepository,
+            CryptoStorageService cryptoStorageService,
+            RbacGuard rbacGuard
+    ) {
         this.anexoEstudanteRepository = anexoEstudanteRepository;
         this.alunoRepository = alunoRepository;
         this.cryptoStorageService = cryptoStorageService;
+        this.rbacGuard = rbacGuard != null ? rbacGuard : new RbacGuard();
     }
 
     /**
@@ -103,16 +120,27 @@ public class AnexoEstudanteService {
                 ivBase64
         );
 
+        Usuario usuarioAtual = resolverUsuarioAutenticado(null);
+        if (usuarioAtual != null && usuarioAtual.getId() != null) {
+            anexo.setCriadoPor(usuarioAtual.getId());
+            anexo.setAtualizadoPor(usuarioAtual.getId());
+        }
+
         AnexoEstudante salvo = anexoEstudanteRepository.save(anexo);
-        return AnexoEstudanteResponseDTO.fromEntity(salvo);
+        boolean incluirRoles = ehCoordenadorAtivo(usuarioAtual)
+                && classificacao == TipoClassificacaoAnexo.LAUDO_MEDICO;
+        return AnexoEstudanteResponseDTO.fromEntity(salvo, incluirRoles);
     }
 
     /**
-     * Realiza o download de um anexo validando rigorosamente as permissões de saúde (TA11.2 e TA3.2)
-     * e executando a descriptografia exclusivamente em memória (RAM).
+     * Realiza o download de um anexo validando rigorosamente as regras RBAC/LGPD
+     * e executando a descriptografia exclusivamente em memória (RAM):
+     * - LAUDO_MEDICO: apenas COORDENADOR (padrão) ou cargos explicitamente liberados no laudo.
+     * - DIAGNOSTICO_NEUROPSICOLOGICO: apenas SUPER_RESTRICAO + autorizacaoSaude = true (TA11.2).
+     * - DOCUMENTO_PEDAGOGICO: qualquer usuário autenticado ativo.
      */
     @Transactional(readOnly = true)
-    public AnexoDownloadPayload downloadAnexo(UUID anexoId, org.springframework.security.oauth2.jwt.Jwt jwtAutenticado) {
+    public AnexoDownloadPayload downloadAnexo(UUID anexoId, Jwt jwtAutenticado) {
         Usuario usuario = jwtAutenticado != null ? rbacGuard.converterJwtParaUsuario(jwtAutenticado) : null;
         return downloadAnexo(anexoId, usuario);
     }
@@ -124,9 +152,11 @@ public class AnexoEstudanteService {
 
         Usuario usuario = resolverUsuarioAutenticado(usuarioAutenticado);
 
-        if (anexo.getClassificacao() != null && anexo.getClassificacao().isSensivel()) {
+        if (anexo.getClassificacao() == TipoClassificacaoAnexo.LAUDO_MEDICO) {
+            validarAcessoLaudoMedico(anexo, usuario);
+        } else if (anexo.getClassificacao() != null && anexo.getClassificacao().isSensivel()) {
             validarAcessoEstritoSaude(usuario);
-        } else if (usuario == null) {
+        } else if (usuario == null || !Boolean.TRUE.equals(usuario.getAcessoAtivo())) {
             throw new AcessoNegadoException("Autenticação obrigatória para acessar documentos do estudante.");
         }
 
@@ -146,8 +176,118 @@ public class AnexoEstudanteService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public List<AnexoEstudanteResponseDTO> listarAnexosPorEstudante(UUID estudanteId) {
+        return listarAnexosPorEstudante(estudanteId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AnexoEstudanteResponseDTO> listarAnexosPorEstudante(UUID estudanteId, Jwt jwtAutenticado) {
+        if (!alunoRepository.existsById(estudanteId)) {
+            throw new NaoEncontradoException("Estudante não encontrado com o ID: " + estudanteId);
+        }
+
+        Usuario usuario = resolverUsuarioPorJwtOuContexto(jwtAutenticado);
+        boolean ehCoordenador = ehCoordenadorAtivo(usuario);
+
+        return anexoEstudanteRepository.findByAlunoIdOrderByCriadoEmDesc(estudanteId)
+                .stream()
+                .filter(anexo -> anexo.getClassificacao() != TipoClassificacaoAnexo.LAUDO_MEDICO
+                        || podeVisualizarLaudoMedico(anexo, usuario))
+                .map(anexo -> AnexoEstudanteResponseDTO.fromEntity(anexo, ehCoordenador))
+                .toList();
+    }
+
+    /**
+     * Lista exclusivamente os anexos classificados como LAUDO_MEDICO visíveis ao cargo do usuário
+     * para exibição e gestão no Estudo de Caso.
+     */
+    @Transactional(readOnly = true)
+    public List<AnexoEstudanteResponseDTO> listarLaudosMedicosPorEstudante(UUID estudanteId, Jwt jwtAutenticado) {
+        if (!alunoRepository.existsById(estudanteId)) {
+            throw new NaoEncontradoException("Estudante não encontrado com o ID: " + estudanteId);
+        }
+
+        Usuario usuario = resolverUsuarioPorJwtOuContexto(jwtAutenticado);
+        boolean ehCoordenador = ehCoordenadorAtivo(usuario);
+
+        return anexoEstudanteRepository
+                .findByAlunoIdAndClassificacaoOrderByCriadoEmDesc(estudanteId, TipoClassificacaoAnexo.LAUDO_MEDICO)
+                .stream()
+                .filter(anexo -> podeVisualizarLaudoMedico(anexo, usuario))
+                .map(anexo -> AnexoEstudanteResponseDTO.fromEntity(anexo, ehCoordenador))
+                .toList();
+    }
+
+    /**
+     * Libera ou revoga dinamicamente os cargos (Roles) autorizados a visualizar/baixar um LAUDO_MEDICO.
+     * Operação exclusiva do Coordenador(a) da CLAI.
+     */
+    @Transactional
+    public AnexoEstudanteResponseDTO atualizarPermissoesLaudo(
+            UUID anexoId,
+            Set<Role> rolesPermitidas,
+            Jwt jwtAutenticado
+    ) {
+        Usuario usuario = resolverUsuarioPorJwtOuContexto(jwtAutenticado);
+        if (!ehCoordenadorAtivo(usuario)) {
+            throw new AcessoNegadoException(
+                    "Acesso negado: apenas a Coordenação da CLAI pode gerenciar permissões de visualização de Laudos Médicos."
+            );
+        }
+
+        AnexoEstudante anexo = anexoEstudanteRepository.findById(anexoId)
+                .orElseThrow(() -> new NaoEncontradoException("Anexo não encontrado com o ID: " + anexoId));
+
+        if (anexo.getClassificacao() != TipoClassificacaoAnexo.LAUDO_MEDICO) {
+            throw new RegraDeNegocioException(
+                    "O controle de permissões por cargo aplica-se exclusivamente a anexos classificados como LAUDO_MEDICO."
+            );
+        }
+
+        Set<Role> rolesSanitizadas = new LinkedHashSet<>();
+        if (rolesPermitidas != null) {
+            for (Role role : rolesPermitidas) {
+                if (role != null && role != Role.COORDENADOR) {
+                    rolesSanitizadas.add(role);
+                }
+            }
+        }
+
+        anexo.setRolesPermitidas(rolesSanitizadas);
+        if (usuario.getId() != null) {
+            anexo.setAtualizadoPor(usuario.getId());
+        }
+        anexo.setAtualizadoEm(LocalDateTime.now());
+
+        AnexoEstudante salvo = anexoEstudanteRepository.save(anexo);
+        return AnexoEstudanteResponseDTO.fromEntity(salvo, true);
+    }
+
+    private void validarAcessoLaudoMedico(AnexoEstudante anexo, Usuario usuario) {
+        if (!podeVisualizarLaudoMedico(anexo, usuario)) {
+            throw new AcessoNegadoException(
+                    "Acesso negado: a visualização e o download deste Laudo Médico são restritos à Coordenação da CLAI e aos cargos expressamente liberados."
+            );
+        }
+    }
+
+    private boolean podeVisualizarLaudoMedico(AnexoEstudante anexo, Usuario usuario) {
+        if (usuario == null || !Boolean.TRUE.equals(usuario.getAcessoAtivo()) || usuario.getRole() == null) {
+            return false;
+        }
+        return anexo.isRolePermitidaParaLaudo(usuario.getRole());
+    }
+
+    private boolean ehCoordenadorAtivo(Usuario usuario) {
+        return usuario != null
+                && Boolean.TRUE.equals(usuario.getAcessoAtivo())
+                && usuario.getRole() == Role.COORDENADOR;
+    }
+
     private void validarAcessoEstritoSaude(Usuario usuario) {
         boolean autorizado = usuario != null
+                && Boolean.TRUE.equals(usuario.getAcessoAtivo())
                 && usuario.getNivelRestricao() == NivelRestricao.SUPER_RESTRICAO
                 && Boolean.TRUE.equals(usuario.getAutorizacaoSaude());
 
@@ -158,22 +298,16 @@ public class AnexoEstudanteService {
         }
     }
 
+    private Usuario resolverUsuarioPorJwtOuContexto(Jwt jwtAutenticado) {
+        Usuario viaJwt = jwtAutenticado != null ? rbacGuard.converterJwtParaUsuario(jwtAutenticado) : null;
+        return resolverUsuarioAutenticado(viaJwt);
+    }
+
     private Usuario resolverUsuarioAutenticado(Usuario usuarioParametro) {
         if (usuarioParametro != null) {
             return usuarioParametro;
         }
         return rbacGuard.getUsuarioAutenticado().orElse(null);
-    }
-
-    @Transactional(readOnly = true)
-    public List<AnexoEstudanteResponseDTO> listarAnexosPorEstudante(UUID estudanteId) {
-        if (!alunoRepository.existsById(estudanteId)) {
-            throw new NaoEncontradoException("Estudante não encontrado com o ID: " + estudanteId);
-        }
-        return anexoEstudanteRepository.findByAlunoIdOrderByCriadoEmDesc(estudanteId)
-                .stream()
-                .map(AnexoEstudanteResponseDTO::fromEntity)
-                .toList();
     }
 
     private String sanitizarNomeArquivo(String nomeBruto) {

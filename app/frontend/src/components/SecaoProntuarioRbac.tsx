@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Download, FileLock2, FileText, HeartHandshake, Lock, Users } from 'lucide-react';
+import { CheckCircle2, Download, FileLock2, FileText, HeartHandshake, Lock, Upload, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { AnexoService, buscarProntuarioConsolidado } from '../services/anexoService';
 import { notificarAcessoNegado } from '../services/authSessao';
 import { isProblem } from '../services/apiClient';
 import { isAnexoSensivel, ROTULO_CLASSIFICACAO, type AnexoEstudanteDTO } from '../types/anexo';
 import type { ProntuarioConsolidadoDTO } from '../types/prontuario';
+import { ModalUploadAnexo } from './ModalUploadAnexo';
 
 interface Props {
   alunoId: string;
@@ -25,14 +26,15 @@ function formatarTamanho(bytes: number): string {
  * Use `key={alunoId}` no pai para reiniciar o estado ao trocar de aluno.
  */
 export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
-  const { podeAcessarDadosSensiveis, podeBaixarLaudo } = useAuth();
+  const { podeAcessarDadosSensiveis, podeBaixarLaudo, isCoordenador } = useAuth();
   const [prontuario, setProntuario] = useState<ProntuarioConsolidadoDTO | null>(null);
   const [anexos, setAnexos] = useState<AnexoEstudanteDTO[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
-
   const [erroDownload, setErroDownload] = useState<string | null>(null);
+  const [modalUploadAberto, setModalUploadAberto] = useState(false);
+  const [mensagemSucessoUpload, setMensagemSucessoUpload] = useState<string | null>(null);
 
   useEffect(() => {
     const controlador = new AbortController();
@@ -52,10 +54,40 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
     return () => controlador.abort();
   }, [alunoId]);
 
+  const handleUploadSucesso = (novoAnexo: AnexoEstudanteDTO) => {
+    setAnexos((prev) => [novoAnexo, ...prev.filter((item) => item.id !== novoAnexo.id)]);
+    setErro(null);
+    setErroDownload(null);
+    const notaSigiloLaudo =
+      novoAnexo.classificacao === 'LAUDO_MEDICO' && !isCoordenador
+        ? ' Laudos Médicos ficam restritos à Coordenação da CLAI até liberação do seu cargo no Estudo de Caso.'
+        : '';
+    setMensagemSucessoUpload(
+      `"${novoAnexo.nomeOriginal}" (${ROTULO_CLASSIFICACAO[novoAnexo.classificacao] ?? novoAnexo.classificacao}) enviado com sucesso${novoAnexo.criptografado ? ' e cifrado em repouso (AES-256-GCM)' : ''}.${notaSigiloLaudo}`,
+    );
+    // Sincroniza listagem com o backend para manter ordenação, RBAC e metadados atualizados.
+    void AnexoService.listarPorAluno(alunoId)
+      .then((lista) => setAnexos(lista))
+      .catch(() => {
+        // Mantém a inserção otimista já exibida na tela.
+      });
+  };
+
+  const anexoBloqueadoParaPerfil = (anexo: AnexoEstudanteDTO): boolean => {
+    // LAUDO_MEDICO já é filtrado pelo backend (só chegam laudos permitidos ao COORDENADOR ou cargos liberados).
+    if (anexo.classificacao === 'LAUDO_MEDICO') {
+      return false;
+    }
+    if (anexo.classificacao === 'DIAGNOSTICO_NEUROPSICOLOGICO') {
+      return !podeBaixarLaudo;
+    }
+    return false;
+  };
+
   const baixar = async (anexo: AnexoEstudanteDTO) => {
     setErroDownload(null);
-    // TA11.2: bloqueio preventivo, sem sequer chamar a API.
-    if (isAnexoSensivel(anexo.classificacao) && !podeBaixarLaudo) {
+    // TA11.2: bloqueio preventivo para diagnósticos neuropsicológicos sem SUPER_RESTRICAO + autorizacaoSaude.
+    if (anexoBloqueadoParaPerfil(anexo)) {
       notificarAcessoNegado();
       return;
     }
@@ -105,10 +137,33 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
       )}
 
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-3">
-        <h3 className="text-sm font-bold text-ifpb-dark flex items-center">
-          <FileText className="w-4 h-4 mr-2 text-ifpb-teal" />
-          Anexos e Documentos
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h3 className="text-sm font-bold text-ifpb-dark flex items-center">
+            <FileText className="w-4 h-4 mr-2 text-ifpb-teal" />
+            Anexos e Documentos
+          </h3>
+          <button
+            type="button"
+            onClick={() => {
+              setMensagemSucessoUpload(null);
+              setModalUploadAberto(true);
+            }}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-ifpb-teal hover:bg-ifpb-tealHover shadow-2xs transition-colors cursor-pointer self-start sm:self-auto"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Enviar Anexo
+          </button>
+        </div>
+
+        {mensagemSucessoUpload && (
+          <p
+            role="status"
+            className="text-xs text-emerald-800 bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 flex items-center gap-2"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{mensagemSucessoUpload}</span>
+          </p>
+        )}
 
         {erroDownload && (
           <p role="alert" className="text-xs text-red-700 bg-red-50 p-2.5 rounded-lg border border-red-200">
@@ -134,7 +189,7 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
         <ul className="divide-y divide-gray-100">
           {anexos.map((anexo) => {
             const sensivel = isAnexoSensivel(anexo.classificacao);
-            const bloqueado = sensivel && !podeBaixarLaudo;
+            const bloqueado = anexoBloqueadoParaPerfil(anexo);
             return (
               <li key={anexo.id} className="py-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
@@ -173,6 +228,13 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
           })}
         </ul>
       </div>
+
+      <ModalUploadAnexo
+        isOpen={modalUploadAberto}
+        onClose={() => setModalUploadAberto(false)}
+        alunoId={alunoId}
+        onUploadSucesso={handleUploadSucesso}
+      />
     </div>
   );
 };

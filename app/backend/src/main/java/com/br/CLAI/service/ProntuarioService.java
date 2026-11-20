@@ -57,7 +57,13 @@ public class ProntuarioService {
 
         int totalPeis = peiRepository.findByAcompanhamento_Aluno_Id(alunoId).size();
         int totalPeas = peaRepository.findByAcompanhamento_Aluno_Id(alunoId).size();
-        int totalAnexos = anexoEstudanteRepository.findByAlunoIdOrderByCriadoEmDesc(alunoId).size();
+        var usuarioAutenticado = rbacGuard != null ? rbacGuard.getUsuarioAutenticado().orElse(null) : null;
+        int totalAnexos = (int) anexoEstudanteRepository.findByAlunoIdOrderByCriadoEmDesc(alunoId).stream()
+                .filter(anexo -> anexo.getClassificacao() != com.br.CLAI.domain.enums.TipoClassificacaoAnexo.LAUDO_MEDICO
+                        || usuarioAutenticado == null
+                        || (Boolean.TRUE.equals(usuarioAutenticado.getAcessoAtivo())
+                                && anexo.isRolePermitidaParaLaudo(usuarioAutenticado.getRole())))
+                .count();
 
         UUID estudoId = estudoAtivo != null ? estudoAtivo.getId() : null;
         StatusEstudoCaso statusEstudo = estudoAtivo != null ? estudoAtivo.getStatus() : null;

@@ -211,7 +211,7 @@ class AnexoSecurityIntegrationTest {
     }
 
     @Test
-    @DisplayName("CA 1 [Ref. TA11.1] + CA 2 [Ref. TA11.2]: Deve manter laudo ilegível em disco e descriptografar exclusivamente em memória para usuário com SUPER_RESTRICAO + autorizacaoSaude = true")
+    @DisplayName("CA 1 [Ref. TA11.1] + CA 2 [Ref. TA11.2]: Deve manter laudo ilegível em disco e descriptografar em memória para COORDENADOR (padrão LAUDO_MEDICO) e SUPER_RESTRICAO + autorizacaoSaude para DIAGNOSTICO_NEUROPSICOLOGICO")
     void deveDescriptografarEmMemoriaParaUsuarioComSuperRestricaoEAutorizacaoSaude() throws Exception {
         byte[] pdfLaudoOriginal = (
                 "%PDF-1.7\n" +
@@ -245,11 +245,11 @@ class AnexoSecurityIntegrationTest {
         assertFalse(textoBrutoDisco.startsWith("%PDF-"));
         assertFalse(textoBrutoDisco.contains("CID G40"));
 
-        // [CA 2 - TA11.2]: Download autenticado com JWT de usuário SUPER_RESTRICAO + autorizacaoSaude = true
-        String tokenSaudeAutorizada = jwtService.gerarToken(profissionalSaudeSuperRestrito);
+        // [RBAC Laudo Médico]: Por padrão, COORDENADOR baixa LAUDO_MEDICO em memória; outro cargo sem liberação recebe 403
+        String tokenCoordenador = jwtService.gerarToken(coordenadorSemAutorizacaoSaude);
 
         MvcResult downloadResult = mockMvc.perform(get("/api/anexos/{anexoId}/download", dtoCriado.id())
-                        .header("Authorization", "Bearer " + tokenSaudeAutorizada))
+                        .header("Authorization", "Bearer " + tokenCoordenador))
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE))
                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, org.hamcrest.Matchers.containsString("laudo_neurologico_mariana.pdf")))
@@ -258,6 +258,7 @@ class AnexoSecurityIntegrationTest {
         byte[] pdfBaixadoEmMemoria = downloadResult.getResponse().getContentAsByteArray();
         assertArrayEquals(pdfLaudoOriginal, pdfBaixadoEmMemoria, "O PDF baixado deve ser 100% idêntico ao original");
         assertTrue(new String(pdfBaixadoEmMemoria, StandardCharsets.UTF_8).startsWith("%PDF-1.7"));
+        SecurityContextHolder.clearContext();
 
         // Garantir que nenhum arquivo temporário descriptografado foi criado no diretório do volume
         try (Stream<Path> caminhosNoVolume = Files.walk(tempVolumeDir)) {
@@ -265,6 +266,20 @@ class AnexoSecurityIntegrationTest {
             assertEquals(1, arquivosRegulares.size(), "Deve existir apenas o arquivo .enc cifrado no volume, sem arquivos temporários abertos");
             assertTrue(arquivosRegulares.get(0).toString().endsWith(".enc"));
         }
+
+        // [CA 2 - TA11.2]: DIAGNOSTICO_NEUROPSICOLOGICO continua acessível para SUPER_RESTRICAO + autorizacaoSaude = true
+        AnexoEstudanteResponseDTO diagnosticoCriado = anexoEstudanteService.uploadAnexo(
+                estudanteId,
+                new MockMultipartFile("arquivo", "diagnostico_mariana.pdf", MediaType.APPLICATION_PDF_VALUE, pdfLaudoOriginal),
+                TipoClassificacaoAnexo.DIAGNOSTICO_NEUROPSICOLOGICO
+        );
+
+        String tokenSaudeAutorizada = jwtService.gerarToken(profissionalSaudeSuperRestrito);
+        MvcResult downloadDiagResult = mockMvc.perform(get("/api/anexos/{anexoId}/download", diagnosticoCriado.id())
+                        .header("Authorization", "Bearer " + tokenSaudeAutorizada))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertArrayEquals(pdfLaudoOriginal, downloadDiagResult.getResponse().getContentAsByteArray());
     }
 
     @Test

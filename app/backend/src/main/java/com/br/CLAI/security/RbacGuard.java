@@ -254,6 +254,24 @@ public class RbacGuard {
     }
 
     /**
+     * Verifica se o usuário autenticado possui cargo COORDENADOR (Coordenação da CLAI) ativo.
+     */
+    public boolean isCoordenador() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+
+        Optional<Usuario> usuarioOpt = getUsuarioAutenticado();
+        if (usuarioOpt.isPresent()) {
+            Usuario usuario = usuarioOpt.get();
+            return Boolean.TRUE.equals(usuario.getAcessoAtivo()) && usuario.getRole() == Role.COORDENADOR;
+        }
+
+        return possuiAlgumaAuthority(auth.getAuthorities(), Set.of("ROLE_COORDENADOR"));
+    }
+
+    /**
      * Verifica se o usuário possui autorização específica para sigilo médico (laudos/saúde).
      */
     public boolean temAutorizacaoSaude() {

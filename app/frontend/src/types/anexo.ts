@@ -1,3 +1,5 @@
+import type { Role } from './auth';
+
 /** Contratos de anexos do estudante (AnexoEstudanteResponseDTO do back-end). */
 export type TipoClassificacaoAnexo =
   | 'LAUDO_MEDICO'
@@ -13,6 +15,8 @@ export interface AnexoEstudanteDTO {
   classificacao: TipoClassificacaoAnexo;
   criptografado: boolean;
   criadoEm: string;
+  /** Retornado somente para COORDENADOR em anexos LAUDO_MEDICO. */
+  rolesPermitidas?: Role[];
 }
 
 /** TA11.2: laudos e diagnósticos neuropsicológicos exigem SUPER_RESTRICAO + autorizacaoSaude. */

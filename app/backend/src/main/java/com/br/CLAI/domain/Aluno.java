@@ -23,6 +23,9 @@ public class Aluno extends BaseEntity {
     @Column(name = "turma", length = 50)
     private String turma;
 
+    @Column(name = "foto_url", length = 1000)
+    private String fotoUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private StatusAluno status = StatusAluno.ATIVO;
@@ -82,6 +85,14 @@ public class Aluno extends BaseEntity {
 
     public void setTurma(String turma) {
         this.turma = turma;
+    }
+
+    public String getFotoUrl() {
+        return fotoUrl;
+    }
+
+    public void setFotoUrl(String fotoUrl) {
+        this.fotoUrl = fotoUrl;
     }
 
     public StatusAluno getStatus() {

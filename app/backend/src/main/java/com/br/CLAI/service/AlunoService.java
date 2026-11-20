@@ -168,10 +168,19 @@ public class AlunoService {
         aluno.setMatricula(matricula);
         aluno.setCurso(dto.curso().trim());
         aluno.setTurma(dto.turma().trim());
+        aluno.setFotoUrl(normalizarFotoUrl(dto.fotoUrl()));
         aluno.setStatus(dto.status());
         // Invariante: ativo acompanha o status (INATIVO/EVADIDO => false).
         aluno.setAtivo(!dto.status().isEncerrado());
         aluno.setTagsDificuldade(new LinkedHashSet<>(buscarTags(dto.tagsDificuldadeIds())));
+    }
+
+    private String normalizarFotoUrl(String fotoUrl) {
+        if (fotoUrl == null) {
+            return null;
+        }
+        String trimmed = fotoUrl.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private List<IndicadorReutilizavel> buscarTags(List<UUID> ids) {

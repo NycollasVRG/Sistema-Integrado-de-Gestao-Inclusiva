@@ -4,5 +4,6 @@ export interface AlunoHeaderData {
   fotoUrl?: string | null;
   matricula: string;
   curso: string;
+  turma?: string | null;
   tagsDificuldade: string[];
 }

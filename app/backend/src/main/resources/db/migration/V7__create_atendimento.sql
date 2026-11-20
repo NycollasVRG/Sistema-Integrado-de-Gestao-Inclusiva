@@ -1,6 +1,6 @@
 -- =============================================================================
 -- SIGI / CLAI - Sistema Integrado de Gestão Inclusiva
--- Flyway Migration V6: Registro de Atendimentos Diários (US 04 / TA9.2)
+-- Flyway Migration V7: Registro de Atendimentos Diários (US 04 / TA9.2)
 -- Banco de Dados: PostgreSQL 14+ (Schema: sigi)
 -- =============================================================================
 -- Substitui o mock em localStorage da US 04 por persistência real e habilita a
