@@ -1,8 +1,25 @@
-import React, { useState } from 'react';
-import { AlertTriangle, Calendar, CheckCircle2, Stethoscope, User } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  Calendar,
+  CheckCircle2,
+  RotateCcw,
+  Save,
+  Stethoscope,
+  Trash2,
+  User,
+  WifiOff,
+} from 'lucide-react';
 import { ModalBase } from './ModalBase';
 import { ModalAlunoHeader } from './ModalAlunoHeader';
 import { ProntuarioService } from '../services/prontuarioService';
+import {
+  lerRascunho,
+  removerRascunho,
+  salvarRascunho,
+  type RascunhoAtendimento,
+} from '../services/rascunhoAtendimentoService';
+import { useAuth } from '../contexts/AuthContext';
 import type {
   AlunoModalData,
   NovoAtendimentoResponseDTO,
@@ -10,6 +27,7 @@ import type {
 } from '../types/prontuarioAcoes';
 import type { ProblemDetailRFC9457 } from '../types/estudoDeCaso';
 import { dataLocalISO } from '../utils/data';
+import { OPCOES_TIPO_ATENDIMENTO } from '../utils/atendimento';
 
 export interface ModalNovoAtendimentoProps {
   isOpen: boolean;
@@ -19,46 +37,148 @@ export interface ModalNovoAtendimentoProps {
   onError?: (titulo: string, detalhe: string) => void;
 }
 
-const OPCOES_TIPO_ATENDIMENTO: { valor: TipoAtendimento; rotulo: string }[] = [
-  { valor: 'PEDAGOGICO', rotulo: 'Acompanhamento Pedagógico' },
-  { valor: 'PSICOLOGICO', rotulo: 'Atendimento Psicológico' },
-  { valor: 'ASSISTENCIA_SOCIAL', rotulo: 'Assistência Social' },
-  { valor: 'ACESSIBILIDADE', rotulo: 'Suporte de Acessibilidade / AEE' },
-  { valor: 'MULTIDISCIPLINAR', rotulo: 'Reunião Multidisciplinar / Família' },
-];
+/** TA4.3: tempo sem digitar antes de gravar o rascunho. */
+export const DEBOUNCE_RASCUNHO_MS = 2000;
 
-export const ModalNovoAtendimento: React.FC<ModalNovoAtendimentoProps> = ({
-  isOpen,
+const PROFISSIONAL_PADRAO = 'Equipe Multidisciplinar CLAI';
+
+function rascunhoPadrao(): RascunhoAtendimento {
+  return {
+    tipoAtendimento: 'PEDAGOGICO',
+    dataAtendimento: dataLocalISO(),
+    profissionalResponsavel: PROFISSIONAL_PADRAO,
+    descricao: '',
+    encaminhamentos: '',
+  };
+}
+
+function formatarHoraRascunho(ts: number): string {
+  const d = new Date(ts);
+  const hoje = new Date();
+  const mesmoDia = d.toDateString() === hoje.toDateString();
+  return mesmoDia
+    ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+/**
+ * Casca: o formulário só existe enquanto o modal está aberto. Cada abertura monta o conteúdo do zero
+ * e o estado inicial vem do rascunho salvo (por usuário + aluno), o que cobre tanto a reabertura
+ * acidental quanto o recarregamento da aba após queda de conexão.
+ */
+export const ModalNovoAtendimento: React.FC<ModalNovoAtendimentoProps> = (props) => {
+  if (!props.isOpen) return null;
+  return <ConteudoModalNovoAtendimento key={props.aluno.id} {...props} />;
+};
+
+const ConteudoModalNovoAtendimento: React.FC<ModalNovoAtendimentoProps> = ({
   onClose,
   aluno,
   onSuccess,
   onError,
 }) => {
-  const [tipoAtendimento, setTipoAtendimento] = useState<TipoAtendimento>('PEDAGOGICO');
-  const [dataAtendimento, setDataAtendimento] = useState<string>(() => dataLocalISO());
+  const { sessao } = useAuth();
+  const userId = sessao?.userId ?? '';
+  const alunoId = aluno.id;
+
+  // Lido uma única vez, na montagem (inicializador preguiçoso).
+  const [restaurado] = useState(() => lerRascunho(userId, alunoId));
+  const inicial = restaurado?.dados ?? rascunhoPadrao();
+
+  const [tipoAtendimento, setTipoAtendimento] = useState<TipoAtendimento>(inicial.tipoAtendimento);
+  const [dataAtendimento, setDataAtendimento] = useState<string>(inicial.dataAtendimento);
   const [profissionalResponsavel, setProfissionalResponsavel] = useState<string>(
-    'Equipe Multidisciplinar CLAI'
+    inicial.profissionalResponsavel
   );
-  const [descricao, setDescricao] = useState<string>('');
-  const [encaminhamentos, setEncaminhamentos] = useState<string>('');
+  const [descricao, setDescricao] = useState<string>(inicial.descricao);
+  const [encaminhamentos, setEncaminhamentos] = useState<string>(inicial.encaminhamentos);
 
   const [erroDescricao, setErroDescricao] = useState<string | null>(null);
   const [erroProfissional, setErroProfissional] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const limparFormulario = () => {
-    setTipoAtendimento('PEDAGOGICO');
-    setDataAtendimento(dataLocalISO());
-    setProfissionalResponsavel('Equipe Multidisciplinar CLAI');
-    setDescricao('');
-    setEncaminhamentos('');
+  const [rascunhoSalvoEm, setRascunhoSalvoEm] = useState<number | null>(restaurado?.salvoEm ?? null);
+  const [avisoRestaurado, setAvisoRestaurado] = useState<boolean>(restaurado !== null);
+  const [online, setOnline] = useState<boolean>(() =>
+    typeof navigator === 'undefined' ? true : navigator.onLine
+  );
+
+  // --- Auto-salvamento (TA4.3) -------------------------------------------------------------
+  const snapshot = useMemo<RascunhoAtendimento>(
+    () => ({ tipoAtendimento, dataAtendimento, profissionalResponsavel, descricao, encaminhamentos }),
+    [tipoAtendimento, dataAtendimento, profissionalResponsavel, descricao, encaminhamentos]
+  );
+  const snapshotRef = useRef<RascunhoAtendimento>(snapshot);
+  const ultimoSalvoRef = useRef<string>(JSON.stringify(inicial));
+  // Após o registro bem-sucedido o rascunho já foi apagado: nada mais pode recriá-lo.
+  const encerradoRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    snapshotRef.current = snapshot;
+  }, [snapshot]);
+
+  /** Grava imediatamente o que está na tela (ignora se nada mudou desde a última gravação). */
+  const salvarAgora = useCallback(() => {
+    if (encerradoRef.current) return;
+    const atual = snapshotRef.current;
+    const serializado = JSON.stringify(atual);
+    if (serializado === ultimoSalvoRef.current) return;
+    ultimoSalvoRef.current = serializado;
+    setRascunhoSalvoEm(salvarRascunho(userId, alunoId, atual));
+  }, [userId, alunoId]);
+
+  // Debounce: grava 2s após a última alteração.
+  useEffect(() => {
+    const id = setTimeout(salvarAgora, DEBOUNCE_RASCUNHO_MS);
+    return () => clearTimeout(id);
+  }, [snapshot, salvarAgora]);
+
+  // Não perde o que foi digitado nos últimos 2s se a aba for fechada/recarregada/ocultada,
+  // nem se o modal for desmontado (fechar, trocar de aluno).
+  useEffect(() => {
+    const aoOcultar = () => {
+      if (document.visibilityState === 'hidden') salvarAgora();
+    };
+    window.addEventListener('pagehide', salvarAgora);
+    document.addEventListener('visibilitychange', aoOcultar);
+    return () => {
+      window.removeEventListener('pagehide', salvarAgora);
+      document.removeEventListener('visibilitychange', aoOcultar);
+      salvarAgora();
+    };
+  }, [salvarAgora]);
+
+  useEffect(() => {
+    const aoMudar = () => setOnline(navigator.onLine);
+    window.addEventListener('online', aoMudar);
+    window.addEventListener('offline', aoMudar);
+    return () => {
+      window.removeEventListener('online', aoMudar);
+      window.removeEventListener('offline', aoMudar);
+    };
+  }, []);
+
+  const descartarRascunho = () => {
+    if (isSubmitting) return;
+    if (!window.confirm('Descartar o rascunho e limpar o texto digitado?')) return;
+    const padrao = rascunhoPadrao();
+    removerRascunho(userId, alunoId);
+    ultimoSalvoRef.current = JSON.stringify(padrao);
+    setTipoAtendimento(padrao.tipoAtendimento);
+    setDataAtendimento(padrao.dataAtendimento);
+    setProfissionalResponsavel(padrao.profissionalResponsavel);
+    setDescricao(padrao.descricao);
+    setEncaminhamentos(padrao.encaminhamentos);
     setErroDescricao(null);
     setErroProfissional(null);
+    setRascunhoSalvoEm(null);
+    setAvisoRestaurado(false);
   };
 
+  // Fechar/Cancelar NÃO descarta: o rascunho fica guardado para a próxima abertura.
   const handleFechar = () => {
     if (isSubmitting) return;
-    limparFormulario();
+    salvarAgora();
     onClose();
   };
 
@@ -83,11 +203,13 @@ export const ModalNovoAtendimento: React.FC<ModalNovoAtendimentoProps> = ({
 
     if (possuiErro) return;
 
+    // Garante a cópia de segurança antes da requisição: se a conexão cair durante o envio, nada se perde.
+    salvarAgora();
+
     setIsSubmitting(true);
     try {
       const criado = await ProntuarioService.criarAtendimento({
         alunoId: aluno.id,
-        matriculaAluno: aluno.matricula,
         tipoAtendimento,
         dataAtendimento,
         profissionalResponsavel: profissionalResponsavel.trim(),
@@ -95,10 +217,14 @@ export const ModalNovoAtendimento: React.FC<ModalNovoAtendimentoProps> = ({
         encaminhamentos: encaminhamentos.trim() || undefined,
       });
 
-      limparFormulario();
+      // Persistido no servidor: o rascunho cumpriu o papel e deve sumir.
+      encerradoRef.current = true;
+      removerRascunho(userId, alunoId);
+
       await onSuccess(criado);
       onClose();
     } catch (err: unknown) {
+      // Falha (ex.: sem conexão): o formulário e o rascunho permanecem intactos para nova tentativa.
       const prob = err as Partial<ProblemDetailRFC9457>;
       if (onError) {
         onError(
@@ -113,7 +239,7 @@ export const ModalNovoAtendimento: React.FC<ModalNovoAtendimentoProps> = ({
 
   return (
     <ModalBase
-      isOpen={isOpen}
+      isOpen
       onClose={handleFechar}
       titulo="Novo Atendimento"
       subtitulo="Registro rápido de atendimento vinculado ao estudante em foco"
@@ -145,6 +271,41 @@ export const ModalNovoAtendimento: React.FC<ModalNovoAtendimentoProps> = ({
       <ModalAlunoHeader aluno={aluno} />
 
       <form id="form-novo-atendimento" onSubmit={handleSubmit} className="space-y-4">
+        {avisoRestaurado && restaurado && (
+          <div
+            role="status"
+            className="flex items-start justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5"
+          >
+            <div className="flex items-start space-x-2 text-xs text-amber-900">
+              <RotateCcw className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+              <p>
+                <strong>Rascunho restaurado.</strong> Recuperamos o texto que você havia digitado
+                (salvo em {formatarHoraRascunho(restaurado.salvoEm)}). Revise e registre o atendimento.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAvisoRestaurado(false)}
+              className="text-[11px] font-semibold text-amber-800 hover:underline cursor-pointer shrink-0"
+            >
+              Ok
+            </button>
+          </div>
+        )}
+
+        {!online && (
+          <div
+            role="alert"
+            className="flex items-start space-x-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-800"
+          >
+            <WifiOff className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
+            <p>
+              Sem conexão com a internet. O que você digita continua sendo guardado como rascunho neste
+              navegador; registre o atendimento quando a conexão voltar.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Tipo de Atendimento */}
           <div>
@@ -275,6 +436,30 @@ export const ModalNovoAtendimento: React.FC<ModalNovoAtendimentoProps> = ({
             disabled={isSubmitting}
             className="w-full p-3 rounded-lg text-xs border border-gray-300 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal resize-y"
           />
+        </div>
+
+        {/* Estado do auto-salvamento (TA4.3) */}
+        <div
+          className="flex items-center justify-between gap-3 pt-1 text-[11px] text-gray-500"
+          aria-live="polite"
+        >
+          <span className="inline-flex items-center">
+            <Save className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
+            {rascunhoSalvoEm
+              ? `Rascunho salvo automaticamente às ${formatarHoraRascunho(rascunhoSalvoEm)}`
+              : 'O texto digitado é salvo automaticamente como rascunho'}
+          </span>
+          {rascunhoSalvoEm && (
+            <button
+              type="button"
+              onClick={descartarRascunho}
+              disabled={isSubmitting}
+              className="inline-flex items-center font-semibold text-gray-500 hover:text-ifpb-red cursor-pointer disabled:opacity-60"
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1" />
+              Descartar rascunho
+            </button>
+          )}
         </div>
       </form>
     </ModalBase>

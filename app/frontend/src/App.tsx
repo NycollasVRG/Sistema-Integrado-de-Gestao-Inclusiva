@@ -1258,11 +1258,15 @@ const AppConteudo: React.FC = () => {
         isOpen={modalAtivo === 'ATENDIMENTO'}
         onClose={() => setModalAtivo(null)}
         aluno={alunoEmFoco}
-        onSuccess={() => {
+        onSuccess={async () => {
+          // TA4.1/TA4.2: já persistido no PostgreSQL; recarrega a Linha do Tempo para exibi-lo de imediato.
+          if (alunoSelecionado) {
+            await carregarTimeline(alunoSelecionado.id);
+          }
           adicionarToast(
             'sucesso',
-            'Atendimento Registrado Localmente',
-            `Novo atendimento registrado localmente para ${alunoEmFoco.nome} (${alunoEmFoco.matricula}). A integração com a Linha do Tempo será habilitada em etapa futura.`
+            'Atendimento Registrado',
+            `Novo atendimento de ${alunoEmFoco.nome} (${alunoEmFoco.matricula}) salvo e adicionado à Linha do Tempo.`
           );
         }}
         onError={(titulo, detalhe) => adicionarToast('erro', titulo, detalhe)}
