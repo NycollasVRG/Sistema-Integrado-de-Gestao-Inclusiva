@@ -26,7 +26,7 @@ function formatarTamanho(bytes: number): string {
  * Use `key={alunoId}` no pai para reiniciar o estado ao trocar de aluno.
  */
 export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
-  const { podeAcessarDadosSensiveis, podeBaixarLaudo } = useAuth();
+  const { podeAcessarDadosSensiveis, podeBaixarLaudo, isCoordenador } = useAuth();
   const [prontuario, setProntuario] = useState<ProntuarioConsolidadoDTO | null>(null);
   const [anexos, setAnexos] = useState<AnexoEstudanteDTO[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -58,10 +58,14 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
     setAnexos((prev) => [novoAnexo, ...prev.filter((item) => item.id !== novoAnexo.id)]);
     setErro(null);
     setErroDownload(null);
+    const notaSigiloLaudo =
+      novoAnexo.classificacao === 'LAUDO_MEDICO' && !isCoordenador
+        ? ' Laudos Médicos ficam restritos à Coordenação da CLAI até liberação do seu cargo no Estudo de Caso.'
+        : '';
     setMensagemSucessoUpload(
-      `"${novoAnexo.nomeOriginal}" (${ROTULO_CLASSIFICACAO[novoAnexo.classificacao] ?? novoAnexo.classificacao}) enviado com sucesso${novoAnexo.criptografado ? ' e cifrado em repouso (AES-256-GCM)' : ''}.`,
+      `"${novoAnexo.nomeOriginal}" (${ROTULO_CLASSIFICACAO[novoAnexo.classificacao] ?? novoAnexo.classificacao}) enviado com sucesso${novoAnexo.criptografado ? ' e cifrado em repouso (AES-256-GCM)' : ''}.${notaSigiloLaudo}`,
     );
-    // Sincroniza listagem com o backend para manter ordenação e metadados atualizados.
+    // Sincroniza listagem com o backend para manter ordenação, RBAC e metadados atualizados.
     void AnexoService.listarPorAluno(alunoId)
       .then((lista) => setAnexos(lista))
       .catch(() => {
@@ -69,10 +73,21 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
       });
   };
 
+  const anexoBloqueadoParaPerfil = (anexo: AnexoEstudanteDTO): boolean => {
+    // LAUDO_MEDICO já é filtrado pelo backend (só chegam laudos permitidos ao COORDENADOR ou cargos liberados).
+    if (anexo.classificacao === 'LAUDO_MEDICO') {
+      return false;
+    }
+    if (anexo.classificacao === 'DIAGNOSTICO_NEUROPSICOLOGICO') {
+      return !podeBaixarLaudo;
+    }
+    return false;
+  };
+
   const baixar = async (anexo: AnexoEstudanteDTO) => {
     setErroDownload(null);
-    // TA11.2: bloqueio preventivo, sem sequer chamar a API.
-    if (isAnexoSensivel(anexo.classificacao) && !podeBaixarLaudo) {
+    // TA11.2: bloqueio preventivo para diagnósticos neuropsicológicos sem SUPER_RESTRICAO + autorizacaoSaude.
+    if (anexoBloqueadoParaPerfil(anexo)) {
       notificarAcessoNegado();
       return;
     }
@@ -174,7 +189,7 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
         <ul className="divide-y divide-gray-100">
           {anexos.map((anexo) => {
             const sensivel = isAnexoSensivel(anexo.classificacao);
-            const bloqueado = sensivel && !podeBaixarLaudo;
+            const bloqueado = anexoBloqueadoParaPerfil(anexo);
             return (
               <li key={anexo.id} className="py-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">

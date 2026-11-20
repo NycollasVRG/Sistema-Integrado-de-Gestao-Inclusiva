@@ -1,5 +1,6 @@
 import { apiFetch } from './apiClient';
 import type { AnexoEstudanteDTO, TipoClassificacaoAnexo } from '../types/anexo';
+import type { Role } from '../types/auth';
 import type { ProntuarioConsolidadoDTO } from '../types/prontuario';
 
 export const AnexoService = {
@@ -7,6 +8,32 @@ export const AnexoService = {
   async listarPorAluno(alunoId: string, signal?: AbortSignal): Promise<AnexoEstudanteDTO[]> {
     const res = await apiFetch(`/api/alunos/${encodeURIComponent(alunoId)}/anexos`, { signal });
     return (await res.json()) as AnexoEstudanteDTO[];
+  },
+
+  /** GET /api/alunos/{id}/laudos-medicos (somente LAUDO_MEDICO filtrados pelo cargo no backend) */
+  async listarLaudosMedicos(alunoId: string, signal?: AbortSignal): Promise<AnexoEstudanteDTO[]> {
+    const res = await apiFetch(`/api/alunos/${encodeURIComponent(alunoId)}/laudos-medicos`, {
+      signal,
+    });
+    return (await res.json()) as AnexoEstudanteDTO[];
+  },
+
+  /** PUT /api/anexos/{anexoId}/permissoes-acesso (exclusivo COORDENADOR) */
+  async atualizarPermissoesLaudo(
+    anexoId: string,
+    rolesPermitidas: Role[],
+  ): Promise<AnexoEstudanteDTO> {
+    const res = await apiFetch(
+      `/api/anexos/${encodeURIComponent(anexoId)}/permissoes-acesso`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ rolesPermitidas }),
+      },
+    );
+    return (await res.json()) as AnexoEstudanteDTO;
   },
 
   /** POST /api/alunos/{id}/anexos (multipart/form-data com cifragem AES-256-GCM no backend para sensíveis) */

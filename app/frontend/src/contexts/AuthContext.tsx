@@ -12,10 +12,11 @@ interface AuthContextValue {
   login: (email: string, senha: string) => Promise<SessaoUsuario>;
   logout: () => void;
   isAdmin: boolean;
+  isCoordenador: boolean;
   isAcessoFuncional: boolean;
   /** TA11.3: Restrição Moderada ou superior enxerga histórico familiar/socioemocional. */
   podeAcessarDadosSensiveis: boolean;
-  /** TA11.2: laudos exigem SUPER_RESTRICAO e autorização de saúde. */
+  /** TA11.2: diagnósticos neuropsicológicos exigem SUPER_RESTRICAO e autorização de saúde. */
   podeBaixarLaudo: boolean;
 }
 
@@ -81,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login,
       logout,
       isAdmin: sessao?.role === 'ADMIN',
+      isCoordenador: sessao?.role === 'COORDENADOR',
       isAcessoFuncional: nivel === 'ACESSO_FUNCIONAL',
       podeAcessarDadosSensiveis: nivel === 'SUPER_RESTRICAO' || nivel === 'RESTRICAO_MODERADA',
       podeBaixarLaudo: nivel === 'SUPER_RESTRICAO' && sessao?.autorizacaoSaude === true,
