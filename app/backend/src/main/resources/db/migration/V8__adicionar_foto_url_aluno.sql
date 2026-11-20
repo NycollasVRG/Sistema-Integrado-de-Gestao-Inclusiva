@@ -1,6 +1,6 @@
 -- =============================================================================
 -- SIGI / CLAI - Sistema Integrado de Gestão Inclusiva
--- Flyway Migration V6: Suporte a URL de foto do estudante (US 09 / TA9.1)
+-- Flyway Migration V8: Suporte a URL de foto do estudante (US 09 / TA9.1)
 -- Banco de Dados: PostgreSQL 14+ (Schema: sigi)
 -- =============================================================================
 

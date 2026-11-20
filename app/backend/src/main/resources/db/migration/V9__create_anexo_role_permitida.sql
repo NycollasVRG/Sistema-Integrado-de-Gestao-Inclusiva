@@ -1,6 +1,6 @@
 -- =============================================================================
 -- SIGI / CLAI - Sistema Integrado de Gestão Inclusiva
--- Flyway Migration V7: Controle granular de visualização por cargo para Laudos Médicos
+-- Flyway Migration V9: Controle granular de visualização por cargo para Laudos Médicos
 -- Banco de Dados: PostgreSQL 14+ (Schema: sigi)
 -- =============================================================================
 
