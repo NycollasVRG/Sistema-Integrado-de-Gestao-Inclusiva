@@ -1,5 +1,5 @@
 import { apiFetch } from './apiClient';
-import type { AnexoEstudanteDTO } from '../types/anexo';
+import type { AnexoEstudanteDTO, TipoClassificacaoAnexo } from '../types/anexo';
 import type { ProntuarioConsolidadoDTO } from '../types/prontuario';
 
 export const AnexoService = {
@@ -7,6 +7,23 @@ export const AnexoService = {
   async listarPorAluno(alunoId: string, signal?: AbortSignal): Promise<AnexoEstudanteDTO[]> {
     const res = await apiFetch(`/api/alunos/${encodeURIComponent(alunoId)}/anexos`, { signal });
     return (await res.json()) as AnexoEstudanteDTO[];
+  },
+
+  /** POST /api/alunos/{id}/anexos (multipart/form-data com cifragem AES-256-GCM no backend para sensíveis) */
+  async upload(
+    alunoId: string,
+    arquivo: File,
+    classificacao: TipoClassificacaoAnexo,
+  ): Promise<AnexoEstudanteDTO> {
+    const formData = new FormData();
+    formData.append('arquivo', arquivo);
+    formData.append('classificacao', classificacao);
+
+    const res = await apiFetch(`/api/alunos/${encodeURIComponent(alunoId)}/anexos`, {
+      method: 'POST',
+      body: formData,
+    });
+    return (await res.json()) as AnexoEstudanteDTO;
   },
 
   /**
