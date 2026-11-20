@@ -12,6 +12,7 @@ public record AlunoResponseDTO(
         String matricula,
         String curso,
         String turma,
+        String fotoUrl,
         StatusAluno status,
         Boolean ativo,
         List<String> tagsDificuldade,
@@ -19,4 +20,19 @@ public record AlunoResponseDTO(
         LocalDateTime criadoEm,
         LocalDateTime atualizadoEm
 ) {
+    public AlunoResponseDTO(
+            UUID id,
+            String nomeCompleto,
+            String matricula,
+            String curso,
+            String turma,
+            StatusAluno status,
+            Boolean ativo,
+            List<String> tagsDificuldade,
+            List<UUID> tagsDificuldadeIds,
+            LocalDateTime criadoEm,
+            LocalDateTime atualizadoEm
+    ) {
+        this(id, nomeCompleto, matricula, curso, turma, null, status, ativo, tagsDificuldade, tagsDificuldadeIds, criadoEm, atualizadoEm);
+    }
 }

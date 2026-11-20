@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { User } from "lucide-react";
 import type { AlunoHeaderData } from "../types/alunoHeader";
 
@@ -6,16 +7,19 @@ interface StudentHeaderProps {
 }
 
 export function StudentHeader({ header }: StudentHeaderProps) {
-  const hasPhoto = Boolean(header.fotoUrl);
+  const [urlComErro, setUrlComErro] = useState<string | null>(null);
+  const fotoUrlLimpa = header.fotoUrl?.trim() || null;
+  const hasPhoto = Boolean(fotoUrlLimpa) && urlComErro !== fotoUrlLimpa;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
       <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
         <div className="flex-shrink-0">
-          {hasPhoto ? (
+          {hasPhoto && fotoUrlLimpa ? (
             <img
-              src={header.fotoUrl as string}
+              src={fotoUrlLimpa}
               alt={`Foto de ${header.nome}`}
+              onError={() => setUrlComErro(fotoUrlLimpa)}
               className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
             />
           ) : (

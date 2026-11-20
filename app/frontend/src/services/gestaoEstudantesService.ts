@@ -61,6 +61,10 @@ function normalizarEstudante(valor: unknown): EstudanteResumo {
     matricula: String(registro.matricula ?? ''),
     curso: String(registro.curso ?? ''),
     turma: String(registro.turma ?? ''),
+    fotoUrl:
+      typeof registro.fotoUrl === 'string' && registro.fotoUrl.trim()
+        ? registro.fotoUrl.trim()
+        : null,
     status,
     ativo: typeof registro.ativo === 'boolean' ? registro.ativo : status === 'ATIVO',
     tagsDificuldade: tags,
@@ -157,13 +161,21 @@ export const GestaoEstudantesService = {
   },
 
   async criar(dados: DadosEstudanteFormulario): Promise<EstudanteResumo> {
-    const resposta = await requisitar<unknown>('/api/alunos', { method: 'POST', body: dados });
+    const payload = {
+      ...dados,
+      fotoUrl: dados.fotoUrl.trim() || null,
+    };
+    const resposta = await requisitar<unknown>('/api/alunos', { method: 'POST', body: payload });
     return normalizarEstudante(resposta);
   },
 
   async atualizar(id: string, dados: DadosEstudanteFormulario): Promise<EstudanteResumo> {
+    const payload = {
+      ...dados,
+      fotoUrl: dados.fotoUrl.trim() || null,
+    };
     const resposta = await requisitar<unknown>(`/api/alunos/${encodeURIComponent(id)}`, {
-      method: 'PUT', body: dados,
+      method: 'PUT', body: payload,
     });
     return normalizarEstudante(resposta);
   },

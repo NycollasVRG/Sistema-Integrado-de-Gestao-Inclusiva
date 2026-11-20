@@ -8,6 +8,7 @@ import {
   Save,
   ShieldAlert,
   Tag,
+  User,
   UserCog,
   UserRoundPlus,
 } from 'lucide-react';
@@ -24,6 +25,8 @@ export interface FormularioEstudanteProps {
   onNotificar?: (tipo: 'sucesso' | 'erro' | 'alerta', titulo: string, mensagem: string) => void;
   onEstudanteSalvo?: (estudante: EstudanteResumo) => void;
 }
+
+const REGEX_URL_FOTO_SEGURA = /^(https?:\/\/.+|\/.+)$/;
 
 function resolverIdTag(tag: TagDificuldadeDTO, catalogo: TagDificuldadeDTO[]): string | undefined {
   if (tag.id) return tag.id;
@@ -44,6 +47,7 @@ function obterEstadoInicial(
     matricula: estudante?.matricula ?? '',
     curso: estudante?.curso ?? '',
     turma: estudante?.turma ?? '',
+    fotoUrl: estudante?.fotoUrl ?? '',
     status:
       estudante?.status === 'EVADIDO'
         ? 'EVADIDO'
@@ -83,6 +87,7 @@ function ConteudoFormularioEstudante({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [confirmarSaida, setConfirmarSaida] = useState(false);
+  const [urlPreviewComErro, setUrlPreviewComErro] = useState<string | null>(null);
 
   const ehEdicao = estudante !== null;
   const tagsValidas = useMemo(
@@ -101,10 +106,20 @@ function ConteudoFormularioEstudante({
     dados.matricula !== estadoInicial.matricula ||
     dados.curso !== estadoInicial.curso ||
     dados.turma !== estadoInicial.turma ||
+    dados.fotoUrl !== estadoInicial.fotoUrl ||
     dados.status !== estadoInicial.status ||
     !mesmoConjuntoIds(dados.tagsDificuldadeIds, estadoInicial.tagsDificuldadeIds);
 
-  function alterarCampo(campo: 'nomeCompleto' | 'matricula' | 'curso' | 'turma', valor: string) {
+  const fotoUrlLimpa = dados.fotoUrl.trim();
+  const mostrarPreviewFoto =
+    Boolean(fotoUrlLimpa) &&
+    REGEX_URL_FOTO_SEGURA.test(fotoUrlLimpa) &&
+    urlPreviewComErro !== fotoUrlLimpa;
+
+  function alterarCampo(
+    campo: 'nomeCompleto' | 'matricula' | 'curso' | 'turma' | 'fotoUrl',
+    valor: string,
+  ) {
     setDados((anterior) => ({ ...anterior, [campo]: valor }));
     if (erro) setErro('');
   }
@@ -136,10 +151,15 @@ function ConteudoFormularioEstudante({
       matricula: dados.matricula.trim(),
       curso: dados.curso.trim(),
       turma: dados.turma.trim(),
+      fotoUrl: dados.fotoUrl.trim(),
     };
 
     if (!campos.nomeCompleto || !campos.matricula || !campos.curso || !campos.turma) {
       setErro('Preencha nome completo, matrícula, curso e turma.');
+      return;
+    }
+    if (campos.fotoUrl && !REGEX_URL_FOTO_SEGURA.test(campos.fotoUrl)) {
+      setErro('A URL da foto deve começar com http://, https:// ou /.');
       return;
     }
     if (campos.tagsDificuldadeIds.length === 0) {
@@ -324,6 +344,40 @@ function ConteudoFormularioEstudante({
                 )}
               </label>
             )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4 pt-1">
+            <div className="shrink-0">
+              {mostrarPreviewFoto ? (
+                <img
+                  src={fotoUrlLimpa}
+                  alt="Pré-visualização da foto do estudante"
+                  onError={() => setUrlPreviewComErro(fotoUrlLimpa)}
+                  className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                  <User className="w-8 h-8 text-gray-400" aria-hidden="true" />
+                </div>
+              )}
+            </div>
+
+            <label className="block text-sm font-medium text-gray-700 flex-1">
+              URL da foto do estudante <span className="text-xs font-normal text-gray-400">(opcional)</span>
+              <input
+                type="url"
+                value={dados.fotoUrl}
+                maxLength={1000}
+                onChange={(e) => alterarCampo('fotoUrl', e.target.value)}
+                className="block mt-1 w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal"
+                placeholder="https://exemplo.ifpb.edu.br/fotos/estudante.jpg"
+              />
+              {fotoUrlLimpa && urlPreviewComErro === fotoUrlLimpa && (
+                <span className="block mt-1 text-xs text-amber-700">
+                  Não foi possível pré-visualizar esta imagem; no prontuário será exibido o ícone padrão caso ela falhe.
+                </span>
+              )}
+            </label>
           </div>
         </section>
 

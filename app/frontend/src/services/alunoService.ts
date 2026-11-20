@@ -13,7 +13,7 @@ export function estudanteParaHeader(aluno: EstudanteResumo): AlunoHeaderData {
   return {
     id: aluno.id,
     nome: aluno.nomeCompleto,
-    fotoUrl: null,
+    fotoUrl: aluno.fotoUrl ?? null,
     matricula: aluno.matricula,
     curso: aluno.curso,
     turma: aluno.turma || null,

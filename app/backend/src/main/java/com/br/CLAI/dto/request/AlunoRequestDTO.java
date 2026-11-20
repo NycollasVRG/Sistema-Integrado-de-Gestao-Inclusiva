@@ -4,6 +4,7 @@ import com.br.CLAI.domain.enums.StatusAluno;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -32,6 +33,23 @@ public record AlunoRequestDTO(
         StatusAluno status,
 
         @NotEmpty(message = "Informe ao menos uma tag de deficiência")
-        List<@NotNull(message = "O ID da tag não pode ser nulo") UUID> tagsDificuldadeIds
+        List<@NotNull(message = "O ID da tag não pode ser nulo") UUID> tagsDificuldadeIds,
+
+        @Size(max = 1000, message = "A URL da foto deve ter no máximo 1000 caracteres")
+        @Pattern(
+                regexp = "^(\\s*|https?://.+|/.+)$",
+                message = "A URL da foto deve começar com http://, https:// ou /"
+        )
+        String fotoUrl
 ) {
+    public AlunoRequestDTO(
+            String nomeCompleto,
+            String matricula,
+            String curso,
+            String turma,
+            StatusAluno status,
+            List<UUID> tagsDificuldadeIds
+    ) {
+        this(nomeCompleto, matricula, curso, turma, status, tagsDificuldadeIds, null);
+    }
 }

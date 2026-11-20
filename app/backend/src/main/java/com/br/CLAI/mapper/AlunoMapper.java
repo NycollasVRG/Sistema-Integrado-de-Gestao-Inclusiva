@@ -27,6 +27,7 @@ public class AlunoMapper {
                 aluno.getMatricula(),
                 aluno.getCurso(),
                 aluno.getTurma(),
+                aluno.getFotoUrl(),
                 aluno.getStatus(),
                 aluno.getAtivo(),
                 tags.stream().map(IndicadorReutilizavel::getNome).toList(),
