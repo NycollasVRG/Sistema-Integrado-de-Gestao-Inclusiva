@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import type { SessaoUsuario } from '../types/auth';
 import { autenticar, revalidarSessao } from '../services/authService';
 import { aoEncerrarSessao, CHAVE_SESSAO, lerSessao, limparSessao } from '../services/authSessao';
+import { removerRascunhosDoUsuario } from '../services/rascunhoAtendimentoService';
 
 interface AuthContextValue {
   sessao: SessaoUsuario | null;
@@ -65,6 +66,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
+    // Logout explícito: não deixa texto clínico em rascunho no navegador. Já a expiração/revogação
+    // da sessão (401) preserva o rascunho, que volta quando o mesmo usuário entrar de novo.
+    const userId = lerSessao()?.userId;
+    if (userId) removerRascunhosDoUsuario(userId);
     limparSessao();
     setSessao(null);
     setAvisoSessao(null);
