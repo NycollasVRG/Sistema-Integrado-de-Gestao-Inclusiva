@@ -94,7 +94,8 @@ public class RaiService {
         if (Boolean.TRUE.equals(raiSalvo.getIndicativoRegressao())) {
             notificacaoService.criarNotificacao(
                     PERFIL_NOTIFICADO,
-                    "Revisão de PEI necessária — indicativo de regressão no RAI",
+                    "Revisão de PEI necessária — indicativo de regressão no "
+                            + raiSalvo.getTipoRelatorio().name(),
                     construirMensagemNotificacao(raiSalvo, aluno),
                     "/api/peis/aluno/" + raiSalvo.getAlunoId()
             );
