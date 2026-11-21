@@ -1,11 +1,20 @@
+import { useState } from "react";
 import { Calendar, ClipboardList, FileBarChart, FileText, Stethoscope } from "lucide-react";
 import type { TimelineEventDTO, TimelineEventType } from "../types/timeline";
+import type { NovoAtendimentoResponseDTO } from "../types/prontuarioAcoes";
 import { TimelineItem } from "./TimelineItem";
+import { ModalDetalheAtendimento } from "./ModalDetalheAtendimento";
+import { useAuth } from "../contexts/AuthContext";
+import { useAgora } from "../hooks/useAgora";
 
 interface TimelineProps {
   events: TimelineEventDTO[];
   loading?: boolean;
   error?: string | null;
+  /** Atendimentos do aluno indexados por id (o id do evento ATENDIMENTO é o id do atendimento). */
+  atendimentos?: Record<string, NovoAtendimentoResponseDTO>;
+  /** Chamado após uma edição bem-sucedida, para o pai atualizar seu cache/exibir aviso. */
+  onAtendimentoAtualizado?: (atendimento: NovoAtendimentoResponseDTO) => void;
 }
 
 function getEventIcon(tipo: TimelineEventType) {
@@ -28,7 +37,18 @@ function getEventIcon(tipo: TimelineEventType) {
   }
 }
 
-export function Timeline({ events, loading = false, error = null }: TimelineProps) {
+export function Timeline({
+  events,
+  loading = false,
+  error = null,
+  atendimentos = {},
+  onAtendimentoAtualizado,
+}: TimelineProps) {
+  const { sessao } = useAuth();
+  // Reavalia a trava de 24h sem recarregar: o selo "Editável"/"Bloqueado" muda sozinho.
+  const agora = useAgora(60_000);
+  const [atendimentoAbertoId, setAtendimentoAbertoId] = useState<string | null>(null);
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -95,11 +115,27 @@ export function Timeline({ events, loading = false, error = null }: TimelineProp
               <div className="relative flex items-center justify-center w-10 h-10 bg-ifpb-tealLight rounded-full border-2 border-ifpb-teal/30 z-10">
                 {getEventIcon(event.tipo)}
               </div>
-              <TimelineItem event={event} />
+              <TimelineItem
+                event={event}
+                atendimento={atendimentos[event.id]}
+                userId={sessao?.userId ?? null}
+                agora={agora}
+                onVisualizarAtendimento={setAtendimentoAbertoId}
+              />
             </li>
           ))}
         </ul>
       </div>
+
+      {atendimentoAbertoId && (
+        <ModalDetalheAtendimento
+          key={atendimentoAbertoId}
+          atendimentoId={atendimentoAbertoId}
+          atendimentoInicial={atendimentos[atendimentoAbertoId]}
+          onClose={() => setAtendimentoAbertoId(null)}
+          onAtualizado={(a) => onAtendimentoAtualizado?.(a)}
+        />
+      )}
     </div>
   );
 }

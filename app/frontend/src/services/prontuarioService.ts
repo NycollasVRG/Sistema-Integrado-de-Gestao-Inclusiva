@@ -3,6 +3,7 @@ import type {
   ProblemDetailRFC9457,
 } from '../types/estudoDeCaso';
 import type {
+  AtualizarAtendimentoRequestDTO,
   EmissaoDocumentoRequestDTO,
   EmissaoDocumentoResponseDTO,
   NovoAtendimentoRequestDTO,
@@ -10,27 +11,9 @@ import type {
   NovoEstudoRapidoRequestDTO,
 } from '../types/prontuarioAcoes';
 import { EstudoDeCasoService } from './estudoDeCasoService';
+import { apiFetch } from './apiClient';
 
-const STORAGE_KEY_ATENDIMENTOS = 'sigi_clai_atendimentos';
 const STORAGE_KEY_DOCUMENTOS = 'sigi_clai_documentos_prontuario';
-
-function getStoredAtendimentos(): NovoAtendimentoResponseDTO[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_ATENDIMENTOS);
-    if (raw) return JSON.parse(raw);
-  } catch (e) {
-    console.error('Falha ao ler cache local de atendimentos:', e);
-  }
-  return [];
-}
-
-function saveStoredAtendimentos(atendimentos: NovoAtendimentoResponseDTO[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY_ATENDIMENTOS, JSON.stringify(atendimentos));
-  } catch (e) {
-    console.error('Falha ao gravar cache local de atendimentos:', e);
-  }
-}
 
 function getStoredDocumentos(): EmissaoDocumentoResponseDTO[] {
   try {
@@ -84,15 +67,13 @@ export class ProntuarioService {
   }
 
   /**
-   * Registro de Novo Atendimento a partir do modal rápido do Prontuário.
-   * Mock Service estruturado para a sprint atual (persiste em localStorage com delay simulado).
+   * Registro de Novo Atendimento (TA4.1/TA4.2): POST /api/atendimentos.
+   * O autor (criadoPor) e o carimbo de criação vêm do servidor a partir do JWT; nada é persistido localmente.
    */
   static async criarAtendimento(
     dto: NovoAtendimentoRequestDTO
   ): Promise<NovoAtendimentoResponseDTO> {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    if (!dto.alunoId || !dto.matriculaAluno) {
+    if (!dto.alunoId) {
       const problem: ProblemDetailRFC9457 = {
         title: 'Dados do Aluno Ausentes',
         status: 400,
@@ -110,32 +91,60 @@ export class ProntuarioService {
       throw problem;
     }
 
-    const agora = new Date().toISOString();
-    const novoAtendimento: NovoAtendimentoResponseDTO = {
-      id: gerarIdLocal('atend'),
-      alunoId: dto.alunoId,
-      matriculaAluno: dto.matriculaAluno,
-      tipoAtendimento: dto.tipoAtendimento,
-      dataAtendimento: dto.dataAtendimento || agora.slice(0, 10),
-      profissionalResponsavel: dto.profissionalResponsavel.trim() || 'Equipe Multidisciplinar CLAI',
-      descricao: dto.descricao.trim(),
-      encaminhamentos: dto.encaminhamentos?.trim() || undefined,
-      criadoEm: agora,
-    };
+    const res = await apiFetch('/api/atendimentos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alunoId: dto.alunoId,
+        tipoAtendimento: dto.tipoAtendimento,
+        dataAtendimento: dto.dataAtendimento,
+        profissionalResponsavel: dto.profissionalResponsavel.trim(),
+        descricao: dto.descricao.trim(),
+        encaminhamentos: dto.encaminhamentos?.trim() || null,
+      }),
+    });
+    return (await res.json()) as NovoAtendimentoResponseDTO;
+  }
 
-    const listaAtual = getStoredAtendimentos();
-    saveStoredAtendimentos([novoAtendimento, ...listaAtual]);
+  /** Detalhe de um atendimento: GET /api/atendimentos/{id}. */
+  static async buscarAtendimento(
+    id: string,
+    signal?: AbortSignal
+  ): Promise<NovoAtendimentoResponseDTO> {
+    const res = await apiFetch(`/api/atendimentos/${encodeURIComponent(id)}`, { signal });
+    return (await res.json()) as NovoAtendimentoResponseDTO;
+  }
 
-    return novoAtendimento;
+  /** Atendimentos do aluno (mais recentes primeiro): GET /api/atendimentos/aluno/{alunoId}. */
+  static async listarAtendimentosPorAluno(
+    alunoId: string,
+    signal?: AbortSignal
+  ): Promise<NovoAtendimentoResponseDTO[]> {
+    const res = await apiFetch(`/api/atendimentos/aluno/${encodeURIComponent(alunoId)}`, { signal });
+    return (await res.json()) as NovoAtendimentoResponseDTO[];
   }
 
   /**
-   * Lista os atendimentos registrados localmente para o aluno em foco.
+   * Edição (TA4.4): PUT /api/atendimentos/{id}. O servidor só aceita o autor dentro das 24h
+   * e responde 403 caso contrário; esse 403 é regra de negócio, então não aciona o modal global de LGPD.
    */
-  static async listarAtendimentosPorAluno(
-    alunoId: string
-  ): Promise<NovoAtendimentoResponseDTO[]> {
-    return getStoredAtendimentos().filter((item) => item.alunoId === alunoId);
+  static async atualizarAtendimento(
+    id: string,
+    dto: AtualizarAtendimentoRequestDTO
+  ): Promise<NovoAtendimentoResponseDTO> {
+    const res = await apiFetch(`/api/atendimentos/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      ignorarAcessoNegadoGlobal: true,
+      body: JSON.stringify({
+        tipoAtendimento: dto.tipoAtendimento,
+        dataAtendimento: dto.dataAtendimento,
+        profissionalResponsavel: dto.profissionalResponsavel.trim(),
+        descricao: dto.descricao.trim(),
+        encaminhamentos: dto.encaminhamentos?.trim() || null,
+      }),
+    });
+    return (await res.json()) as NovoAtendimentoResponseDTO;
   }
 
   /**

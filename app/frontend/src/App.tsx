@@ -26,6 +26,8 @@ import { GestaoEstudantesService } from './services/gestaoEstudantesService';
 import { estudanteParaHeader } from './services/alunoService';
 import type { EstudanteResumo } from './types/gestaoEstudantes';
 import { getTimeline } from './services/timelineService';
+import { ProntuarioService } from './services/prontuarioService';
+import { isAbortError } from './services/apiClient';
 import { FormularioPea } from './components/FormularioPea';
 import { PeaService } from './services/peaService';
 import { FormularioPlanoAcao } from './components/FormularioPlanoAcao';
@@ -33,6 +35,7 @@ import { PlanoAcaoService } from './services/planoAcaoService';
 import type { DadosFormularioPei, PeiResponseDTO } from './types/pei';
 import type { AlunoHeaderData } from './types/alunoHeader';
 import type { TimelineEventDTO } from './types/timeline';
+import type { NovoAtendimentoResponseDTO } from './types/prontuarioAcoes';
 import type { DadosFormularioPea, PeaResponseDTO } from './types/pea';
 import type { DadosFormularioPlanoAcao, PlanoAcaoResponseDTO } from './types/planoAcao';
 import type {
@@ -145,6 +148,7 @@ const AppConteudo: React.FC = () => {
   const [termoBusca, setTermoBusca] = useState<string>('');
   const [header, setHeader] = useState<AlunoHeaderData | null>(null);
   const [timeline, setTimeline] = useState<TimelineEventDTO[]>([]);
+  const [atendimentosPorId, setAtendimentosPorId] = useState<Record<string, NovoAtendimentoResponseDTO>>({});
   const [loadingHeader, setLoadingHeader] = useState<boolean>(false);
   const [loadingTimeline, setLoadingTimeline] = useState<boolean>(false);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
@@ -331,9 +335,19 @@ const AppConteudo: React.FC = () => {
     setLoadingTimeline(true);
     setErrorTimeline(null);
     try {
-      const data = await getTimeline(alunoId, signal);
+      // Linha do Tempo + detalhes dos atendimentos (autor/criadoEm) em paralelo: o selo de edição
+      // (TA4.4) depende dos detalhes, mas uma falha nessa segunda chamada não deve derrubar a timeline.
+      const [data, atendimentos] = await Promise.all([
+        getTimeline(alunoId, signal),
+        ProntuarioService.listarAtendimentosPorAluno(alunoId, signal).catch((e: unknown) => {
+          if (isAbortError(e) || signal?.aborted) throw e;
+          console.warn('Não foi possível carregar os detalhes dos atendimentos:', e);
+          return [] as NovoAtendimentoResponseDTO[];
+        }),
+      ]);
       if (signal?.aborted) return;
       setTimeline(data || []);
+      setAtendimentosPorId(Object.fromEntries((atendimentos || []).map((a) => [a.id, a])));
     } catch (e: unknown) {
       if (signal?.aborted) return;
       console.error('Erro ao carregar linha do tempo:', e);
@@ -345,6 +359,7 @@ const AppConteudo: React.FC = () => {
           'Erro ao carregar linha do tempo'
       );
       setTimeline([]);
+      setAtendimentosPorId({});
     } finally {
       if (!signal?.aborted) setLoadingTimeline(false);
     }
@@ -406,6 +421,7 @@ const AppConteudo: React.FC = () => {
         setPlanoAcaoEmFocoId(null);
         setHeader(null);
         setTimeline([]);
+        setAtendimentosPorId({});
       }
 
       await Promise.all([
@@ -891,6 +907,7 @@ const AppConteudo: React.FC = () => {
       setPlanosAcaoDoAluno([]);
       setPlanoAcaoEmFocoId(null);
       setTimeline([]);
+      setAtendimentosPorId({});
     }
     setErroAlunoRota(null);
     setErrorHeader(null);
@@ -1108,7 +1125,20 @@ const AppConteudo: React.FC = () => {
                     />
 
                     <div className="mb-6">
-                      <Timeline events={timeline} loading={loadingTimeline} error={errorTimeline} />
+                      <Timeline
+                        events={timeline}
+                        loading={loadingTimeline}
+                        error={errorTimeline}
+                        atendimentos={atendimentosPorId}
+                        onAtendimentoAtualizado={(atualizado) => {
+                          setAtendimentosPorId((prev) => ({ ...prev, [atualizado.id]: atualizado }));
+                          adicionarToast(
+                            'sucesso',
+                            'Atendimento Atualizado',
+                            `As alterações do atendimento de ${alunoEmFoco.nome} foram salvas.`
+                          );
+                        }}
+                      />
                     </div>
 
                     <TelaAluno
@@ -1258,11 +1288,16 @@ const AppConteudo: React.FC = () => {
         isOpen={modalAtivo === 'ATENDIMENTO'}
         onClose={() => setModalAtivo(null)}
         aluno={alunoEmFoco}
-        onSuccess={() => {
+        onSuccess={async (atendimento) => {
+          // TA4.1/TA4.2: já persistido no PostgreSQL; recarrega a Linha do Tempo para exibi-lo de imediato.
+          setAtendimentosPorId((prev) => ({ ...prev, [atendimento.id]: atendimento }));
+          if (alunoSelecionado) {
+            await carregarTimeline(alunoSelecionado.id);
+          }
           adicionarToast(
             'sucesso',
-            'Atendimento Registrado Localmente',
-            `Novo atendimento registrado localmente para ${alunoEmFoco.nome} (${alunoEmFoco.matricula}). A integração com a Linha do Tempo será habilitada em etapa futura.`
+            'Atendimento Registrado',
+            `Novo atendimento de ${alunoEmFoco.nome} (${alunoEmFoco.matricula}) salvo e adicionado à Linha do Tempo.`
           );
         }}
         onError={(titulo, detalhe) => adicionarToast('erro', titulo, detalhe)}

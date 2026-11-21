@@ -125,13 +125,18 @@ export function resolveApiUrl(input: string): string {
  * - 401 (exceto login): sessão revogada/expirada (TA11.4) -> limpa storage e avisa a UI.
  * - 403: bloqueio por sigilo clínico/LGPD (TA11.2) -> abre o aviso de acesso negado.
  */
-export function tratarStatusGlobal(status: number, problema: Pick<ApiProblem, 'detail'>, input = ''): void {
+export function tratarStatusGlobal(
+  status: number,
+  problema: Pick<ApiProblem, 'detail'>,
+  input = '',
+  ignorarAcessoNegado = false,
+): void {
   if (status === 401 && !ehRotaLogin(input)) {
     // Só encerra se ainda há sessão: evita avisos duplicados em requisições paralelas.
     if (lerSessao()) {
       encerrarSessao(problema.detail || 'Sua sessão foi encerrada. Faça login novamente.');
     }
-  } else if (status === 403) {
+  } else if (status === 403 && !ignorarAcessoNegado) {
     notificarAcessoNegado(problema.detail);
   }
 }
@@ -141,8 +146,18 @@ export function tratarStatusGlobal(status: number, problema: Pick<ApiProblem, 'd
  * não-2xx, injeta o Bearer token da sessão e aplica o tratamento global 401/403.
  * Respostas 2xx são devolvidas ao chamador.
  */
-export async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
-  const headers = new Headers(init?.headers);
+export interface ApiFetchInit extends RequestInit {
+  /**
+   * Quando o 403 é uma regra de negócio esperada (ex.: trava de 24h de edição do atendimento) e não
+   * um bloqueio de sigilo clínico/LGPD, o chamador trata o erro e o modal global não deve abrir.
+   * O 401 (sessão revogada) continua sendo tratado globalmente.
+   */
+  ignorarAcessoNegadoGlobal?: boolean;
+}
+
+export async function apiFetch(input: string, init?: ApiFetchInit): Promise<Response> {
+  const { ignorarAcessoNegadoGlobal = false, ...initFetch } = init ?? {};
+  const headers = new Headers(initFetch.headers);
   const token = obterToken();
   if (token && !headers.has('Authorization') && !ehRotaLogin(input)) {
     headers.set('Authorization', `Bearer ${token}`);
@@ -150,16 +165,16 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
 
   let res: Response;
   try {
-    res = await fetch(resolveApiUrl(input), { ...init, headers });
+    res = await fetch(resolveApiUrl(input), { ...initFetch, headers });
   } catch (err: unknown) {
-    if (isAbortError(err) || init?.signal?.aborted) {
+    if (isAbortError(err) || initFetch.signal?.aborted) {
       throw err;
     }
     throw problemaRede();
   }
   if (!res.ok) {
     const problema = await lerProblema(res, input);
-    tratarStatusGlobal(res.status, problema, input);
+    tratarStatusGlobal(res.status, problema, input, ignorarAcessoNegadoGlobal);
     throw problema;
   }
   return res;
