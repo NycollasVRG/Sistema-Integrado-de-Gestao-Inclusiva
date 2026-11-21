@@ -28,6 +28,7 @@ import type { EstudanteResumo } from './types/gestaoEstudantes';
 import { getTimeline } from './services/timelineService';
 import { ProntuarioService } from './services/prontuarioService';
 import { isAbortError } from './services/apiClient';
+import { notificarAlteracaoNotificacoes } from './services/notificacaoService';
 import { FormularioPea } from './components/FormularioPea';
 import { PeaService } from './services/peaService';
 import { FormularioPlanoAcao } from './components/FormularioPlanoAcao';
@@ -1333,7 +1334,24 @@ const AppConteudo: React.FC = () => {
         onClose={() => setModalAtivo(null)}
         aluno={alunoEmFoco}
         tipoDocumento={modalAtivo === 'EMITIR_RAE' ? 'RAE' : 'DOSSIE'}
-        onSuccess={(doc) => {
+        peiId={peiAtual?.id}
+        acompanhamentoId={peiAtual?.acompanhamentoId}
+        onSuccess={async (doc) => {
+          // RAE real (POST /api/rais): atualiza a timeline e a central de notificações.
+          if ('tipoRelatorio' in doc) {
+            notificarAlteracaoNotificacoes();
+            await carregarTimeline(doc.alunoId || alunoEmFoco.id);
+            adicionarToast(
+              'sucesso',
+              `${doc.tipoRelatorio} Emitido com Sucesso`,
+              `Registro do ${doc.bimestre}º bimestre salvo e incluído na Linha do Tempo de ${alunoEmFoco.nome}.` +
+                (doc.indicativoRegressao
+                  ? ' Indicativo de regressão enviado ao Coordenador para revisão do PEI.'
+                  : '')
+            );
+            return;
+          }
+
           adicionarToast(
             'sucesso',
             doc.tipoDocumento === 'RAE' ? 'RAE Emitido com Sucesso' : 'Dossiê Gerado com Sucesso',
