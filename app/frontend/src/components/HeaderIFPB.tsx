@@ -4,6 +4,7 @@ import { LogOut, Menu, Shield, Users, X } from 'lucide-react';
 import ifpbLogo from '../assets/imagens/ifpb.png';
 import { useAuth } from '../contexts/AuthContext';
 import { ROTULO_ROLE } from '../types/auth';
+import { DropdownNotificacoes } from './DropdownNotificacoes';
 
 interface HeaderIFPBProps {
   onSearch?: (term: string) => void;
@@ -12,7 +13,7 @@ interface HeaderIFPBProps {
 }
 
 export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
-  const { sessao, logout, isAdmin } = useAuth();
+  const { sessao, logout, isAdmin, isCoordenador } = useAuth();
   const [menuAberto, setMenuAberto] = useState(false);
   const menuContainerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -148,6 +149,9 @@ export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
           {/* Usuário autenticado (RBAC) */}
           {sessao && (
             <div className="flex items-center gap-3 text-sm">
+              {/* TA3.3: central de notificações com atalho para revisão do PEI */}
+              {isCoordenador && <DropdownNotificacoes />}
+
               {sessao.role === 'ADMIN' && (
                 <Link
                   to="/admin/usuarios"

@@ -116,6 +116,37 @@ class RaiNotificacaoTimelineTest {
     }
 
     @Test
+    @DisplayName("TA3.3: RAE com regressão identifica o tipo no título da notificação")
+    void emitirRaeComRegressaoDeveUsarTipoNoTituloDaNotificacao() {
+        UUID alunoId = UUID.randomUUID();
+        UUID usuarioId = UUID.randomUUID();
+        Aluno aluno = new Aluno("Estudante RAE", "2026011");
+        aluno.setId(alunoId);
+
+        when(alunoRepository.findById(alunoId)).thenReturn(Optional.of(aluno));
+        when(raiRepository.save(any(Rai.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(notificacaoService.criarNotificacao(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(new NotificacaoResponseDTO());
+
+        RaiService service = new RaiService(
+                raiRepository, notificacaoService, alunoRepository, peiRepository, acompanhamentoRepository);
+
+        RaiResponseDTO response = service.emitirRai(
+                new RaiRequestDTO(alunoId, null, null, "RAE", 3, true, "Queda nas metas do PEI"), usuarioId);
+
+        assertEquals(TipoRelatorio.RAE, response.getTipoRelatorio());
+        ArgumentCaptor<String> tituloCaptor = ArgumentCaptor.forClass(String.class);
+        verify(notificacaoService).criarNotificacao(
+                eq("COORDENADOR"),
+                tituloCaptor.capture(),
+                contains("revisão do PEI"),
+                contains("/api/peis/aluno/" + alunoId)
+        );
+        assertTrue(tituloCaptor.getValue().contains("RAE"));
+        assertFalse(tituloCaptor.getValue().contains("no RAI"));
+    }
+
+    @Test
     @DisplayName("RAI sem indicativo de regressão não gera notificação")
     void emitirRaiSemRegressaoNaoDeveNotificar() {
         UUID alunoId = UUID.randomUUID();

@@ -18,6 +18,8 @@ interface TimelineItemProps {
   userId?: string | null;
   agora: number;
   onVisualizarAtendimento?: (atendimentoId: string) => void;
+  /** Habilita o detalhe de eventos RAI/RAE (TA9.2 / TA9.3). */
+  onVisualizarRelatorio?: (relatorioId: string) => void;
 }
 
 function getEventLabel(tipo: TimelineEventType): string {
@@ -57,8 +59,11 @@ export function TimelineItem({
   userId = null,
   agora,
   onVisualizarAtendimento,
+  onVisualizarRelatorio,
 }: TimelineItemProps) {
   const ehAtendimento = event.tipo === "ATENDIMENTO" && !!onVisualizarAtendimento;
+  const ehRelatorio =
+    (event.tipo === "RAI" || event.tipo === "RAE") && !!onVisualizarRelatorio;
 
   const motivo = atendimento ? motivoBloqueioEdicao(atendimento, userId, agora) : null;
   const limite = atendimento ? limiteEdicao(atendimento) : null;
@@ -91,6 +96,22 @@ export function TimelineItem({
             <p className="text-xs text-gray-700 line-clamp-2 whitespace-pre-wrap break-words">
               {atendimento.descricao}
             </p>
+          </div>
+        )}
+
+        {ehRelatorio && (
+          <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-ifpb-tealLight text-ifpb-teal border border-ifpb-teal/20">
+              Registro bimestral
+            </span>
+            <button
+              type="button"
+              onClick={() => onVisualizarRelatorio?.(event.id)}
+              className="inline-flex items-center text-xs font-semibold text-ifpb-teal hover:text-ifpb-tealHover hover:underline cursor-pointer"
+            >
+              <Eye className="w-3.5 h-3.5 mr-1" />
+              Ver detalhes
+            </button>
           </div>
         )}
 
