@@ -68,6 +68,27 @@ public class EstudoDeCasoService {
         return mapper.toResponse(salvo);
     }
 
+    /**
+     * Inicia um Estudo de Caso em {@link StatusEstudoCaso#RASCUNHO} a partir da aprovação de uma indicação
+     * de demanda espontânea (US 10 / TA10.3), preservando eventual estudo ATIVO pré-existente até que o
+     * novo estudo seja efetivamente concluído/ativado pela equipe CLAI.
+     */
+    @Transactional
+    public EstudoDeCaso iniciarRascunhoPorIndicacao(Aluno aluno, String diagnosticoInicial, UUID usuarioId) {
+        validarUsuarioResponsavel(usuarioId);
+        if (aluno == null || aluno.getId() == null) {
+            throw new RegraDeNegocioException("Estudante inválido para iniciar o Estudo de Caso.");
+        }
+
+        List<EstudoDeCaso> estudosExistentes = repository.findByAlunoId(aluno.getId());
+        EstudoDeCaso rascunho = new EstudoDeCaso(aluno, StatusEstudoCaso.RASCUNHO, diagnosticoInicial);
+        aplicarVersionamento(rascunho, estudosExistentes);
+        rascunho.setCriadoPor(usuarioId);
+        rascunho.setAtualizadoPor(usuarioId);
+
+        return repository.save(rascunho);
+    }
+
     private void aplicarVersionamentoEEncerrarAtivoAnterior(
             EstudoDeCaso novoEstudo,
             List<EstudoDeCaso> estudosExistentes,
@@ -87,6 +108,16 @@ public class EstudoDeCasoService {
                 existente.setAtualizadoPor(usuarioId);
                 repository.saveAndFlush(existente);
             }
+        }
+
+        aplicarVersionamento(novoEstudo, estudosExistentes);
+    }
+
+    private void aplicarVersionamento(EstudoDeCaso novoEstudo, List<EstudoDeCaso> estudosExistentes) {
+        if (estudosExistentes == null || estudosExistentes.isEmpty()) {
+            novoEstudo.setVersao(1);
+            novoEstudo.setEstudoOrigem(null);
+            return;
         }
 
         int maiorVersao = estudosExistentes.stream()
