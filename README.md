@@ -419,7 +419,7 @@ Upload e download seguro de documentos pedagógicos e laudos médicos com cifrag
 * **Tela de Login (`/login`) e Proteção de Rotas:** Autenticação por e-mail e senha, armazenamento seguro do token JWT, interceptor de expiração de sessão com redirecionamento (401) e modal de bloqueio LGPD (`ModalAcessoNegadoLGPD`) para tentativas não autorizadas (403).
 * **Gestão de Estudantes (`/estudantes`):** Tabela paginada rica com filtros rápidos combinados (nome/matrícula, curso, turma, tags de acessibilidade, status ativo), modais de cadastro de novos alunos e inativação lógica (`INATIVO` / `EVADIDO`).
 * **Painel Administrativo de Usuários (`/admin/usuarios`):** Acesso exclusivo para administradores (`ROLE_ADMIN`), permitindo visualização de perfis, auditoria e revogação imediata de credenciais em tempo real.
-* **Prontuário Inclusivo com Barra de Atalhos Rápidos (`ProntuarioQuickActions`):** Modais integrados para Novo Atendimento, Novo Estudo de Caso, Emissão de RAE (Relatório de Atendimento Educacional Especializado) e Geração de Dossiê com atualização imediata da Linha do Tempo.
+* **Prontuário Inclusivo com Barra de Atalhos Rápidos (`ProntuarioQuickActions`):** Modais integrados para Novo Atendimento, Novo Estudo de Caso, Emissão real de RAI/RAE via `POST /api/rais` (bimestre, tipo de relatório e indicativo de regressão) e Geração de Dossiê com atualização imediata da Linha do Tempo.
 * **Tratamento Visual RBAC e Sigilo LGPD (`SecaoProntuarioRbac`):** Interface adaptativa que oculta seções confidenciais (laudos clínicos, pareceres diagnósticos e histórico socioemocional) quando visualizada por professores ou perfis de acesso funcional.
 * **Formulários Especializados:** Formulário de Estudo de Caso (`/estudo-de-caso`) com seleção dinâmica de tags/indicadores, formulário de PEI (`/pei`) e formulário de PEA (`/pea`) com suporte a múltiplos planos por disciplina.
 * **Header Institucional Oficial:** Identidade visual do IFPB, indicação de campus (CLAI Cajazeiras/Sousa) e acessibilidade integrada com o componente flutuante **VLibras**.
@@ -452,6 +452,12 @@ Upload e download seguro de documentos pedagógicos e laudos médicos com cifrag
   "descricao": "Indicativo de regressão nas metas do PEI."
 }
 ```
+
+**Fluxo no frontend:**
+
+* O atalho **Emitir RAE** abre o modal pré-carregado com o estudante, o PEI e o acompanhamento em foco. O formulário permite escolher `RAI` ou `RAE`, o bimestre (1 a 4), o indicativo de regressão e a descrição; a emissão é persistida via `POST /api/rais` e a Linha do Tempo é recarregada imediatamente.
+* O cabeçalho exibe a **Central de Notificações** para o perfil `COORDENADOR` (`DropdownNotificacoes`). O sino mostra a quantidade de pendências, permite marcar como lida (individualmente ou em bloco) e, ao clicar em uma notificação de regressão, navega direto para `/estudantes/{alunoId}/pei`.
+* Eventos `RAI` e `RAE` na Linha do Tempo possuem ícones e rótulos próprios e abrem um modal de detalhes com os dados do relatório.
 
 ---
 

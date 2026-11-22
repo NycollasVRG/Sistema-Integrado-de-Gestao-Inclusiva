@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Calendar, ClipboardList, FileBarChart, FileText, Stethoscope } from "lucide-react";
+import { Calendar, ClipboardList, FileBarChart, FileSpreadsheet, FileText, Stethoscope } from "lucide-react";
 import type { TimelineEventDTO, TimelineEventType } from "../types/timeline";
 import type { NovoAtendimentoResponseDTO } from "../types/prontuarioAcoes";
 import { TimelineItem } from "./TimelineItem";
 import { ModalDetalheAtendimento } from "./ModalDetalheAtendimento";
+import { ModalDetalheRai } from "./ModalDetalheRai";
 import { useAuth } from "../contexts/AuthContext";
 import { useAgora } from "../hooks/useAgora";
 
@@ -30,8 +31,9 @@ function getEventIcon(tipo: TimelineEventType) {
     case "ATENDIMENTO":
       return <Stethoscope className={baseClasses} aria-hidden="true" />;
     case "RAI":
-    case "RAE":
       return <FileBarChart className={baseClasses} aria-hidden="true" />;
+    case "RAE":
+      return <FileSpreadsheet className={baseClasses} aria-hidden="true" />;
     default:
       return <Calendar className={baseClasses} aria-hidden="true" />;
   }
@@ -48,6 +50,7 @@ export function Timeline({
   // Reavalia a trava de 24h sem recarregar: o selo "Editável"/"Bloqueado" muda sozinho.
   const agora = useAgora(60_000);
   const [atendimentoAbertoId, setAtendimentoAbertoId] = useState<string | null>(null);
+  const [relatorioAbertoId, setRelatorioAbertoId] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -121,6 +124,7 @@ export function Timeline({
                 userId={sessao?.userId ?? null}
                 agora={agora}
                 onVisualizarAtendimento={setAtendimentoAbertoId}
+                onVisualizarRelatorio={setRelatorioAbertoId}
               />
             </li>
           ))}
@@ -134,6 +138,15 @@ export function Timeline({
           atendimentoInicial={atendimentos[atendimentoAbertoId]}
           onClose={() => setAtendimentoAbertoId(null)}
           onAtualizado={(a) => onAtendimentoAtualizado?.(a)}
+        />
+      )}
+
+      {/* TA9.2 / TA9.3: detalhe de RAI/RAE direto da Linha do Tempo */}
+      {relatorioAbertoId && (
+        <ModalDetalheRai
+          key={relatorioAbertoId}
+          relatorioId={relatorioAbertoId}
+          onClose={() => setRelatorioAbertoId(null)}
         />
       )}
     </div>
