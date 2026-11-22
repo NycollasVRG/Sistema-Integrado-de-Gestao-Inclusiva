@@ -6,6 +6,7 @@ import java.util.UUID;
 public class NotificacaoResponseDTO {
     private UUID id;
     private String perfilDestinatario;
+    private UUID usuarioDestinatarioId;
     private String titulo;
     private String mensagem;
     private String linkReferencia;
@@ -16,8 +17,13 @@ public class NotificacaoResponseDTO {
     }
 
     public NotificacaoResponseDTO(UUID id, String perfilDestinatario, String titulo, String mensagem, String linkReferencia, Boolean lida, LocalDateTime criadoEm) {
+        this(id, perfilDestinatario, null, titulo, mensagem, linkReferencia, lida, criadoEm);
+    }
+
+    public NotificacaoResponseDTO(UUID id, String perfilDestinatario, UUID usuarioDestinatarioId, String titulo, String mensagem, String linkReferencia, Boolean lida, LocalDateTime criadoEm) {
         this.id = id;
         this.perfilDestinatario = perfilDestinatario;
+        this.usuarioDestinatarioId = usuarioDestinatarioId;
         this.titulo = titulo;
         this.mensagem = mensagem;
         this.linkReferencia = linkReferencia;
@@ -39,6 +45,14 @@ public class NotificacaoResponseDTO {
 
     public void setPerfilDestinatario(String perfilDestinatario) {
         this.perfilDestinatario = perfilDestinatario;
+    }
+
+    public UUID getUsuarioDestinatarioId() {
+        return usuarioDestinatarioId;
+    }
+
+    public void setUsuarioDestinatarioId(UUID usuarioDestinatarioId) {
+        this.usuarioDestinatarioId = usuarioDestinatarioId;
     }
 
     public String getTitulo() {

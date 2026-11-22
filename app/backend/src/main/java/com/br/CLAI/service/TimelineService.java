@@ -1,5 +1,6 @@
 package com.br.CLAI.service;
 
+import com.br.CLAI.domain.AtaReuniao;
 import com.br.CLAI.domain.Atendimento;
 import com.br.CLAI.domain.EstudoDeCaso;
 import com.br.CLAI.domain.Pea;
@@ -7,6 +8,7 @@ import com.br.CLAI.domain.Pei;
 import com.br.CLAI.domain.Rai;
 import com.br.CLAI.domain.enums.TipoRelatorio;
 import com.br.CLAI.dto.response.TimelineEventDTO;
+import com.br.CLAI.repository.AtaReuniaoRepository;
 import com.br.CLAI.repository.AtendimentoRepository;
 import com.br.CLAI.repository.EstudoDeCasoRepository;
 import com.br.CLAI.repository.PeaRepository;
@@ -28,6 +30,7 @@ public class TimelineService {
     private final PeaRepository peaRepository;
     private final AtendimentoRepository atendimentoRepository;
     private final RaiRepository raiRepository;
+    private final AtaReuniaoRepository ataReuniaoRepository;
 
     /**
      * Construtor mantido para os testes existentes que agregavam apenas quatro fontes.
@@ -37,7 +40,19 @@ public class TimelineService {
             PeiRepository peiRepository,
             PeaRepository peaRepository,
             AtendimentoRepository atendimentoRepository) {
-        this(estudoDeCasoRepository, peiRepository, peaRepository, atendimentoRepository, null);
+        this(estudoDeCasoRepository, peiRepository, peaRepository, atendimentoRepository, null, null);
+    }
+
+    /**
+     * Construtor mantido para os testes existentes que agregavam cinco fontes (incluindo RAI/RAE).
+     */
+    public TimelineService(
+            EstudoDeCasoRepository estudoDeCasoRepository,
+            PeiRepository peiRepository,
+            PeaRepository peaRepository,
+            AtendimentoRepository atendimentoRepository,
+            RaiRepository raiRepository) {
+        this(estudoDeCasoRepository, peiRepository, peaRepository, atendimentoRepository, raiRepository, null);
     }
 
     @Autowired
@@ -46,13 +61,15 @@ public class TimelineService {
             PeiRepository peiRepository,
             PeaRepository peaRepository,
             AtendimentoRepository atendimentoRepository,
-            RaiRepository raiRepository) {
+            RaiRepository raiRepository,
+            AtaReuniaoRepository ataReuniaoRepository) {
 
         this.estudoDeCasoRepository = estudoDeCasoRepository;
         this.peiRepository = peiRepository;
         this.peaRepository = peaRepository;
         this.atendimentoRepository = atendimentoRepository;
         this.raiRepository = raiRepository;
+        this.ataReuniaoRepository = ataReuniaoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -124,6 +141,20 @@ public class TimelineService {
                                 rai.getId(),
                                 tipo.name(),
                                 rai.getCriadoEm()
+                        )
+                );
+            }
+        }
+
+        // TA8.2 / TA9.2: atas de reunião vinculadas ao estudante compõem a linha do tempo.
+        if (ataReuniaoRepository != null) {
+            List<AtaReuniao> atas = ataReuniaoRepository.findByAlunoId(alunoId);
+            for (AtaReuniao ata : atas) {
+                eventos.add(
+                        new TimelineEventDTO(
+                                ata.getId(),
+                                "ATA",
+                                ata.getCriadoEm()
                         )
                 );
             }
