@@ -35,6 +35,11 @@ sigi:
     jwt-expiration-ms: ${JWT_EXPIRATION_MS:28800000}
   storage:
     attachments-dir: ${ATTACHMENTS_STORAGE_PATH:/app/storage/anexos}
+  atas:
+    lembrete:
+      antecedencia-dias: ${ATAS_LEMBRETE_ANTECEDENCIA_DIAS:3}
+      cron: ${ATAS_LEMBRETE_CRON:0 0 8 * * *}
+      zone: ${ATAS_LEMBRETE_ZONE:America/Fortaleza}
 
 management:
   endpoints:

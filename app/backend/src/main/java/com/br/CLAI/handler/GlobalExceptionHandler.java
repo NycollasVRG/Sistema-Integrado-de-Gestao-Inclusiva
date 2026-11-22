@@ -1,6 +1,7 @@
 package com.br.CLAI.handler;
 
 import com.br.CLAI.exception.AcessoNegadoException;
+import com.br.CLAI.exception.AtaFinalizadaException;
 import com.br.CLAI.exception.ConflitoException;
 import com.br.CLAI.exception.NaoEncontradoException;
 import com.br.CLAI.exception.RegraDeNegocioException;
@@ -97,6 +98,18 @@ public class GlobalExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         problemDetail.setTitle("Conflito de Dados");
         problemDetail.setType(URI.create("https://api.sigi.com/errors/conflito"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
+    }
+
+    @ExceptionHandler(AtaFinalizadaException.class)
+    public ProblemDetail handleAtaFinalizadaException(AtaFinalizadaException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problemDetail.setTitle("Ata Finalizada – Imutável");
+        problemDetail.setType(URI.create("https://api.sigi.com/errors/ata-finalizada"));
+        if (ex.getAtaId() != null) {
+            problemDetail.setProperty("termoAditivoUri", "/api/atas/" + ex.getAtaId() + "/termos-aditivos");
+        }
         problemDetail.setProperty("timestamp", Instant.now());
         return problemDetail;
     }
