@@ -59,6 +59,8 @@ import { useAuth } from './contexts/AuthContext';
 import { PainelAdminUsuarios } from './pages/PainelAdminUsuarios';
 import { SecaoProntuarioRbac } from './components/SecaoProntuarioRbac';
 import { FormularioEstudante } from './pages/FormularioEstudante';
+import { IndicarEstudante } from './pages/IndicarEstudante';
+import { TriagemIndicacoes } from './pages/TriagemIndicacoes';
 
 function resumoParaAluno(estudante: EstudanteResumo): Aluno {
   return {
@@ -970,6 +972,10 @@ const AppConteudo: React.FC = () => {
               ? 'Edição de Estudante'
               : location.pathname === '/estudantes'
               ? 'Gestão de Estudantes'
+              : location.pathname === '/indicacoes/nova'
+              ? 'Indicar Estudante'
+              : location.pathname === '/triagem'
+              ? 'Triagem e Indicações'
               : matchEstudo || location.pathname === '/estudo-de-caso'
               ? 'Formulário de Estudo de Caso'
               : matchPei || location.pathname === '/pei'
@@ -1022,6 +1028,11 @@ const AppConteudo: React.FC = () => {
               }
             />
             <Route path="/estudantes/:id" element={<RedirecionarParaProntuario />} />
+
+            {/* US 10: indicação de estudantes e painel de triagem da CLAI */}
+            <Route path="/indicacoes/nova" element={<IndicarEstudante onNotificar={adicionarToast} />} />
+            <Route path="/triagem" element={<TriagemIndicacoes onNotificar={adicionarToast} />} />
+            <Route path="/indicacoes" element={<Navigate to="/triagem" replace />} />
 
             <Route path="/" element={<Navigate to="/estudantes" replace />} />
             <Route
