@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ClipboardList, ClipboardPlus, LogOut, Menu, Shield, Users, X } from 'lucide-react';
+import { ClipboardList, ClipboardPlus, History, LogOut, Menu, Shield, Users, X } from 'lucide-react';
 import ifpbLogo from '../assets/imagens/ifpb.png';
 import { useAuth } from '../contexts/AuthContext';
 import { ROTULO_ROLE } from '../types/auth';
@@ -169,7 +169,7 @@ export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
                         to="/admin/usuarios"
                         onClick={() => setMenuAberto(false)}
                         className={`flex items-start gap-3 p-2.5 rounded-lg text-sm transition-colors cursor-pointer ${
-                          location.pathname.startsWith('/admin')
+                          location.pathname === '/admin/usuarios'
                             ? 'bg-purple-50 text-purple-900 font-semibold'
                             : 'text-gray-700 hover:bg-gray-50'
                         }`}
@@ -180,6 +180,28 @@ export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
                           <span className="block font-medium">Gestão de Usuários</span>
                           <span className="block text-xs text-gray-500 font-normal mt-0.5">
                             Controle de acessos e perfis RBAC
+                          </span>
+                        </div>
+                      </Link>
+                    )}
+
+                    {/* Item 3: Trilha de Auditoria (exclusivo ADMIN / US 06) */}
+                    {isAdmin && (
+                      <Link
+                        to="/admin/auditoria"
+                        onClick={() => setMenuAberto(false)}
+                        className={`flex items-start gap-3 p-2.5 rounded-lg text-sm transition-colors cursor-pointer ${
+                          location.pathname === '/admin/auditoria'
+                            ? 'bg-purple-50 text-purple-900 font-semibold'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        role="menuitem"
+                      >
+                        <History className="w-5 h-5 shrink-0 mt-0.5 text-purple-700" />
+                        <div className="leading-tight">
+                          <span className="block font-medium">Trilha de Auditoria</span>
+                          <span className="block text-xs text-gray-500 font-normal mt-0.5">
+                            Consulta somente leitura dos registros imutáveis
                           </span>
                         </div>
                       </Link>

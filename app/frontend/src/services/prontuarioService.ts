@@ -4,41 +4,12 @@ import type {
 } from '../types/estudoDeCaso';
 import type {
   AtualizarAtendimentoRequestDTO,
-  EmissaoDocumentoRequestDTO,
-  EmissaoDocumentoResponseDTO,
   NovoAtendimentoRequestDTO,
   NovoAtendimentoResponseDTO,
   NovoEstudoRapidoRequestDTO,
 } from '../types/prontuarioAcoes';
 import { EstudoDeCasoService } from './estudoDeCasoService';
 import { apiFetch } from './apiClient';
-
-const STORAGE_KEY_DOCUMENTOS = 'sigi_clai_documentos_prontuario';
-
-function getStoredDocumentos(): EmissaoDocumentoResponseDTO[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_DOCUMENTOS);
-    if (raw) return JSON.parse(raw);
-  } catch (e) {
-    console.error('Falha ao ler cache local de documentos:', e);
-  }
-  return [];
-}
-
-function saveStoredDocumentos(documentos: EmissaoDocumentoResponseDTO[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY_DOCUMENTOS, JSON.stringify(documentos));
-  } catch (e) {
-    console.error('Falha ao gravar cache local de documentos:', e);
-  }
-}
-
-function gerarIdLocal(prefixo: string): string {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return `${prefixo}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-}
 
 export class ProntuarioService {
   /**
@@ -145,48 +116,5 @@ export class ProntuarioService {
       }),
     });
     return (await res.json()) as NovoAtendimentoResponseDTO;
-  }
-
-  /**
-   * Emissão de documentos complementares (Emitir RAE / Gerar Dossiê).
-   * Mock Service estruturado para homologação do fluxo de atalhos rápidos do Prontuário.
-   */
-  static async emitirDocumento(
-    dto: EmissaoDocumentoRequestDTO
-  ): Promise<EmissaoDocumentoResponseDTO> {
-    await new Promise((resolve) => setTimeout(resolve, 400));
-
-    if (!dto.alunoId) {
-      const problem: ProblemDetailRFC9457 = {
-        title: 'Dados do Aluno Ausentes',
-        status: 400,
-        detail: 'O identificador do aluno é obrigatório para emissão do documento.',
-      };
-      throw problem;
-    }
-
-    const agora = new Date().toISOString();
-    const ano = new Date().getFullYear();
-    const codigo = Math.floor(100000 + Math.random() * 900000);
-    const protocolo = `${dto.tipoDocumento}-${ano}-${codigo}`;
-
-    const nomeDoc =
-      dto.tipoDocumento === 'RAE'
-        ? 'Relatório de Atendimento Educacional (RAE)'
-        : 'Dossiê Consolidado do Estudante';
-
-    const docGerado: EmissaoDocumentoResponseDTO = {
-      id: gerarIdLocal('doc'),
-      alunoId: dto.alunoId,
-      tipoDocumento: dto.tipoDocumento,
-      protocolo,
-      geradoEm: agora,
-      resumo: `${nomeDoc} emitido para a matrícula ${dto.matriculaAluno} sob protocolo ${protocolo}.`,
-    };
-
-    const docs = getStoredDocumentos();
-    saveStoredDocumentos([docGerado, ...docs]);
-
-    return docGerado;
   }
 }

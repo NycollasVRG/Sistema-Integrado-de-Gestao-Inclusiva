@@ -57,6 +57,7 @@ import { RotaProtegida } from './components/RotaProtegida';
 import { ModalAcessoNegadoLGPD } from './components/ModalAcessoNegadoLGPD';
 import { useAuth } from './contexts/AuthContext';
 import { PainelAdminUsuarios } from './pages/PainelAdminUsuarios';
+import { PainelAdminAuditoria } from './pages/PainelAdminAuditoria';
 import { SecaoProntuarioRbac } from './components/SecaoProntuarioRbac';
 import { FormularioEstudante } from './pages/FormularioEstudante';
 import { IndicarEstudante } from './pages/IndicarEstudante';
@@ -1004,6 +1005,7 @@ const AppConteudo: React.FC = () => {
               path="/admin/usuarios"
               element={<PainelAdminUsuarios onNotificar={adicionarToast} />}
             />
+            <Route path="/admin/auditoria" element={<PainelAdminAuditoria />} />
             <Route path="/admin" element={<Navigate to="/admin/usuarios" replace />} />
             <Route
               path="/estudantes"
@@ -1363,11 +1365,22 @@ const AppConteudo: React.FC = () => {
             return;
           }
 
-          adicionarToast(
-            'sucesso',
-            doc.tipoDocumento === 'RAE' ? 'RAE Emitido com Sucesso' : 'Dossiê Gerado com Sucesso',
-            doc.resumo
-          );
+          // Dossiê real (GET .../dossie/exportar): download concluído pelo DossieService.
+          if ('protocolo' in doc) {
+            const escopo = doc.escopo === 'EXTERNO' ? 'transferência externa' : 'uso interno';
+            adicionarToast(
+              'sucesso',
+              'Dossiê Exportado com Sucesso',
+              `Protocolo ${doc.protocolo} • Escopo ${escopo}. Arquivo baixado com ${
+                doc.atasReuniao?.length ?? 0
+              } ata(s), ${doc.convocacoes?.length ?? 0} convocação(ões) e ${
+                doc.logsAuditoria?.length ?? 0
+              } registro(s) de auditoria.`
+            );
+            return;
+          }
+
+          adicionarToast('sucesso', 'Documento Gerado com Sucesso', 'Exportação concluída.');
         }}
         onError={(titulo, detalhe) => adicionarToast('erro', titulo, detalhe)}
       />
