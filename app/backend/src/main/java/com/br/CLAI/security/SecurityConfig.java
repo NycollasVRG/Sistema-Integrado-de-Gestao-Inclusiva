@@ -6,6 +6,8 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -36,6 +38,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -81,7 +84,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtDecoder jwtDecoder,
+            @Autowired(required = false) AuditoriaFilter auditoriaFilter
+    ) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
@@ -110,7 +117,19 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler())
                 );
 
+        if (auditoriaFilter != null) {
+            http.addFilterAfter(auditoriaFilter, BearerTokenAuthenticationFilter.class);
+        }
+
         return http.build();
+    }
+
+    @Bean
+    @ConditionalOnBean(AuditoriaFilter.class)
+    public FilterRegistrationBean<AuditoriaFilter> auditoriaFilterRegistration(AuditoriaFilter auditoriaFilter) {
+        FilterRegistrationBean<AuditoriaFilter> registration = new FilterRegistrationBean<>(auditoriaFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean
