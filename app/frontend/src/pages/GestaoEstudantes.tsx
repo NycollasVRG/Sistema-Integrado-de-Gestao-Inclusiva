@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Eye, Search, UserRoundX, Pencil, Users, UserRoundPlus, X } from 'lucide-react';
+import { ClipboardPlus, Eye, Search, UserRoundX, Pencil, Users, UserRoundPlus, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { BadgeStatusEstudante } from '../components/BadgeStatusEstudante';
+import { ModalIndicarEstudante } from '../components/ModalIndicarEstudante';
 import { ModalInativarEstudante } from '../components/ModalInativarEstudante';
 import { GestaoEstudantesService } from '../services/gestaoEstudantesService';
 import type { EstudanteResumo, PaginaEstudantes, TagDificuldadeDTO } from '../types/gestaoEstudantes';
+import type { IndicacaoResponseDTO } from '../types/indicacao';
+import { estudanteAceitaIndicacao } from '../utils/indicacao';
 
 interface Props {
   onAbrirProntuario: (estudante: EstudanteResumo) => void;
@@ -36,7 +40,7 @@ function filtrosTextoIguais(a: FiltrosTexto, b: FiltrosTexto): boolean {
 export function GestaoEstudantes({ onAbrirProntuario }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAcessoFuncional } = useAuth();
+  const { isAcessoFuncional, podeIndicarEstudante } = useAuth();
   const mensagemInicial = (location.state as { mensagemSucesso?: string } | null)?.mensagemSucesso ?? '';
   const [busca, setBusca] = useState('');
   const [curso, setCurso] = useState('');
@@ -52,6 +56,7 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
   const [mensagem, setMensagem] = useState(mensagemInicial);
   const [revisao, setRevisao] = useState(0);
   const [estudanteInativacao, setEstudanteInativacao] = useState<EstudanteResumo | null>(null);
+  const [estudanteIndicacao, setEstudanteIndicacao] = useState<EstudanteResumo | null>(null);
 
   useEffect(() => {
     if (mensagemInicial) {
@@ -149,6 +154,15 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
     setEstudanteInativacao(null);
     setMensagem(`${mensagemSucesso} Para consultar esse estudante, selecione “Inativos / Evadidos”.`);
     setPagina(0);
+    setRevisao((valor) => valor + 1);
+  }
+
+  // US 10 / TA10.2: após indicar, recarrega a lista para exibir o badge "Em Triagem" no estudante.
+  function aposIndicar(indicacao: IndicacaoResponseDTO) {
+    setEstudanteIndicacao(null);
+    setMensagem(
+      `Indicação de ${indicacao.nomeEstudante} registrada. O estudante está Em Triagem e a equipe CLAI foi notificada.`,
+    );
     setRevisao((valor) => valor + 1);
   }
 
@@ -273,9 +287,7 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${estudante.status === 'EVADIDO' ? 'bg-red-100 text-red-800' : estudante.ativo ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-700'}`}>
-                      {estudante.status === 'EVADIDO' ? 'Evadido' : estudante.ativo ? 'Ativo' : 'Inativo'}
-                    </span>
+                    <BadgeStatusEstudante status={estudante.status} ativo={estudante.ativo} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -289,6 +301,23 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
                         <Eye className="w-3.5 h-3.5" />
                         <span>Detalhes</span>
                       </button>
+                      {podeIndicarEstudante && (
+                        <button
+                          type="button"
+                          onClick={() => setEstudanteIndicacao(estudante)}
+                          disabled={!estudanteAceitaIndicacao(estudante)}
+                          title={
+                            estudanteAceitaIndicacao(estudante)
+                              ? 'Indicar estudante para triagem da CLAI'
+                              : 'Estudantes inativos ou evadidos não podem ser indicados'
+                          }
+                          aria-label={`Indicar ${estudante.nomeCompleto} para triagem`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-ifpb-teal border border-ifpb-teal/40 bg-white hover:bg-ifpb-tealLight transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                        >
+                          <ClipboardPlus className="w-3.5 h-3.5" />
+                          <span>Indicar</span>
+                        </button>
+                      )}
                       {!isAcessoFuncional && (
                         <>
                           <button
@@ -341,6 +370,14 @@ export function GestaoEstudantes({ onAbrirProntuario }: Props) {
           </div>
         </div>
       </div>
+
+      {podeIndicarEstudante && (
+        <ModalIndicarEstudante
+          estudante={estudanteIndicacao}
+          onClose={() => setEstudanteIndicacao(null)}
+          onSucesso={aposIndicar}
+        />
+      )}
 
       {estudanteInativacao && (
         <ModalInativarEstudante estudante={estudanteInativacao}

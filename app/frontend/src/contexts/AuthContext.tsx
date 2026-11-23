@@ -3,6 +3,7 @@ import type { SessaoUsuario } from '../types/auth';
 import { autenticar, revalidarSessao } from '../services/authService';
 import { aoEncerrarSessao, CHAVE_SESSAO, lerSessao, limparSessao } from '../services/authSessao';
 import { removerRascunhosDoUsuario } from '../services/rascunhoAtendimentoService';
+import { podeGerirTriagem, podeIndicarEstudante } from '../utils/indicacao';
 
 interface AuthContextValue {
   sessao: SessaoUsuario | null;
@@ -19,6 +20,10 @@ interface AuthContextValue {
   podeAcessarDadosSensiveis: boolean;
   /** TA11.2: diagnósticos neuropsicológicos exigem SUPER_RESTRICAO e autorização de saúde. */
   podeBaixarLaudo: boolean;
+  /** US 10: professores, coordenadores e equipe CLAI podem indicar estudantes para triagem. */
+  podeIndicarEstudante: boolean;
+  /** US 10: painel de triagem restrito à equipe CLAI/Coordenação (Restrição Moderada ou superior). */
+  podeGerirTriagem: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -91,6 +96,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAcessoFuncional: nivel === 'ACESSO_FUNCIONAL',
       podeAcessarDadosSensiveis: nivel === 'SUPER_RESTRICAO' || nivel === 'RESTRICAO_MODERADA',
       podeBaixarLaudo: nivel === 'SUPER_RESTRICAO' && sessao?.autorizacaoSaude === true,
+      podeIndicarEstudante: podeIndicarEstudante(sessao?.role),
+      podeGerirTriagem: podeGerirTriagem(sessao?.role, nivel),
     };
   }, [sessao, avisoSessao, limparAviso, login, logout]);
 
