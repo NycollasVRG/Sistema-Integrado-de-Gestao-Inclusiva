@@ -74,21 +74,3 @@ export interface NovoEstudoRapidoRequestDTO {
   historico: string;
   indicadoresIds: string[];
 }
-
-export interface EmissaoDocumentoRequestDTO {
-  alunoId: string;
-  matriculaAluno: string;
-  tipoDocumento: TipoDocumentoProntuario;
-  periodoReferencia?: string;
-  incluirHistoricoCompleto?: boolean;
-  observacoesAdicionais?: string;
-}
-
-export interface EmissaoDocumentoResponseDTO {
-  id: string;
-  alunoId: string;
-  tipoDocumento: TipoDocumentoProntuario;
-  protocolo: string;
-  geradoEm: string;
-  resumo: string;
-}

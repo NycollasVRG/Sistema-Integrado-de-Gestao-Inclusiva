@@ -8,14 +8,12 @@ import {
   RotateCw,
 } from 'lucide-react';
 import { toProblem } from '../services/apiClient';
-import { ProntuarioService } from '../services/prontuarioService';
+import { DossieService } from '../services/dossieService';
 import { RaiService } from '../services/raiService';
 import type { RaiResponseDTO, TipoRelatorio } from '../types/rai';
-import type {
-  AlunoModalData,
-  EmissaoDocumentoResponseDTO,
-  TipoDocumentoProntuario,
-} from '../types/prontuarioAcoes';
+import { ESCOPO_DOSSIE_LABEL } from '../types/dossie';
+import type { DossieJuridicoDTO, EscopoDossie } from '../types/dossie';
+import type { AlunoModalData, TipoDocumentoProntuario } from '../types/prontuarioAcoes';
 import { ModalBase } from './ModalBase';
 import { ModalAlunoHeader } from './ModalAlunoHeader';
 
@@ -27,18 +25,12 @@ export interface ModalConfirmacaoAcaoProps {
   /** Vínculos do estudante enviados ao back-end para validação e rastreabilidade. */
   peiId?: string | null;
   acompanhamentoId?: string | null;
-  onSuccess: (
-    documento: EmissaoDocumentoResponseDTO | RaiResponseDTO
-  ) => void | Promise<void>;
+  onSuccess: (documento: DossieJuridicoDTO | RaiResponseDTO) => void | Promise<void>;
   onError?: (titulo: string, detalhe: string) => void;
 }
 
 function bimestreAtual(): number {
   return Math.floor(new Date().getMonth() / 3) + 1;
-}
-
-function periodoAtual(): string {
-  return `${new Date().getFullYear()}.1`;
 }
 
 export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
@@ -57,12 +49,8 @@ export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
   const [indicativoRegressao, setIndicativoRegressao] = useState<boolean>(false);
   const [descricao, setDescricao] = useState<string>('');
 
-  // Dossiê: campos do gerador local, preservados sem alteração de contrato.
-  const [periodoReferencia, setPeriodoReferencia] = useState<string>(periodoAtual);
-  const [incluirHistoricoCompleto, setIncluirHistoricoCompleto] =
-    useState<boolean>(true);
-  const [observacoesAdicionais, setObservacoesAdicionais] =
-    useState<string>('');
+  // Dossiê (US 06): escopo de exportação consumido por GET /api/alunos/{id}/dossie/exportar.
+  const [escopo, setEscopo] = useState<EscopoDossie>('INTERNO');
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [erroLocal, setErroLocal] = useState<string | null>(null);
@@ -76,9 +64,7 @@ export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
     setBimestre(bimestreAtual());
     setIndicativoRegressao(false);
     setDescricao('');
-    setPeriodoReferencia(periodoAtual());
-    setIncluirHistoricoCompleto(true);
-    setObservacoesAdicionais('');
+    setEscopo('INTERNO');
     setErroLocal(null);
   }, [isOpen, tipoDocumento, aluno.id]);
 
@@ -121,16 +107,9 @@ export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
         setDescricao('');
         await onSuccess(relatorio);
       } else {
-        const gerado = await ProntuarioService.emitirDocumento({
-          alunoId: aluno.id,
-          matriculaAluno: aluno.matricula,
-          tipoDocumento,
-          periodoReferencia: periodoReferencia.trim() || `${new Date().getFullYear()}.1`,
-          incluirHistoricoCompleto,
-          observacoesAdicionais: observacoesAdicionais.trim() || undefined,
-        });
-        setObservacoesAdicionais('');
-        await onSuccess(gerado);
+        // TA6.2 / TA6.4: o arquivo é gerado pelo servidor e baixado via Blob.
+        const dossie = await DossieService.exportar(aluno.id, escopo);
+        await onSuccess(dossie);
       }
       onClose();
     } catch (err: unknown) {
@@ -153,12 +132,12 @@ export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
           ? tipoRelatorio === 'RAI'
             ? 'Emitir RAI — Relatório de Acompanhamento Individualizado'
             : 'Emitir RAE — Relatório de Atendimento Educacional'
-          : 'Gerar Dossiê Consolidado do Prontuário'
+          : 'Gerar Dossiê Jurídico do Estudante'
       }
       subtitulo={
         isRae
           ? 'Registro bimestral oficial, vinculado à Linha do Tempo do estudante'
-          : 'Compilação completa de Estudos de Caso, PEI, PEA e Atendimentos'
+          : 'Exportação oficial com escopo interno ou externo, conforme a LGPD'
       }
       icone={
         isRae ? (
@@ -197,7 +176,7 @@ export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
                   : 'Gerando documento...'
                 : isRae
                   ? `Confirmar e Emitir ${tipoRelatorio}`
-                  : 'Confirmar e Gerar Dossiê'}
+                  : 'Confirmar e Baixar Dossiê'}
             </span>
           </button>
         </>
@@ -226,7 +205,7 @@ export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
           <p className="text-xs text-ifpb-dark leading-relaxed">
             {isRae
               ? `O ${tipoRelatorio} fica registrado na Linha do Tempo do estudante. Ao marcar indicativo de regressão, o Coordenador recebe uma notificação para revisar o PEI (TA3.3).`
-              : 'O Dossiê reúne em documento único a Linha do Tempo completa, o Estudo de Caso, o PEI e os registros de atendimento do estudante.'}
+              : 'O dossiê compila prontuário, atas, convocações, notificações, anexos e a trilha de auditoria em um arquivo gerado pelo servidor. Escolha o escopo antes de confirmar (TA6.2 / TA6.4).'}
           </p>
         </div>
 
@@ -318,62 +297,53 @@ export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
             </div>
           </>
         ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="doc-periodo"
-                  className="block text-xs font-bold text-ifpb-dark mb-1"
-                >
-                  Período Letivo de Referência
-                </label>
-                <input
-                  id="doc-periodo"
-                  type="text"
-                  value={periodoReferencia}
-                  onChange={(e) => setPeriodoReferencia(e.target.value)}
-                  disabled={isSubmitting}
-                  placeholder="Ex.: 2026.1"
-                  className="w-full px-3 py-2 rounded-lg text-xs border border-gray-300 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal"
-                />
-              </div>
+          <fieldset disabled={isSubmitting} className="space-y-3">
+            <legend className="text-xs font-bold text-ifpb-dark mb-2">
+              Escopo da Exportação <span className="text-ifpb-red">*</span>
+            </legend>
 
-              <div className="flex items-end pb-1">
-                <label className="inline-flex items-center space-x-2.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={incluirHistoricoCompleto}
-                    onChange={(e) => setIncluirHistoricoCompleto(e.target.checked)}
-                    disabled={isSubmitting}
-                    className="w-4 h-4 rounded border-gray-300 text-ifpb-teal focus:ring-ifpb-teal"
-                  />
-                  <span className="text-xs font-medium text-gray-700">
-                    Incluir histórico completo da Linha do Tempo
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            <div>
+            {(['INTERNO', 'EXTERNO'] as EscopoDossie[]).map((opcao) => (
               <label
-                htmlFor="doc-observacoes"
-                className="block text-xs font-bold text-ifpb-dark mb-1"
+                key={opcao}
+                htmlFor={`escopo-dossie-${opcao}`}
+                className={`flex items-start gap-3 p-3.5 rounded-lg border cursor-pointer transition-colors ${
+                  escopo === opcao
+                    ? 'border-ifpb-teal bg-ifpb-tealLight/60'
+                    : 'border-gray-300 bg-white hover:bg-gray-50'
+                }`}
               >
-                Observações / Despacho Final{' '}
-                <span className="text-gray-400 font-normal">(Opcional)</span>
+                <input
+                  id={`escopo-dossie-${opcao}`}
+                  type="radio"
+                  name="escopo-dossie"
+                  value={opcao}
+                  checked={escopo === opcao}
+                  onChange={() => setEscopo(opcao)}
+                  className="mt-0.5 w-4 h-4 text-ifpb-teal focus:ring-ifpb-teal"
+                />
+                <span className="leading-tight">
+                  <span className="block text-xs font-semibold text-ifpb-dark">
+                    {ESCOPO_DOSSIE_LABEL[opcao]}
+                  </span>
+                  <span className="block text-[11px] text-gray-500 mt-1">
+                    {opcao === 'INTERNO'
+                      ? 'Inclui laudos médicos e todos os registros classificados como SUPER_RESTRICAO.'
+                      : 'Omite laudos médicos e registros SUPER_RESTRICAO para transferência externa (TA6.4).'}
+                  </span>
+                </span>
               </label>
-              <textarea
-                id="doc-observacoes"
-                rows={3}
-                maxLength={5000}
-                value={observacoesAdicionais}
-                onChange={(e) => setObservacoesAdicionais(e.target.value)}
-                disabled={isSubmitting}
-                placeholder="Observações complementares a constar no rodapé do documento..."
-                className="w-full p-3 rounded-lg text-xs border border-gray-300 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal resize-y"
-              />
-            </div>
-          </>
+            ))}
+
+            {escopo === 'EXTERNO' && (
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  Atenção LGPD: o arquivo externo não conterá dados clínicos nem informação classificada
+                  como SUPER_RESTRICAO. Confira o protocolo gerado após o download.
+                </p>
+              </div>
+            )}
+          </fieldset>
         )}
       </form>
     </ModalBase>
