@@ -174,6 +174,7 @@ public class AuditoriaAspect {
             case "AtaReuniao" -> "ATA_REUNIAO";
             case "AnexoEstudante" -> "ANEXO_ESTUDANTE";
             case "IndicadorReutilizavel" -> "INDICADOR_REUTILIZAVEL";
+            case "AlertaPedagogico" -> "ALERTA_PEDAGOGICO";
             default -> base.toUpperCase(Locale.ROOT);
         };
     }
