@@ -5,6 +5,7 @@ export type ProntuarioModalTipo =
   | 'ESTUDO'
   | 'EMITIR_RAE'
   | 'GERAR_DOSSIE'
+  | 'NOVA_ATA'
   | null;
 
 export type TipoAtendimento =
