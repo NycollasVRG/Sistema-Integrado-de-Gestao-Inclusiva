@@ -3,6 +3,8 @@ package com.br.CLAI.handler;
 import com.br.CLAI.exception.AcessoNegadoException;
 import com.br.CLAI.exception.AtaFinalizadaException;
 import com.br.CLAI.exception.ConflitoException;
+import com.br.CLAI.exception.IaIndisponivelException;
+import com.br.CLAI.exception.IaTimeoutException;
 import com.br.CLAI.exception.NaoEncontradoException;
 import com.br.CLAI.exception.RegraDeNegocioException;
 import org.springframework.http.HttpStatus;
@@ -98,6 +100,24 @@ public class GlobalExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         problemDetail.setTitle("Conflito de Dados");
         problemDetail.setType(URI.create("https://api.sigi.com/errors/conflito"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
+    }
+
+    @ExceptionHandler(IaTimeoutException.class)
+    public ProblemDetail handleIaTimeoutException(IaTimeoutException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.GATEWAY_TIMEOUT, ex.getMessage());
+        problemDetail.setTitle("Tempo Limite Excedido na Adaptação via IA");
+        problemDetail.setType(URI.create("https://api.sigi.com/errors/ia-timeout"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
+    }
+
+    @ExceptionHandler(IaIndisponivelException.class)
+    public ProblemDetail handleIaIndisponivelException(IaIndisponivelException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+        problemDetail.setTitle("Serviço de Adaptação via IA Indisponível");
+        problemDetail.setType(URI.create("https://api.sigi.com/errors/ia-indisponivel"));
         problemDetail.setProperty("timestamp", Instant.now());
         return problemDetail;
     }
