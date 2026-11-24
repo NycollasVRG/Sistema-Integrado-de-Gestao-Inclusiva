@@ -65,6 +65,11 @@ export interface ProblemDetailRFC9457 {
   title: string;
   status: number;
   detail: string;
+  /** Tipo RFC 9457 (ex.: .../ata-finalizada). */
+  type?: string;
   instance?: string;
+  timestamp?: string;
   errors?: Record<string, string>;
+  /** US 08: caminho do termo aditivo devolvido quando se tenta alterar uma ata finalizada. */
+  termoAditivoUri?: string;
 }

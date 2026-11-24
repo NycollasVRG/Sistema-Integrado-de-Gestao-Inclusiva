@@ -19,6 +19,9 @@ import { Timeline } from './components/Timeline';
 import { ProntuarioQuickActions } from './components/ProntuarioQuickActions';
 import { ModalNovoAtendimento } from './components/ModalNovoAtendimento';
 import { ModalNovoEstudo } from './components/ModalNovoEstudo';
+import { ModalAta, type AcaoAta } from './components/ModalAta';
+import { ModalDetalheAta } from './components/ModalDetalheAta';
+import { SecaoAtasReuniao } from './components/SecaoAtasReuniao';
 import { ModalConfirmacaoAcao } from './components/ModalConfirmacaoAcao';
 import { EstudoDeCasoService } from './services/estudoDeCasoService';
 import { PeiService } from './services/peiService';
@@ -26,6 +29,7 @@ import { GestaoEstudantesService } from './services/gestaoEstudantesService';
 import { estudanteParaHeader } from './services/alunoService';
 import type { EstudanteResumo } from './types/gestaoEstudantes';
 import { getTimeline } from './services/timelineService';
+import { AtaService } from './services/ataService';
 import { ProntuarioService } from './services/prontuarioService';
 import { isAbortError } from './services/apiClient';
 import { notificarAlteracaoNotificacoes } from './services/notificacaoService';
@@ -36,6 +40,7 @@ import { PlanoAcaoService } from './services/planoAcaoService';
 import type { DadosFormularioPei, PeiResponseDTO } from './types/pei';
 import type { AlunoHeaderData } from './types/alunoHeader';
 import type { TimelineEventDTO } from './types/timeline';
+import type { AtaReuniaoResponseDTO } from './types/ata';
 import type { NovoAtendimentoResponseDTO } from './types/prontuarioAcoes';
 import type { DadosFormularioPea, PeaResponseDTO } from './types/pea';
 import type { DadosFormularioPlanoAcao, PlanoAcaoResponseDTO } from './types/planoAcao';
@@ -117,7 +122,7 @@ const CardErroEstudante: React.FC<{ mensagem: string; onVoltar: () => void }> = 
 const AppConteudo: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { autenticado } = useAuth();
+  const { autenticado, podeGerirAtas } = useAuth();
 
   const matchProntuario = useMatch('/estudantes/:id/prontuario');
   const matchEstudo = useMatch('/estudantes/:id/estudo-de-caso');
@@ -153,10 +158,19 @@ const AppConteudo: React.FC = () => {
   const [header, setHeader] = useState<AlunoHeaderData | null>(null);
   const [timeline, setTimeline] = useState<TimelineEventDTO[]>([]);
   const [atendimentosPorId, setAtendimentosPorId] = useState<Record<string, NovoAtendimentoResponseDTO>>({});
+  const [atasDoAluno, setAtasDoAluno] = useState<AtaReuniaoResponseDTO[]>([]);
+  const [atasPorId, setAtasPorId] = useState<Record<string, AtaReuniaoResponseDTO>>({});
+  const [ataEmEdicao, setAtaEmEdicao] = useState<AtaReuniaoResponseDTO | null>(null);
+  const [ataAberta, setAtaAberta] = useState<{
+    id: string;
+    modo: 'DETALHE' | 'TERMO';
+  } | null>(null);
   const [loadingHeader, setLoadingHeader] = useState<boolean>(false);
   const [loadingTimeline, setLoadingTimeline] = useState<boolean>(false);
+  const [loadingAtas, setLoadingAtas] = useState<boolean>(false);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
   const [errorTimeline, setErrorTimeline] = useState<string | null>(null);
+  const [errorAtas, setErrorAtas] = useState<string | null>(null);
   const [erroAlunoRota, setErroAlunoRota] = useState<string | null>(null);
   const [revisaoProntuario, setRevisaoProntuario] = useState<number>(0);
   const [modalAtivo, setModalAtivo] = useState<ProntuarioModalTipo>(null);
@@ -369,6 +383,31 @@ const AppConteudo: React.FC = () => {
     }
   }, []);
 
+  const carregarAtas = useCallback(async (alunoId: string, signal?: AbortSignal) => {
+    setLoadingAtas(true);
+    setErrorAtas(null);
+    try {
+      const atas = await AtaService.listarPorAluno(alunoId, signal);
+      if (signal?.aborted) return;
+      setAtasDoAluno(atas || []);
+      setAtasPorId(Object.fromEntries((atas || []).map((ata) => [ata.id, ata])));
+    } catch (e: unknown) {
+      if (signal?.aborted) return;
+      console.error('Erro ao carregar atas de reunião:', e);
+      const prob = e as Partial<ProblemDetailRFC9457> & { message?: string };
+      setErrorAtas(
+        prob?.detail ||
+          prob?.title ||
+          (typeof prob?.message === 'string' ? prob.message : null) ||
+          'Erro ao carregar atas de reunião'
+      );
+      setAtasDoAluno([]);
+      setAtasPorId({});
+    } finally {
+      if (!signal?.aborted) setLoadingAtas(false);
+    }
+  }, []);
+
   // Carrega catálogo de indicadores ao autenticar
   useEffect(() => {
     if (!autenticado) return;
@@ -426,6 +465,10 @@ const AppConteudo: React.FC = () => {
         setHeader(null);
         setTimeline([]);
         setAtendimentosPorId({});
+        setAtasDoAluno([]);
+        setAtasPorId({});
+        setAtaEmEdicao(null);
+        setAtaAberta(null);
       }
 
       await Promise.all([
@@ -435,6 +478,7 @@ const AppConteudo: React.FC = () => {
         carregarPeaDoAluno(routeAlunoId, signal),
         carregarPlanosAcaoDoAluno(routeAlunoId, signal),
         carregarTimeline(routeAlunoId, signal),
+        carregarAtas(routeAlunoId, signal),
       ]);
     };
 
@@ -453,6 +497,7 @@ const AppConteudo: React.FC = () => {
     carregarPeaDoAluno,
     carregarPlanosAcaoDoAluno,
     carregarTimeline,
+    carregarAtas,
   ]);
 
   const irParaProntuario = useCallback(
@@ -912,12 +957,18 @@ const AppConteudo: React.FC = () => {
       setPlanoAcaoEmFocoId(null);
       setTimeline([]);
       setAtendimentosPorId({});
+      setAtasDoAluno([]);
+      setAtasPorId({});
+      setAtaEmEdicao(null);
+      setAtaAberta(null);
     }
     setErroAlunoRota(null);
     setErrorHeader(null);
     setErrorTimeline(null);
+    setErrorAtas(null);
     setLoadingHeader(true);
     setLoadingTimeline(true);
+    setLoadingAtas(true);
     setCarregandoEstudo(true);
     setLoadingPei(true);
     setLoadingPea(true);
@@ -1136,6 +1187,31 @@ const AppConteudo: React.FC = () => {
                       }}
                       onEmitirRae={() => setModalAtivo('EMITIR_RAE')}
                       onGerarDossie={() => setModalAtivo('GERAR_DOSSIE')}
+                      onNovaAta={() => {
+                        setAtaEmEdicao(null);
+                        setModalAtivo('NOVA_ATA');
+                      }}
+                      podeGerirAtas={podeGerirAtas}
+                    />
+
+                    <SecaoAtasReuniao
+                      atas={atasDoAluno}
+                      loading={loadingAtas}
+                      error={errorAtas}
+                      podeGerir={podeGerirAtas}
+                      onNovaAta={() => {
+                        setAtaEmEdicao(null);
+                        setModalAtivo('NOVA_ATA');
+                      }}
+                      onAbrirAta={(ata) => {
+                        if (ata.status === 'RASCUNHO' && podeGerirAtas) {
+                          setAtaEmEdicao(ata);
+                          setModalAtivo('NOVA_ATA');
+                          return;
+                        }
+                        setAtaAberta({ id: ata.id, modo: 'DETALHE' });
+                      }}
+                      onEmitirTermo={(ata) => setAtaAberta({ id: ata.id, modo: 'TERMO' })}
                     />
 
                     <div className="mb-6">
@@ -1144,6 +1220,13 @@ const AppConteudo: React.FC = () => {
                         loading={loadingTimeline}
                         error={errorTimeline}
                         atendimentos={atendimentosPorId}
+                        atas={atasPorId}
+                        onVisualizarAta={(ataId) => setAtaAberta({ id: ataId, modo: 'DETALHE' })}
+                        onEditarAta={(ata) => {
+                          setAtaEmEdicao(ata);
+                          setModalAtivo('NOVA_ATA');
+                        }}
+                        onEmitirTermoAta={(ata) => setAtaAberta({ id: ata.id, modo: 'TERMO' })}
                         onAtendimentoAtualizado={(atualizado) => {
                           setAtendimentosPorId((prev) => ({ ...prev, [atualizado.id]: atualizado }));
                           adicionarToast(
@@ -1341,6 +1424,79 @@ const AppConteudo: React.FC = () => {
         }}
         onError={(titulo, detalhe) => adicionarToast('erro', titulo, detalhe)}
       />
+
+      <ModalAta
+        key={`modal-ata-${ataEmEdicao?.id ?? 'nova'}`}
+        isOpen={modalAtivo === 'NOVA_ATA'}
+        onClose={() => {
+          setModalAtivo(null);
+          setAtaEmEdicao(null);
+        }}
+        aluno={alunoEmFoco}
+        ataExistente={ataEmEdicao}
+        onSuccess={async (ata: AtaReuniaoResponseDTO, acao: AcaoAta) => {
+          setAtasPorId((prev) => ({ ...prev, [ata.id]: ata }));
+          setAtasDoAluno((prev) =>
+            prev.some((item) => item.id === ata.id)
+              ? prev.map((item) => (item.id === ata.id ? ata : item))
+              : [ata, ...prev],
+          );
+          if (alunoSelecionado) {
+            // TA8.1/TA8.2: a ata passa a constar no prontuário e na Linha do Tempo na hora.
+            await carregarTimeline(alunoSelecionado.id);
+            await carregarAtas(alunoSelecionado.id);
+          }
+          const avisos: Record<AcaoAta, { titulo: string; mensagem: string }> = {
+            CRIADO: {
+              titulo: 'Rascunho de Ata Salvo',
+              mensagem: `O rascunho da reunião com ${alunoEmFoco.nome} foi registrado no prontuário.`,
+            },
+            ATUALIZADO: {
+              titulo: 'Ata Atualizada',
+              mensagem: 'As alterações do rascunho foram salvas.',
+            },
+            DOCUMENTO: {
+              titulo: 'Documento Assinado Anexado',
+              mensagem: 'O documento foi cifrado e vinculado à ata.',
+            },
+            ASSINATURAS: {
+              titulo: 'Assinaturas Registradas',
+              mensagem: 'As assinaturas digitais dos participantes foram auditadas.',
+            },
+            FINALIZADO: {
+              titulo: 'Ata Finalizada',
+              mensagem: `A ata de ${alunoEmFoco.nome} foi finalizada e já aparece na Linha do Tempo.`,
+            },
+          };
+          const aviso = avisos[acao];
+          adicionarToast('sucesso', aviso.titulo, aviso.mensagem);
+        }}
+      />
+
+      {ataAberta && (
+        <ModalDetalheAta
+          key={`modal-detalhe-ata-${ataAberta.id}-${ataAberta.modo}`}
+          ataId={ataAberta.id}
+          ataInicial={atasPorId[ataAberta.id] ?? null}
+          modoInicial={ataAberta.modo}
+          podeGerir={podeGerirAtas}
+          onClose={() => setAtaAberta(null)}
+          onAtualizada={(atualizada) => {
+            setAtasPorId((prev) => ({ ...prev, [atualizada.id]: atualizada }));
+            setAtasDoAluno((prev) =>
+              prev.map((item) => (item.id === atualizada.id ? atualizada : item)),
+            );
+            if (alunoSelecionado) void carregarTimeline(alunoSelecionado.id);
+          }}
+          onTermoAdicionado={() =>
+            adicionarToast('sucesso', 'Termo Aditivo Emitido', 'O ajuste foi anexado à ata sem alterar os campos originais.')
+          }
+          onEditarRascunho={(ata) => {
+            setAtaEmEdicao(ata);
+            setModalAtivo('NOVA_ATA');
+          }}
+        />
+      )}
 
       <ModalConfirmacaoAcao
         isOpen={modalAtivo === 'EMITIR_RAE' || modalAtivo === 'GERAR_DOSSIE'}

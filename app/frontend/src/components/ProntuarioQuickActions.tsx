@@ -4,6 +4,7 @@ import {
   FileDown,
   FilePlus2,
   FileSpreadsheet,
+  ScrollText,
   Stethoscope,
   Zap,
 } from 'lucide-react';
@@ -18,6 +19,10 @@ export interface ProntuarioQuickActionsProps {
   onNovoEstudo: () => void;
   onEmitirRae: () => void;
   onGerarDossie: () => void;
+  /** US 08: abre o registro de ata de reunião com o estudante em foco. */
+  onNovaAta: () => void;
+  /** US 08: espelha o RBAC do backend para esconder ações indisponíveis. */
+  podeGerirAtas?: boolean;
   disabled?: boolean;
 }
 
@@ -29,6 +34,8 @@ export const ProntuarioQuickActions: React.FC<ProntuarioQuickActionsProps> = ({
   onNovoEstudo,
   onEmitirRae,
   onGerarDossie,
+  onNovaAta,
+  podeGerirAtas = false,
   disabled = false,
 }) => {
   const estudoConcluido = estudoStatus === 'ENCERRADO' || estudoStatus === 'ATIVO';
@@ -67,7 +74,7 @@ export const ProntuarioQuickActions: React.FC<ProntuarioQuickActionsProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Botão 1: Novo Atendimento (TA9.3) */}
         <button
           type="button"
@@ -135,6 +142,24 @@ export const ProntuarioQuickActions: React.FC<ProntuarioQuickActionsProps> = ({
             </span>
           </div>
         </button>
+
+        {/* Botão 5: Registrar Ata de Reunião (US 08) */}
+        {podeGerirAtas && (
+          <button
+            type="button"
+            onClick={onNovaAta}
+            disabled={disabled}
+            className="flex items-center justify-center sm:justify-start space-x-3 px-4 py-3 rounded-lg text-xs font-bold bg-white hover:bg-ifpb-tealLight/40 text-ifpb-dark border border-gray-200 hover:border-ifpb-teal/40 transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ScrollText className="w-4 h-4 text-ifpb-teal shrink-0" />
+            <div className="text-left">
+              <span className="block">Nova Ata</span>
+              <span className="block text-[10px] font-normal text-gray-500">
+                Reunião e assinaturas
+              </span>
+            </div>
+          </button>
+        )}
       </div>
     </section>
   );

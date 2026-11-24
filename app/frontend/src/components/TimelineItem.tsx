@@ -1,6 +1,8 @@
 import { Eye, Lock, Pencil } from "lucide-react";
 import type { TimelineEventDTO, TimelineEventType } from "../types/timeline";
 import type { NovoAtendimentoResponseDTO } from "../types/prontuarioAcoes";
+import type { AtaReuniaoResponseDTO } from "../types/ata";
+import { ROTULO_STATUS_ATA, ROTULO_TIPO_REUNIAO } from "../types/ata";
 import {
   MENSAGEM_BLOQUEIO,
   formatarDataAtendimento,
@@ -20,6 +22,11 @@ interface TimelineItemProps {
   onVisualizarAtendimento?: (atendimentoId: string) => void;
   /** Habilita o detalhe de eventos RAI/RAE (TA9.2 / TA9.3). */
   onVisualizarRelatorio?: (relatorioId: string) => void;
+  /** Detalhes da ata quando o evento é `ATA` (US 08). */
+  ata?: AtaReuniaoResponseDTO;
+  onVisualizarAta?: (ataId: string) => void;
+  onEditarAta?: (ata: AtaReuniaoResponseDTO) => void;
+  onEmitirTermoAta?: (ata: AtaReuniaoResponseDTO) => void;
 }
 
 function getEventLabel(tipo: TimelineEventType): string {
@@ -36,6 +43,8 @@ function getEventLabel(tipo: TimelineEventType): string {
       return "RAI — Relatório de Acompanhamento Individualizado";
     case "RAE":
       return "RAE — Relatório de Atendimento Educacional";
+    case "ATA":
+      return "ATA — Ata de Reunião";
     default:
       return "Registro";
   }
@@ -60,10 +69,15 @@ export function TimelineItem({
   agora,
   onVisualizarAtendimento,
   onVisualizarRelatorio,
+  ata,
+  onVisualizarAta,
+  onEditarAta,
+  onEmitirTermoAta,
 }: TimelineItemProps) {
   const ehAtendimento = event.tipo === "ATENDIMENTO" && !!onVisualizarAtendimento;
   const ehRelatorio =
     (event.tipo === "RAI" || event.tipo === "RAE") && !!onVisualizarRelatorio;
+  const ehAta = event.tipo === "ATA" && !!onVisualizarAta;
 
   const motivo = atendimento ? motivoBloqueioEdicao(atendimento, userId, agora) : null;
   const limite = atendimento ? limiteEdicao(atendimento) : null;
@@ -112,6 +126,60 @@ export function TimelineItem({
               <Eye className="w-3.5 h-3.5 mr-1" />
               Ver detalhes
             </button>
+          </div>
+        )}
+
+        {ehAta && (
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {ata && (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                  ata.status === "FINALIZADA"
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                    : "bg-amber-50 text-amber-800 border-amber-200"
+                }`}>
+                  {ROTULO_STATUS_ATA[ata.status]}
+                </span>
+              )}
+              {ata && (
+                <span className="text-[11px] text-gray-500">
+                  {ROTULO_TIPO_REUNIAO[ata.tipoReuniao]}
+                </span>
+              )}
+            </div>
+            {ata && (
+              <p className="text-xs text-gray-600 line-clamp-2 whitespace-pre-wrap break-words">
+                {ata.pauta}
+              </p>
+            )}
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => onVisualizarAta?.(event.id)}
+                className="inline-flex items-center text-xs font-semibold text-ifpb-teal hover:text-ifpb-tealHover hover:underline cursor-pointer"
+              >
+                <Eye className="w-3.5 h-3.5 mr-1" />
+                Ver detalhes
+              </button>
+              {ata && ata.status === "RASCUNHO" && onEditarAta && (
+                <button
+                  type="button"
+                  onClick={() => onEditarAta(ata)}
+                  className="text-xs font-semibold text-ifpb-teal hover:underline cursor-pointer"
+                >
+                  Continuar rascunho
+                </button>
+              )}
+              {ata && ata.status === "FINALIZADA" && onEmitirTermoAta && (
+                <button
+                  type="button"
+                  onClick={() => onEmitirTermoAta(ata)}
+                  className="text-xs font-semibold text-ifpb-teal hover:underline cursor-pointer"
+                >
+                  Emitir Termo Aditivo
+                </button>
+              )}
+            </div>
           </div>
         )}
 

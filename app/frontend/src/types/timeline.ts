@@ -4,7 +4,8 @@ export type TimelineEventType =
   | "PEA"
   | "ATENDIMENTO"
   | "RAI"
-  | "RAE";
+  | "RAE"
+  | "ATA";
 
 export interface TimelineEventDTO {
   id: string;

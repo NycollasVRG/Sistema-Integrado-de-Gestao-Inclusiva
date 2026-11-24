@@ -90,8 +90,12 @@ async function lerProblema(res: Response, input = ''): Promise<ApiProblem> {
     title: (corpo.title as string) || padrao.title,
     status: res.status,
     detail: (corpo.detail as string) || padrao.detail,
+    type: (corpo.type as string) || undefined,
     instance: (corpo.instance as string) || undefined,
+    timestamp: (corpo.timestamp as string) || undefined,
     errors: (corpo.errors as Record<string, string>) || undefined,
+    // US 08: o 409 de ata finalizada orienta a UI a abrir o formulário de termo aditivo.
+    termoAditivoUri: (corpo.termoAditivoUri as string) || undefined,
   };
 }
 
