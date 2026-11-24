@@ -51,6 +51,11 @@ services:
       AES_KEY: ${AES_KEY:-0123456789abcdef0123456789abcdef}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
       ATTACHMENTS_STORAGE_PATH: ${ATTACHMENTS_STORAGE_PATH:-/app/storage/anexos}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      IA_BASE_URL: ${IA_BASE_URL:-https://generativelanguage.googleapis.com}
+      IA_CONNECT_TIMEOUT_MS: ${IA_CONNECT_TIMEOUT_MS:-5000}
+      IA_READ_TIMEOUT_MS: ${IA_READ_TIMEOUT_MS:-30000}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     volumes:

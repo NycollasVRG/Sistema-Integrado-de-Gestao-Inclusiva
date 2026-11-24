@@ -22,3 +22,9 @@ sigi:
     aes-key: 0123456789abcdef0123456789abcdef
   cors:
     allowed-origins: http://localhost:5173
+  ia:
+    base-url: http://localhost:11434
+    model: gemini-3.5-flash-lite
+    api-key: test-gemini-key
+    connect-timeout-ms: 1000
+    read-timeout-ms: 2000
