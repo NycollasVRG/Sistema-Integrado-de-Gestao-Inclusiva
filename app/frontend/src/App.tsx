@@ -20,6 +20,7 @@ import { ProntuarioQuickActions } from './components/ProntuarioQuickActions';
 import { ModalNovoAtendimento } from './components/ModalNovoAtendimento';
 import { ModalNovoEstudo } from './components/ModalNovoEstudo';
 import { ModalAta, type AcaoAta } from './components/ModalAta';
+import { ModalDetalheAta } from './components/ModalDetalheAta';
 import { SecaoAtasReuniao } from './components/SecaoAtasReuniao';
 import { ModalConfirmacaoAcao } from './components/ModalConfirmacaoAcao';
 import { EstudoDeCasoService } from './services/estudoDeCasoService';
@@ -158,7 +159,12 @@ const AppConteudo: React.FC = () => {
   const [timeline, setTimeline] = useState<TimelineEventDTO[]>([]);
   const [atendimentosPorId, setAtendimentosPorId] = useState<Record<string, NovoAtendimentoResponseDTO>>({});
   const [atasDoAluno, setAtasDoAluno] = useState<AtaReuniaoResponseDTO[]>([]);
+  const [atasPorId, setAtasPorId] = useState<Record<string, AtaReuniaoResponseDTO>>({});
   const [ataEmEdicao, setAtaEmEdicao] = useState<AtaReuniaoResponseDTO | null>(null);
+  const [ataAberta, setAtaAberta] = useState<{
+    id: string;
+    modo: 'DETALHE' | 'TERMO';
+  } | null>(null);
   const [loadingHeader, setLoadingHeader] = useState<boolean>(false);
   const [loadingTimeline, setLoadingTimeline] = useState<boolean>(false);
   const [loadingAtas, setLoadingAtas] = useState<boolean>(false);
@@ -384,6 +390,7 @@ const AppConteudo: React.FC = () => {
       const atas = await AtaService.listarPorAluno(alunoId, signal);
       if (signal?.aborted) return;
       setAtasDoAluno(atas || []);
+      setAtasPorId(Object.fromEntries((atas || []).map((ata) => [ata.id, ata])));
     } catch (e: unknown) {
       if (signal?.aborted) return;
       console.error('Erro ao carregar atas de reunião:', e);
@@ -395,6 +402,7 @@ const AppConteudo: React.FC = () => {
           'Erro ao carregar atas de reunião'
       );
       setAtasDoAluno([]);
+      setAtasPorId({});
     } finally {
       if (!signal?.aborted) setLoadingAtas(false);
     }
@@ -458,7 +466,9 @@ const AppConteudo: React.FC = () => {
         setTimeline([]);
         setAtendimentosPorId({});
         setAtasDoAluno([]);
+        setAtasPorId({});
         setAtaEmEdicao(null);
+        setAtaAberta(null);
       }
 
       await Promise.all([
@@ -948,7 +958,9 @@ const AppConteudo: React.FC = () => {
       setTimeline([]);
       setAtendimentosPorId({});
       setAtasDoAluno([]);
+      setAtasPorId({});
       setAtaEmEdicao(null);
+      setAtaAberta(null);
     }
     setErroAlunoRota(null);
     setErrorHeader(null);
@@ -1192,9 +1204,14 @@ const AppConteudo: React.FC = () => {
                         setModalAtivo('NOVA_ATA');
                       }}
                       onAbrirAta={(ata) => {
-                        setAtaEmEdicao(ata);
-                        setModalAtivo('NOVA_ATA');
+                        if (ata.status === 'RASCUNHO' && podeGerirAtas) {
+                          setAtaEmEdicao(ata);
+                          setModalAtivo('NOVA_ATA');
+                          return;
+                        }
+                        setAtaAberta({ id: ata.id, modo: 'DETALHE' });
                       }}
+                      onEmitirTermo={(ata) => setAtaAberta({ id: ata.id, modo: 'TERMO' })}
                     />
 
                     <div className="mb-6">
@@ -1203,6 +1220,13 @@ const AppConteudo: React.FC = () => {
                         loading={loadingTimeline}
                         error={errorTimeline}
                         atendimentos={atendimentosPorId}
+                        atas={atasPorId}
+                        onVisualizarAta={(ataId) => setAtaAberta({ id: ataId, modo: 'DETALHE' })}
+                        onEditarAta={(ata) => {
+                          setAtaEmEdicao(ata);
+                          setModalAtivo('NOVA_ATA');
+                        }}
+                        onEmitirTermoAta={(ata) => setAtaAberta({ id: ata.id, modo: 'TERMO' })}
                         onAtendimentoAtualizado={(atualizado) => {
                           setAtendimentosPorId((prev) => ({ ...prev, [atualizado.id]: atualizado }));
                           adicionarToast(
@@ -1411,6 +1435,7 @@ const AppConteudo: React.FC = () => {
         aluno={alunoEmFoco}
         ataExistente={ataEmEdicao}
         onSuccess={async (ata: AtaReuniaoResponseDTO, acao: AcaoAta) => {
+          setAtasPorId((prev) => ({ ...prev, [ata.id]: ata }));
           setAtasDoAluno((prev) =>
             prev.some((item) => item.id === ata.id)
               ? prev.map((item) => (item.id === ata.id ? ata : item))
@@ -1447,6 +1472,31 @@ const AppConteudo: React.FC = () => {
           adicionarToast('sucesso', aviso.titulo, aviso.mensagem);
         }}
       />
+
+      {ataAberta && (
+        <ModalDetalheAta
+          key={`modal-detalhe-ata-${ataAberta.id}-${ataAberta.modo}`}
+          ataId={ataAberta.id}
+          ataInicial={atasPorId[ataAberta.id] ?? null}
+          modoInicial={ataAberta.modo}
+          podeGerir={podeGerirAtas}
+          onClose={() => setAtaAberta(null)}
+          onAtualizada={(atualizada) => {
+            setAtasPorId((prev) => ({ ...prev, [atualizada.id]: atualizada }));
+            setAtasDoAluno((prev) =>
+              prev.map((item) => (item.id === atualizada.id ? atualizada : item)),
+            );
+            if (alunoSelecionado) void carregarTimeline(alunoSelecionado.id);
+          }}
+          onTermoAdicionado={() =>
+            adicionarToast('sucesso', 'Termo Aditivo Emitido', 'O ajuste foi anexado à ata sem alterar os campos originais.')
+          }
+          onEditarRascunho={(ata) => {
+            setAtaEmEdicao(ata);
+            setModalAtivo('NOVA_ATA');
+          }}
+        />
+      )}
 
       <ModalConfirmacaoAcao
         isOpen={modalAtivo === 'EMITIR_RAE' || modalAtivo === 'GERAR_DOSSIE'}

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Calendar, ClipboardList, FileBarChart, FileSpreadsheet, FileText, Stethoscope } from "lucide-react";
+import { Calendar, ClipboardList, FileBarChart, FileSpreadsheet, FileText, ScrollText, Stethoscope } from "lucide-react";
 import type { TimelineEventDTO, TimelineEventType } from "../types/timeline";
 import type { NovoAtendimentoResponseDTO } from "../types/prontuarioAcoes";
+import type { AtaReuniaoResponseDTO } from "../types/ata";
 import { TimelineItem } from "./TimelineItem";
 import { ModalDetalheAtendimento } from "./ModalDetalheAtendimento";
 import { ModalDetalheRai } from "./ModalDetalheRai";
@@ -16,6 +17,14 @@ interface TimelineProps {
   atendimentos?: Record<string, NovoAtendimentoResponseDTO>;
   /** Chamado após uma edição bem-sucedida, para o pai atualizar seu cache/exibir aviso. */
   onAtendimentoAtualizado?: (atendimento: NovoAtendimentoResponseDTO) => void;
+  /** Detalhes das atas indexados pelo id do evento `ATA` (US 08). */
+  atas?: Record<string, AtaReuniaoResponseDTO>;
+  /** Abre o detalhe somente leitura da ata a partir da Linha do Tempo. */
+  onVisualizarAta?: (ataId: string) => void;
+  /** Continua um rascunho de ata (somente usuários com permissão). */
+  onEditarAta?: (ata: AtaReuniaoResponseDTO) => void;
+  /** Atalho para o formulário de Termo Aditivo de uma ata finalizada. */
+  onEmitirTermoAta?: (ata: AtaReuniaoResponseDTO) => void;
 }
 
 function getEventIcon(tipo: TimelineEventType) {
@@ -34,6 +43,8 @@ function getEventIcon(tipo: TimelineEventType) {
       return <FileBarChart className={baseClasses} aria-hidden="true" />;
     case "RAE":
       return <FileSpreadsheet className={baseClasses} aria-hidden="true" />;
+    case "ATA":
+      return <ScrollText className={baseClasses} aria-hidden="true" />;
     default:
       return <Calendar className={baseClasses} aria-hidden="true" />;
   }
@@ -45,6 +56,10 @@ export function Timeline({
   error = null,
   atendimentos = {},
   onAtendimentoAtualizado,
+  atas = {},
+  onVisualizarAta,
+  onEditarAta,
+  onEmitirTermoAta,
 }: TimelineProps) {
   const { sessao } = useAuth();
   // Reavalia a trava de 24h sem recarregar: o selo "Editável"/"Bloqueado" muda sozinho.
@@ -125,6 +140,10 @@ export function Timeline({
                 agora={agora}
                 onVisualizarAtendimento={setAtendimentoAbertoId}
                 onVisualizarRelatorio={setRelatorioAbertoId}
+                ata={atas[event.id]}
+                onVisualizarAta={onVisualizarAta}
+                onEditarAta={onEditarAta}
+                onEmitirTermoAta={onEmitirTermoAta}
               />
             </li>
           ))}
