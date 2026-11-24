@@ -67,6 +67,7 @@ import { SecaoProntuarioRbac } from './components/SecaoProntuarioRbac';
 import { FormularioEstudante } from './pages/FormularioEstudante';
 import { IndicarEstudante } from './pages/IndicarEstudante';
 import { TriagemIndicacoes } from './pages/TriagemIndicacoes';
+import { DashboardAlertas } from './pages/DashboardAlertas';
 
 function resumoParaAluno(estudante: EstudanteResumo): Aluno {
   return {
@@ -1086,6 +1087,9 @@ const AppConteudo: React.FC = () => {
             <Route path="/indicacoes/nova" element={<IndicarEstudante onNotificar={adicionarToast} />} />
             <Route path="/triagem" element={<TriagemIndicacoes onNotificar={adicionarToast} />} />
             <Route path="/indicacoes" element={<Navigate to="/triagem" replace />} />
+
+            {/* US 05: dashboard de métricas, alertas inteligentes e histórico de tratativas */}
+            <Route path="/dashboard" element={<DashboardAlertas onNotificar={adicionarToast} />} />
 
             <Route path="/" element={<Navigate to="/estudantes" replace />} />
             <Route
