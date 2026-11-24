@@ -35,6 +35,12 @@ sigi:
     jwt-expiration-ms: ${JWT_EXPIRATION_MS:28800000}
   storage:
     attachments-dir: ${ATTACHMENTS_STORAGE_PATH:/app/storage/anexos}
+  ia:
+    base-url: ${IA_BASE_URL:https://generativelanguage.googleapis.com}
+    model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+    api-key: ${GEMINI_API_KEY:}
+    connect-timeout-ms: ${IA_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${IA_READ_TIMEOUT_MS:30000}
   atas:
     lembrete:
       antecedencia-dias: ${ATAS_LEMBRETE_ANTECEDENCIA_DIAS:3}
