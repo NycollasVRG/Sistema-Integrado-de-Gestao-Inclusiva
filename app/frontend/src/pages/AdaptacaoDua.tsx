@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -40,6 +40,7 @@ const MAX_RESULTADOS = 8;
 export function AdaptacaoDua({ onNotificar }: AdaptacaoDuaProps) {
   const { podeAdaptarDua } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const controladorRef = useRef<AbortController | null>(null);
 
   const [termo, setTermo] = useState('');
@@ -238,11 +239,11 @@ export function AdaptacaoDua({ onNotificar }: AdaptacaoDuaProps) {
       <div className="bg-gradient-to-r from-[#0F6460] to-[#12534f] text-white px-6 py-5 flex items-center gap-3">
         <button
           type="button"
-          onClick={() => window.history.back()}
+          onClick={() => navigate('/estudantes')}
           disabled={adaptando}
           className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer disabled:opacity-50"
-          title="Voltar"
-          aria-label="Voltar"
+          title="Voltar para Gestão de Estudantes"
+          aria-label="Voltar para Gestão de Estudantes"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
