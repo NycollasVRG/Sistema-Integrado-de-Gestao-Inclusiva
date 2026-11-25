@@ -24,6 +24,8 @@ interface AuthContextValue {
   podeIndicarEstudante: boolean;
   /** US 10: painel de triagem restrito à equipe CLAI/Coordenação (Restrição Moderada ou superior). */
   podeGerirTriagem: boolean;
+  /** US 05: Dashboard de Alertas restrito à Restrição Moderada ou superior (espelha o back-end). */
+  podeVerDashboard: boolean;
   /** US 08: espelha @rbacGuard.temRestricaoModeradaOuSuperior() para atas de reunião. */
   podeGerirAtas: boolean;
 }
@@ -100,6 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       podeBaixarLaudo: nivel === 'SUPER_RESTRICAO' && sessao?.autorizacaoSaude === true,
       podeIndicarEstudante: podeIndicarEstudante(sessao?.role),
       podeGerirTriagem: podeGerirTriagem(sessao?.role, nivel),
+      podeVerDashboard: podeGerirTriagem(sessao?.role, nivel),
       podeGerirAtas:
         nivel === 'SUPER_RESTRICAO' ||
         nivel === 'RESTRICAO_MODERADA' ||
