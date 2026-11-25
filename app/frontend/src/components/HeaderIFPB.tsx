@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ClipboardList, ClipboardPlus, History, LayoutDashboard, LogOut, Menu, Shield, Users, X } from 'lucide-react';
+import { ClipboardList, ClipboardPlus, FileText, History, LayoutDashboard, LogOut, Menu, Shield, Users, X } from 'lucide-react';
 import ifpbLogo from '../assets/imagens/ifpb.png';
 import { useAuth } from '../contexts/AuthContext';
 import { ROTULO_ROLE } from '../types/auth';
@@ -13,7 +13,7 @@ interface HeaderIFPBProps {
 }
 
 export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
-  const { sessao, logout, isAdmin, isCoordenador, podeIndicarEstudante, podeGerirTriagem, podeVerDashboard } = useAuth();
+  const { sessao, logout, isAdmin, isCoordenador, podeIndicarEstudante, podeGerirTriagem, podeVerDashboard, podeAdaptarDua } = useAuth();
   const [menuAberto, setMenuAberto] = useState(false);
   const menuContainerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -158,6 +158,28 @@ export const HeaderIFPB: React.FC<HeaderIFPBProps> = ({ subTitle }) => {
                           <span className="block font-medium">Triagem e Indicações</span>
                           <span className="block text-xs text-gray-500 font-normal mt-0.5">
                             Analisar indicações e iniciar Estudos de Caso
+                          </span>
+                        </div>
+                      </Link>
+                    )}
+
+                    {/* US 07: Adaptação DUA de provas (mesmo RBAC do POST /api/dua/adaptar) */}
+                    {podeAdaptarDua && (
+                      <Link
+                        to="/adaptacao-dua"
+                        onClick={() => setMenuAberto(false)}
+                        className={`flex items-start gap-3 p-2.5 rounded-lg text-sm transition-colors cursor-pointer ${
+                          location.pathname === '/adaptacao-dua'
+                            ? 'bg-ifpb-tealLight text-ifpb-teal font-semibold'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        role="menuitem"
+                      >
+                        <FileText className="w-5 h-5 shrink-0 mt-0.5 text-ifpb-teal" />
+                        <div className="leading-tight">
+                          <span className="block font-medium">Adaptação DUA de Provas</span>
+                          <span className="block text-xs text-gray-500 font-normal mt-0.5">
+                            Enviar prova, revisar IA e baixar versão adaptada
                           </span>
                         </div>
                       </Link>

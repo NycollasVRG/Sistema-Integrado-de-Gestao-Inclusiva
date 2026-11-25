@@ -68,6 +68,7 @@ import { FormularioEstudante } from './pages/FormularioEstudante';
 import { IndicarEstudante } from './pages/IndicarEstudante';
 import { TriagemIndicacoes } from './pages/TriagemIndicacoes';
 import { DashboardAlertas } from './pages/DashboardAlertas';
+import { AdaptacaoDua } from './pages/AdaptacaoDua';
 
 function resumoParaAluno(estudante: EstudanteResumo): Aluno {
   return {
@@ -1027,6 +1028,8 @@ const AppConteudo: React.FC = () => {
               ? 'Gestão de Estudantes'
               : location.pathname === '/indicacoes/nova'
               ? 'Indicar Estudante'
+              : location.pathname === '/adaptacao-dua'
+              ? 'Adaptação DUA de Provas'
               : location.pathname === '/triagem'
               ? 'Triagem e Indicações'
               : matchEstudo || location.pathname === '/estudo-de-caso'
@@ -1087,6 +1090,9 @@ const AppConteudo: React.FC = () => {
             <Route path="/indicacoes/nova" element={<IndicarEstudante onNotificar={adicionarToast} />} />
             <Route path="/triagem" element={<TriagemIndicacoes onNotificar={adicionarToast} />} />
             <Route path="/indicacoes" element={<Navigate to="/triagem" replace />} />
+
+            {/* US 07: envio de prova, preview editavel e download da adaptacao DUA */}
+            <Route path="/adaptacao-dua" element={<AdaptacaoDua onNotificar={adicionarToast} />} />
 
             {/* US 05: dashboard de métricas, alertas inteligentes e histórico de tratativas */}
             <Route path="/dashboard" element={<DashboardAlertas onNotificar={adicionarToast} />} />

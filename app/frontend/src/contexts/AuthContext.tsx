@@ -3,6 +3,7 @@ import type { SessaoUsuario } from '../types/auth';
 import { autenticar, revalidarSessao } from '../services/authService';
 import { aoEncerrarSessao, CHAVE_SESSAO, lerSessao, limparSessao } from '../services/authSessao';
 import { removerRascunhosDoUsuario } from '../services/rascunhoAtendimentoService';
+import { podeAdaptarDua } from '../utils/dua';
 import { podeGerirTriagem, podeIndicarEstudante } from '../utils/indicacao';
 
 interface AuthContextValue {
@@ -28,6 +29,8 @@ interface AuthContextValue {
   podeVerDashboard: boolean;
   /** US 08: espelha @rbacGuard.temRestricaoModeradaOuSuperior() para atas de reunião. */
   podeGerirAtas: boolean;
+  /** US 07: espelha o @PreAuthorize do POST /api/dua/adaptar. */
+  podeAdaptarDua: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -109,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessao?.role === 'CLAI_PSICOPEDAGOGO' ||
         sessao?.role === 'COORDENADOR' ||
         sessao?.role === 'ADMIN',
+      podeAdaptarDua: podeAdaptarDua(sessao?.role),
     };
   }, [sessao, avisoSessao, limparAviso, login, logout]);
 
