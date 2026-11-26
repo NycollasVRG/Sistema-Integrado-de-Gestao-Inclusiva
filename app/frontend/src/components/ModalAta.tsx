@@ -168,7 +168,6 @@ export const ModalAta: React.FC<ModalAtaProps> = ({
     if (!dataReuniao) return 'Informe a data e a hora da reunião.';
     if (!pauta.trim()) return 'A pauta da reunião é obrigatória.';
     if (localReuniao.length > 255) return 'O local da reunião deve ter no máximo 255 caracteres.';
-    if (compromissos.length === 0) return 'Informe ao menos um compromisso com prazo.';
     for (const item of compromissos) {
       if (!item.descricao.trim()) return 'Descreva todos os compromissos adicionados.';
       if (!item.responsavelId) return 'Selecione o responsável de cada compromisso.';

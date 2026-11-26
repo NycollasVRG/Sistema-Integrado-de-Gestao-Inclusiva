@@ -141,4 +141,21 @@ class AdaptacaoDuaServiceTest {
         assertThrows(NaoEncontradoException.class,
                 () -> service.adaptarProva(new AdaptacaoDuaRequestDTO(outro, "Questão 1")));
     }
+
+    @Test
+    @DisplayName("Ref. TA7.1: quando tagsDificuldade são selecionadas no request, usa apenas os nomes selecionados higienizados")
+    void deveUsarTagsSelecionadasNoRequestHigienizadas() {
+        when(iaClient.solicitarAdaptacao(any())).thenReturn(
+                new IaAdaptacaoDuaResultadoDTO("Questão 1: calcule 2 + 2", List.of(), List.of(), true));
+
+        AdaptacaoDuaResponseDTO resposta = service.adaptarProva(
+                new AdaptacaoDuaRequestDTO(alunoId, "Questão 1: calcule 2 + 2", List.of("Dislexia", "Baixa Visão"))
+        );
+
+        ArgumentCaptor<IaAdaptacaoDuaPayloadDTO> captor = ArgumentCaptor.forClass(IaAdaptacaoDuaPayloadDTO.class);
+        verify(iaClient).solicitarAdaptacao(captor.capture());
+
+        assertEquals(List.of("Dislexia", "Baixa Visão"), captor.getValue().tagsDificuldade());
+        assertEquals(List.of("Dislexia", "Baixa Visão"), resposta.tagsDificuldadeAplicadas());
+    }
 }

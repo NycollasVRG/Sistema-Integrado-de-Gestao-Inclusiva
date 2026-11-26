@@ -48,6 +48,8 @@ export function AdaptacaoDua({ onNotificar }: AdaptacaoDuaProps) {
   const [buscando, setBuscando] = useState(false);
   const [erroBusca, setErroBusca] = useState('');
   const [selecionado, setSelecionado] = useState<EstudanteResumo | null>(null);
+  const [catalogoTags, setCatalogoTags] = useState<string[]>([]);
+  const [tagsSelecionadas, setTagsSelecionadas] = useState<string[]>([]);
   const [textoProva, setTextoProva] = useState('');
   const [nomeArquivo, setNomeArquivo] = useState('');
   const [erroValidacao, setErroValidacao] = useState('');
@@ -64,6 +66,34 @@ export function AdaptacaoDua({ onNotificar }: AdaptacaoDuaProps) {
     const id = doEstado || daUrl;
     return id && /^[0-9a-f-]{36}$/i.test(id) ? id : null;
   }, [location.state, location.search]);
+
+  useEffect(() => {
+    if (!podeAdaptarDua) return;
+    const controlador = new AbortController();
+    GestaoEstudantesService.listarTags(controlador.signal)
+      .then((lista) => {
+        if (!controlador.signal.aborted) {
+          setCatalogoTags(
+            Array.from(new Set(lista.map((t) => t.nome?.trim()).filter((n): n is string => Boolean(n)))),
+          );
+        }
+      })
+      .catch(() => {
+        // Caso o catálogo não carregue, mantém as tags do próprio estudante selecionado.
+      });
+    return () => controlador.abort();
+  }, [podeAdaptarDua]);
+
+  useEffect(() => {
+    if (!selecionado) {
+      setTagsSelecionadas([]);
+      return;
+    }
+    const tagsDoAluno = selecionado.tagsDificuldade
+      .map((t) => t.nome?.trim())
+      .filter((n): n is string => Boolean(n));
+    setTagsSelecionadas(Array.from(new Set(tagsDoAluno)));
+  }, [selecionado]);
 
   useEffect(() => {
     if (!alunoIdInicial) return;
@@ -183,7 +213,11 @@ export function AdaptacaoDua({ onNotificar }: AdaptacaoDuaProps) {
 
     try {
       const resultado = await adaptarProvaDua(
-        { alunoId: selecionado.id, textoProva: textoProva.trim() },
+        {
+          alunoId: selecionado.id,
+          textoProva: textoProva.trim(),
+          tagsDificuldade: tagsSelecionadas,
+        },
         {
           signal: controlador.signal,
           aoStatus: (numero) => setTentativa(numero),
@@ -301,25 +335,53 @@ export function AdaptacaoDua({ onNotificar }: AdaptacaoDuaProps) {
               </div>
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                  Tags de dificuldade consideradas automaticamente
+                  Tags de dificuldade aplicáveis (pré-selecionadas a partir do cadastro do estudante)
                 </p>
-                {selecionado.tagsDificuldade.length ? (
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {selecionado.tagsDificuldade.map((tag, indice) => (
-                      <span
-                        key={`${tag.id ?? tag.nome}-${indice}`}
-                        className="inline-flex items-center rounded-full border border-ifpb-teal/30 bg-white px-2.5 py-1 text-[11px] font-medium text-ifpb-teal"
-                        title="Tag cadastrada no estudante; não é enviada no request"
-                      >
-                        {tag.nome}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Nenhuma tag cadastrada. A IA usará somente o texto da prova.
-                  </p>
-                )}
+                {(() => {
+                  const tagsDoAluno = selecionado.tagsDificuldade
+                    .map((t) => t.nome?.trim())
+                    .filter((n): n is string => Boolean(n));
+                  const opcoesTags = Array.from(new Set([...tagsDoAluno, ...catalogoTags]));
+                  if (opcoesTags.length === 0) {
+                    return (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Nenhuma tag cadastrada. A IA aplicará boas práticas gerais de DUA sobre o texto da prova.
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label="Selecionar tags de dificuldade">
+                      {opcoesTags.map((nomeTag) => {
+                        const ativa = tagsSelecionadas.includes(nomeTag);
+                        return (
+                          <button
+                            key={nomeTag}
+                            type="button"
+                            disabled={adaptando}
+                            aria-pressed={ativa}
+                            onClick={() =>
+                              setTagsSelecionadas((atual) =>
+                                atual.includes(nomeTag)
+                                  ? atual.filter((item) => item !== nomeTag)
+                                  : [...atual, nomeTag],
+                              )
+                            }
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 ${
+                              ativa
+                                ? 'border-ifpb-teal bg-ifpb-teal text-white shadow-2xs'
+                                : 'border-gray-300 bg-white text-gray-700 hover:border-ifpb-teal/50'
+                            }`}
+                          >
+                            <span>{nomeTag}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+                <p className="text-[11px] text-gray-500 mt-1.5">
+                  Clique nas tags para marcar ou desmarcar quais barreiras devem orientar esta adaptação (apenas os nomes das tags são enviados à IA).
+                </p>
               </div>
             </div>
           ) : (
