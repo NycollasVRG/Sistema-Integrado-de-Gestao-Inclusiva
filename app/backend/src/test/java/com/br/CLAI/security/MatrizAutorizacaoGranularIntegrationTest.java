@@ -362,10 +362,11 @@ class MatrizAutorizacaoGranularIntegrationTest {
     }
 
     @Test
-    @DisplayName("Reforço TA3.2: Anexos Sensíveis do PEI bloqueiam Professor (403) e liberam CLAI/Coordenação (200 OK)")
+    @DisplayName("Anexos Sensíveis do PEI bloqueiam Professor e Psicopedagoga (403) e liberam apenas Coordenador da CLAI (200 OK)")
     void deveProtegerAnexosSensiveisDoPeiComMethodSecurity() throws Exception {
         String tokenProfessor = jwtService.gerarToken(professorUser);
         String tokenPsicopedagoga = jwtService.gerarToken(psicopedagogoUser);
+        String tokenCoordenador = jwtService.gerarToken(coordenadorUser);
 
         // 1. Professor tentando acessar anexos sensíveis do PEI -> 403 Forbidden via @PreAuthorize
         mockMvc.perform(get("/api/peis/{id}/anexos-sensiveis", peiId)
@@ -376,9 +377,17 @@ class MatrizAutorizacaoGranularIntegrationTest {
 
         SecurityContextHolder.clearContext();
 
-        // 2. Psicopedagoga acessando anexos sensíveis do PEI -> 200 OK
+        // 2. Psicopedagoga tentando acessar anexos sensíveis do PEI -> 403 Forbidden (exclusivo Coordenador da CLAI)
         mockMvc.perform(get("/api/peis/{id}/anexos-sensiveis", peiId)
                         .header("Authorization", "Bearer " + tokenPsicopedagoga))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+
+        SecurityContextHolder.clearContext();
+
+        // 3. Coordenador da CLAI acessando anexos sensíveis do PEI -> 200 OK
+        mockMvc.perform(get("/api/peis/{id}/anexos-sensiveis", peiId)
+                        .header("Authorization", "Bearer " + tokenCoordenador))
                 .andExpect(status().isOk());
     }
 }

@@ -267,23 +267,22 @@ class AnexoSecurityIntegrationTest {
             assertTrue(arquivosRegulares.get(0).toString().endsWith(".enc"));
         }
 
-        // [CA 2 - TA11.2]: DIAGNOSTICO_NEUROPSICOLOGICO continua acessível para SUPER_RESTRICAO + autorizacaoSaude = true
+        // [RBAC Coordenador CLAI]: DIAGNOSTICO_NEUROPSICOLOGICO também é restrito exclusivamente ao COORDENADOR da CLAI
         AnexoEstudanteResponseDTO diagnosticoCriado = anexoEstudanteService.uploadAnexo(
                 estudanteId,
                 new MockMultipartFile("arquivo", "diagnostico_mariana.pdf", MediaType.APPLICATION_PDF_VALUE, pdfLaudoOriginal),
                 TipoClassificacaoAnexo.DIAGNOSTICO_NEUROPSICOLOGICO
         );
 
-        String tokenSaudeAutorizada = jwtService.gerarToken(profissionalSaudeSuperRestrito);
         MvcResult downloadDiagResult = mockMvc.perform(get("/api/anexos/{anexoId}/download", diagnosticoCriado.id())
-                        .header("Authorization", "Bearer " + tokenSaudeAutorizada))
+                        .header("Authorization", "Bearer " + tokenCoordenador))
                 .andExpect(status().isOk())
                 .andReturn();
         assertArrayEquals(pdfLaudoOriginal, downloadDiagResult.getResponse().getContentAsByteArray());
     }
 
     @Test
-    @DisplayName("CA 3 [Ref. TA11.2 e TA3.2]: Deve bloquear com HTTP 403 Forbidden Professor, Coordenador, Admin TI (autorizacaoSaude=false) e Psicopedagogo (RESTRICAO_MODERADA)")
+    @DisplayName("CA 3 [RBAC Coordenador CLAI]: Deve bloquear com HTTP 403 Forbidden todos os perfis exceto COORDENADOR para anexos sensíveis")
     void deveBloquearCom403TodosOsPerfisSemSuperRestricaoEAutorizacaoSaudeSimultaneos() throws Exception {
         byte[] pdfDiagnostico = "%PDF-1.7 Diagnóstico Neuropsicológico Sigiloso".getBytes(StandardCharsets.UTF_8);
         MockMultipartFile arquivoUpload = new MockMultipartFile(
@@ -299,7 +298,7 @@ class AnexoSecurityIntegrationTest {
                 TipoClassificacaoAnexo.DIAGNOSTICO_NEUROPSICOLOGICO
         );
 
-        // 1. Professor (ACESSO_FUNCIONAL, autorizacaoSaude = false) -> 403 Forbidden
+        // 1. Professor (ACESSO_FUNCIONAL) -> 403 Forbidden
         String tokenProfessor = jwtService.gerarToken(professorSemAutorizacaoSaude);
         mockMvc.perform(get("/api/anexos/{anexoId}/download", anexoSensivel.id())
                         .header("Authorization", "Bearer " + tokenProfessor))
@@ -308,15 +307,15 @@ class AnexoSecurityIntegrationTest {
                 .andExpect(jsonPath("$.title").value("Acesso Negado"));
         SecurityContextHolder.clearContext();
 
-        // 2. Coordenador (SUPER_RESTRICAO, porém autorizacaoSaude = false) -> 403 Forbidden
-        String tokenCoordenador = jwtService.gerarToken(coordenadorSemAutorizacaoSaude);
+        // 2. Admin com autorização de saúde (não é COORDENADOR da CLAI) -> 403 Forbidden
+        String tokenSaudeAdmin = jwtService.gerarToken(profissionalSaudeSuperRestrito);
         mockMvc.perform(get("/api/anexos/{anexoId}/download", anexoSensivel.id())
-                        .header("Authorization", "Bearer " + tokenCoordenador))
+                        .header("Authorization", "Bearer " + tokenSaudeAdmin))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
         SecurityContextHolder.clearContext();
 
-        // 3. Admin de TI (Role ADMIN + SUPER_RESTRICAO, porém autorizacaoSaude = false) -> 403 Forbidden
+        // 3. Admin de TI -> 403 Forbidden
         String tokenAdminTi = jwtService.gerarToken(adminTiSemAutorizacaoSaude);
         mockMvc.perform(get("/api/anexos/{anexoId}/download", anexoSensivel.id())
                         .header("Authorization", "Bearer " + tokenAdminTi))
@@ -324,7 +323,7 @@ class AnexoSecurityIntegrationTest {
                 .andExpect(jsonPath("$.status").value(403));
         SecurityContextHolder.clearContext();
 
-        // 4. Psicopedagogo (autorizacaoSaude = true, porém RESTRICAO_MODERADA != SUPER_RESTRICAO) -> 403 Forbidden
+        // 4. Psicopedagogo -> 403 Forbidden
         String tokenPsicopedagogo = jwtService.gerarToken(psicopedagogoRestricaoModerada);
         mockMvc.perform(get("/api/anexos/{anexoId}/download", anexoSensivel.id())
                         .header("Authorization", "Bearer " + tokenPsicopedagogo))
@@ -332,7 +331,7 @@ class AnexoSecurityIntegrationTest {
                 .andExpect(jsonPath("$.status").value(403));
         SecurityContextHolder.clearContext();
 
-        // 5. Aluno Apoiador (ACESSO_FUNCIONAL, autorizacaoSaude = false) -> 403 Forbidden
+        // 5. Aluno Apoiador -> 403 Forbidden
         String tokenAlunoApoiador = jwtService.gerarToken(alunoApoiador);
         mockMvc.perform(get("/api/anexos/{anexoId}/download", anexoSensivel.id())
                         .header("Authorization", "Bearer " + tokenAlunoApoiador))

@@ -59,9 +59,9 @@ public class PeiController {
         return ResponseEntity.ok(service.listarPorAluno(alunoId));
     }
 
-    // TA3.2 e TA11.3 - Anexos sensíveis do PEI restritos a RESTRICAO_MODERADA ou superior (equipe CLAI)
+    // Anexos sensíveis do PEI restritos exclusivamente ao Coordenador da CLAI
     @GetMapping("/{id}/anexos-sensiveis")
-    @PreAuthorize("@rbacGuard.temRestricaoModeradaOuSuperior()")
+    @PreAuthorize("@rbacGuard.isCoordenador()")
     public ResponseEntity<List<PeaResponseDTO>> listarAnexosSensiveis(
             @PathVariable UUID id) {
 
