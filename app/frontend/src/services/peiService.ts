@@ -27,6 +27,11 @@ export class PeiService {
       habilidadesInteresses: dto.habilidadesInteresses.trim(),
       dificuldadesApresentadas: dto.dificuldadesApresentadas?.trim() || null,
       propostasAdaptacoes: dto.propostasAdaptacoes.trim(),
+      assinaturaClai: dto.assinaturaClai?.trim() || null,
+      assinaturaSetorPedagogico: dto.assinaturaSetorPedagogico?.trim() || null,
+      assinaturaCoordenadorCurso: dto.assinaturaCoordenadorCurso?.trim() || null,
+      assinaturaEstudanteResponsavel: dto.assinaturaEstudanteResponsavel?.trim() || null,
+      assinaturasDocentes: dto.assinaturasDocentes ?? [],
     };
     const res = await apiFetch(this.baseUrl, {
       method: 'POST',
@@ -48,6 +53,14 @@ export class PeiService {
       dificuldadesApresentadas:
         dto.dificuldadesApresentadas !== undefined ? (dto.dificuldadesApresentadas?.trim() || '') : undefined,
       propostasAdaptacoes: dto.propostasAdaptacoes !== undefined ? dto.propostasAdaptacoes.trim() : undefined,
+      assinaturaClai: dto.assinaturaClai !== undefined ? (dto.assinaturaClai?.trim() || '') : undefined,
+      assinaturaSetorPedagogico:
+        dto.assinaturaSetorPedagogico !== undefined ? (dto.assinaturaSetorPedagogico?.trim() || '') : undefined,
+      assinaturaCoordenadorCurso:
+        dto.assinaturaCoordenadorCurso !== undefined ? (dto.assinaturaCoordenadorCurso?.trim() || '') : undefined,
+      assinaturaEstudanteResponsavel:
+        dto.assinaturaEstudanteResponsavel !== undefined ? (dto.assinaturaEstudanteResponsavel?.trim() || '') : undefined,
+      assinaturasDocentes: dto.assinaturasDocentes,
     };
     const res = await apiFetch(`${this.baseUrl}/${encodeURIComponent(id)}`, {
       method: 'PUT',

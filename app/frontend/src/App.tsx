@@ -36,6 +36,9 @@ import { notificarAlteracaoNotificacoes } from './services/notificacaoService';
 import { FormularioPea } from './components/FormularioPea';
 import { PeaService } from './services/peaService';
 import { FormularioPlanoAcao } from './components/FormularioPlanoAcao';
+import { FormularioRai } from './components/FormularioRai';
+import { RaiService } from './services/raiService';
+import type { RaiRequestDTO, RaiResponseDTO } from './types/rai';
 import { PlanoAcaoService } from './services/planoAcaoService';
 import type { DadosFormularioPei, PeiResponseDTO } from './types/pei';
 import type { AlunoHeaderData } from './types/alunoHeader';
@@ -150,6 +153,9 @@ const AppConteudo: React.FC = () => {
   const [peasDoAluno, setPeasDoAluno] = useState<PeaResponseDTO[]>([]);
   const [planosAcaoDoAluno, setPlanosAcaoDoAluno] = useState<PlanoAcaoResponseDTO[]>([]);
   const [planoAcaoEmFocoId, setPlanoAcaoEmFocoId] = useState<string | null>(null);
+  const [raisDoAluno, setRaisDoAluno] = useState<RaiResponseDTO[]>([]);
+  const [raiEmFocoId, setRaiEmFocoId] = useState<string | null>(null);
+  const [loadingRai, setLoadingRai] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [carregandoEstudo, setCarregandoEstudo] = useState<boolean>(false);
   const [loadingPei, setLoadingPei] = useState<boolean>(false);
@@ -321,6 +327,28 @@ const AppConteudo: React.FC = () => {
     }
   }, [adicionarToast]);
 
+  const carregarRaisDoAluno = useCallback(async (alunoId: string, signal?: AbortSignal) => {
+    setLoadingRai(true);
+    try {
+      const rais = await RaiService.listarPorAluno(alunoId, signal);
+      if (signal?.aborted) return;
+      const ordenados = [...rais].reverse();
+      setRaisDoAluno(ordenados);
+      setRaiEmFocoId((prev) =>
+        prev === '__novo__' || (prev && ordenados.some((r) => r.id === prev))
+          ? prev
+          : (ordenados[0]?.id ?? null)
+      );
+    } catch (erro: unknown) {
+      if (signal?.aborted) return;
+      console.error('Erro ao buscar RAIs do aluno:', erro);
+      setRaisDoAluno([]);
+      setRaiEmFocoId(null);
+    } finally {
+      if (!signal?.aborted) setLoadingRai(false);
+    }
+  }, []);
+
   const carregarHeader = useCallback(async (alunoId: string, signal?: AbortSignal) => {
     setLoadingHeader(true);
     setErrorHeader(null);
@@ -464,6 +492,8 @@ const AppConteudo: React.FC = () => {
         setPeasDoAluno([]);
         setPlanosAcaoDoAluno([]);
         setPlanoAcaoEmFocoId(null);
+        setRaisDoAluno([]);
+        setRaiEmFocoId(null);
         setHeader(null);
         setTimeline([]);
         setAtendimentosPorId({});
@@ -479,6 +509,7 @@ const AppConteudo: React.FC = () => {
         carregarPeiDoAluno(routeAlunoId, signal),
         carregarPeaDoAluno(routeAlunoId, signal),
         carregarPlanosAcaoDoAluno(routeAlunoId, signal),
+        carregarRaisDoAluno(routeAlunoId, signal),
         carregarTimeline(routeAlunoId, signal),
         carregarAtas(routeAlunoId, signal),
       ]);
@@ -498,6 +529,7 @@ const AppConteudo: React.FC = () => {
     carregarPeiDoAluno,
     carregarPeaDoAluno,
     carregarPlanosAcaoDoAluno,
+    carregarRaisDoAluno,
     carregarTimeline,
     carregarAtas,
   ]);
@@ -518,6 +550,11 @@ const AppConteudo: React.FC = () => {
         habilidadesInteresses: dados.habilidadesInteresses.trim(),
         dificuldadesApresentadas: dados.dificuldadesApresentadas.trim(),
         propostasAdaptacoes: dados.propostasAdaptacoes.trim(),
+        assinaturaClai: dados.assinaturaClai?.trim() || null,
+        assinaturaSetorPedagogico: dados.assinaturaSetorPedagogico?.trim() || null,
+        assinaturaCoordenadorCurso: dados.assinaturaCoordenadorCurso?.trim() || null,
+        assinaturaEstudanteResponsavel: dados.assinaturaEstudanteResponsavel?.trim() || null,
+        assinaturasDocentes: dados.assinaturasDocentes ?? [],
       };
       let resultado: PeiResponseDTO;
       if (peiAtual) {
@@ -558,6 +595,8 @@ const AppConteudo: React.FC = () => {
       const avaliacao = dados.avaliacao.trim();
       const bibliografiaBasica = dados.bibliografiaBasica.trim();
       const bibliografiaComplementar = dados.bibliografiaComplementar.trim();
+      const assinaturaDocente = dados.assinaturaDocente?.trim() || null;
+      const dataAssinatura = dados.dataAssinatura?.trim() || null;
 
       let resultado: PeaResponseDTO;
 
@@ -577,6 +616,8 @@ const AppConteudo: React.FC = () => {
             avaliacao,
             bibliografiaBasica,
             bibliografiaComplementar,
+            assinaturaDocente,
+            dataAssinatura,
           }
         );
       } else {
@@ -609,6 +650,8 @@ const AppConteudo: React.FC = () => {
           avaliacao,
           bibliografiaBasica,
           bibliografiaComplementar,
+          assinaturaDocente,
+          dataAssinatura,
         });
       }
 
@@ -793,6 +836,63 @@ const AppConteudo: React.FC = () => {
       ? null
       : (planosAcaoDoAluno.find((p) => p.id === planoAcaoEmFocoId) ?? planosAcaoDoAluno[0] ?? null);
 
+  const raiEmFoco: RaiResponseDTO | null =
+    raiEmFocoId === '__novo__'
+      ? null
+      : (raisDoAluno.find((r) => r.id === raiEmFocoId) ?? raisDoAluno[0] ?? null);
+
+  const handleSalvarRai = async (dados: RaiRequestDTO) => {
+    if (!alunoSelecionado) return;
+    setIsLoading(true);
+    try {
+      let resultado: RaiResponseDTO;
+      if (raiEmFoco) {
+        resultado = await RaiService.atualizar(raiEmFoco.id, dados);
+        setRaisDoAluno((prev) =>
+          prev.map((item) => (item.id === resultado.id ? resultado : item))
+        );
+      } else {
+        resultado = await RaiService.emitir(dados);
+        setRaisDoAluno((prev) => [resultado, ...prev]);
+      }
+      setRaiEmFocoId(resultado.id);
+      await carregarTimeline(alunoSelecionado.id);
+      adicionarToast(
+        'sucesso',
+        raiEmFoco ? 'RAI Atualizado' : 'RAI Emitido',
+        `${resultado.tipoRelatorio} (${resultado.componenteCurricular || `${resultado.bimestre}º bimestre`}) salvo com sucesso.`
+      );
+    } catch (err: unknown) {
+      const prob = err as Partial<ProblemDetailRFC9457>;
+      adicionarToast(
+        'erro',
+        prob?.title || 'Falha ao Salvar RAI',
+        prob?.detail || 'Não foi possível salvar o Relatório de Acompanhamento Individualizado.'
+      );
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExcluirRai = async (raiId: string) => {
+    if (!alunoSelecionado) return;
+    setIsLoading(true);
+    try {
+      await RaiService.excluir(raiId);
+      const restantes = raisDoAluno.filter((r) => r.id !== raiId);
+      setRaisDoAluno(restantes);
+      setRaiEmFocoId(restantes[0]?.id ?? '__novo__');
+      await carregarTimeline(alunoSelecionado.id);
+      adicionarToast('sucesso', 'Relatório Excluído', 'O RAI foi removido com sucesso.');
+    } catch (err: unknown) {
+      const prob = err as Partial<ProblemDetailRFC9457>;
+      adicionarToast('erro', prob?.title || 'Erro ao Excluir RAI', prob?.detail || 'Não foi possível excluir o relatório.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleCriarPlanoAcao = () => {
     if (!alunoSelecionado) return;
     if (!estudoConcluidoParaPlanoAcao) {
@@ -812,18 +912,29 @@ const AppConteudo: React.FC = () => {
     setIsLoading(true);
     try {
       const payload = {
+        periodoLetivo: dados.periodoLetivo.trim() || null,
+        periodoIngresso: dados.periodoIngresso.trim() || null,
+        dataNascimento: dados.dataNascimento.trim() || null,
+        telefoneEstudante: dados.telefoneEstudante.trim() || null,
+        emailEstudante: dados.emailEstudante.trim() || null,
+        nomeResponsavel: dados.nomeResponsavel.trim() || null,
+        grauParentescoResponsavel: dados.grauParentescoResponsavel.trim() || null,
+        telefoneResponsavel: dados.telefoneResponsavel.trim() || null,
+        emailResponsavel: dados.emailResponsavel.trim() || null,
+        possuiComorbidade: dados.possuiComorbidade,
+        comorbidadeDetalhes: dados.comorbidadeDetalhes.trim() || null,
+        usaMedicacaoContinua: dados.usaMedicacaoContinua,
+        medicacaoDetalhes: dados.medicacaoDetalhes.trim() || null,
+        frequentaServicosApoio: dados.frequentaServicosApoio,
+        servicosApoioDetalhes: dados.servicosApoioDetalhes.trim() || null,
+        apresentouDocumentosComprobatorios: dados.apresentouDocumentosComprobatorios,
+        documentosComprobatoriosDetalhes: dados.documentosComprobatoriosDetalhes.trim() || null,
+        identificacaoNecessidadesEspecificas: dados.identificacaoNecessidadesEspecificas.trim() || null,
+        relatoPercursoEducacional: dados.relatoPercursoEducacional.trim() || null,
         demandasIdentificadas: dados.demandasIdentificadas.trim(),
         propostasIntervencao: dados.propostasIntervencao.trim(),
-        componenteCurricular: dados.componenteCurricular.trim() || null,
-        semestreAno: dados.semestreAno.trim() || null,
-        docente: dados.docente.trim() || null,
-        objetivoGeral: dados.objetivoGeral.trim() || null,
-        objetivosEspecificos: dados.objetivosEspecificos.trim() || null,
-        conteudosProgramaticos: dados.conteudosProgramaticos.trim() || null,
-        metodologia: dados.metodologia.trim() || null,
-        avaliacao: dados.avaliacao.trim() || null,
-        bibliografiaBasica: dados.bibliografiaBasica.trim() || null,
-        bibliografiaComplementar: dados.bibliografiaComplementar.trim() || null,
+        assinaturaCoordenadorClai: dados.assinaturaCoordenadorClai.trim() || null,
+        dataAssinatura: dados.dataAssinatura.trim() || null,
       };
 
       let resultado: PlanoAcaoResponseDTO;
@@ -850,12 +961,11 @@ const AppConteudo: React.FC = () => {
 
       setPlanoAcaoEmFocoId(resultado.id);
       await carregarTimeline(alunoSelecionado.id);
-      const referencia =
-        resultado.componenteCurricular || resultado.semestreAno || 'Anexo III';
+      const referencia = resultado.periodoLetivo || 'Anexo II';
       adicionarToast(
         'sucesso',
         planoAcaoEmFoco ? 'Plano de Ação Atualizado' : 'Plano de Ação Criado',
-        `Plano de Ação (${referencia}) salvo com sucesso.`
+        `Plano de Ação da CLAI (${referencia}) salvo com sucesso.`
       );
     } catch (err: unknown) {
       const prob = err as Partial<ProblemDetailRFC9457>;
@@ -1262,6 +1372,7 @@ const AppConteudo: React.FC = () => {
                       peiAtual={peiAtual}
                       onAbrirFormularioPei={() => navigate(`/estudantes/${alunoSelecionado.id}/pei`)}
                       onAbrirFormularioPea={() => navigate(`/estudantes/${alunoSelecionado.id}/pea`)}
+                      onAbrirFormularioRai={() => navigate(`/estudantes/${alunoSelecionado.id}/rai`)}
                     />
 
                     {/* US 09 / TA11.2 e TA11.3: históricos sensíveis e anexos com RBAC visual */}
@@ -1353,6 +1464,39 @@ const AppConteudo: React.FC = () => {
                     onNovoPlano={() => setPlanoAcaoEmFocoId('__novo__')}
                     onSalvar={handleSalvarPlanoAcao}
                     onExcluir={handleExcluirPlanoAcao}
+                    onVoltar={() => irParaProntuario(alunoSelecionado.id)}
+                    isLoading={isLoading}
+                  />
+                )
+              }
+            />
+            <Route
+              path="/estudantes/:id/rai"
+              element={
+                erroAlunoRota ? (
+                  <CardErroEstudante
+                    mensagem={erroAlunoRota}
+                    onVoltar={() => navigate('/estudantes')}
+                  />
+                ) : !alunoSelecionado || loadingRai ? (
+                  <CardCarregamento mensagem="Carregando Relatório de Acompanhamento Individualizado (Anexo V)..." />
+                ) : (
+                  <FormularioRai
+                    key={raiEmFoco?.id ?? 'novo-rai'}
+                    aluno={alunoSelecionado}
+                    raiExistente={raiEmFoco}
+                    raisExistentes={raisDoAluno}
+                    peiId={peiAtual?.id}
+                    acompanhamentoId={
+                      peiAtual?.acompanhamentoId ||
+                      peasDoAluno[0]?.acompanhamentoId ||
+                      planosAcaoDoAluno[0]?.acompanhamentoId ||
+                      null
+                    }
+                    onSelecionarRai={(id) => setRaiEmFocoId(id)}
+                    onNovoRai={() => setRaiEmFocoId('__novo__')}
+                    onSalvar={handleSalvarRai}
+                    onExcluir={handleExcluirRai}
                     onVoltar={() => irParaProntuario(alunoSelecionado.id)}
                     isLoading={isLoading}
                   />

@@ -2,10 +2,45 @@ import type { ProblemDetailRFC9457 } from '../types/estudoDeCaso';
 import type { RaiRequestDTO, RaiResponseDTO } from '../types/rai';
 import { apiFetch } from './apiClient';
 
-/**
- * Emissão de RAI/RAE (TA3.3 / TA9.2 / TA9.3).
- * Toda a persistência e a geração da notificação de regressão acontecem no back-end.
- */
+function normalizarCorpoRai(dto: RaiRequestDTO) {
+  return {
+    alunoId: dto.alunoId,
+    peiId: dto.peiId || undefined,
+    acompanhamentoId: dto.acompanhamentoId || undefined,
+    tipoRelatorio: dto.tipoRelatorio,
+    bimestre: dto.bimestre,
+    indicativoRegressao: Boolean(dto.indicativoRegressao),
+    descricao: dto.descricao?.trim() || undefined,
+    periodoLetivo: dto.periodoLetivo?.trim() || undefined,
+    componenteCurricular: dto.componenteCurricular?.trim() || undefined,
+    docente: dto.docente?.trim() || undefined,
+    relacionamentoOpcoes: dto.relacionamentoOpcoes ?? [],
+    relacionamentoOutros: dto.relacionamentoOutros?.trim() || undefined,
+    relacionamentoComentario: dto.relacionamentoComentario?.trim() || undefined,
+    habilidadesCognitivasOpcoes: dto.habilidadesCognitivasOpcoes ?? [],
+    habilidadesCognitivasOutros: dto.habilidadesCognitivasOutros?.trim() || undefined,
+    habilidadesCognitivasComentario: dto.habilidadesCognitivasComentario?.trim() || undefined,
+    habilidadesSocioemocionaisOpcoes: dto.habilidadesSocioemocionaisOpcoes ?? [],
+    habilidadesSocioemocionaisOutros: dto.habilidadesSocioemocionaisOutros?.trim() || undefined,
+    habilidadesSocioemocionaisComentario: dto.habilidadesSocioemocionaisComentario?.trim() || undefined,
+    avancosGerais: dto.avancosGerais?.trim() || undefined,
+    dificuldadesAprendizagem: dto.dificuldadesAprendizagem?.trim() || undefined,
+    fatoresExternos: dto.fatoresExternos?.trim() || undefined,
+    habilidadesDesenvolvidas: (dto.habilidadesDesenvolvidas ?? [])
+      .filter((h) => h.habilidadeDesenvolvida.trim().length > 0)
+      .map((h, idx) => ({
+        id: h.id ?? undefined,
+        ordem: h.ordem ?? idx,
+        habilidadeDesenvolvida: h.habilidadeDesenvolvida.trim(),
+        nivelAprendizado: h.nivelAprendizado,
+        observacoes: h.observacoes?.trim() || undefined,
+      })),
+    parecer: dto.parecer?.trim() || undefined,
+    dataRelatorio: dto.dataRelatorio?.trim() || undefined,
+    assinaturaDocente: dto.assinaturaDocente?.trim() || undefined,
+  };
+}
+
 export class RaiService {
   private static baseUrl = '/api/rais';
 
@@ -31,17 +66,24 @@ export class RaiService {
     const res = await apiFetch(this.baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        alunoId: dto.alunoId,
-        peiId: dto.peiId || undefined,
-        acompanhamentoId: dto.acompanhamentoId || undefined,
-        tipoRelatorio: dto.tipoRelatorio,
-        bimestre: dto.bimestre,
-        indicativoRegressao: Boolean(dto.indicativoRegressao),
-        descricao: dto.descricao?.trim() || undefined,
-      }),
+      body: JSON.stringify(normalizarCorpoRai(dto)),
     });
     return (await res.json()) as RaiResponseDTO;
+  }
+
+  static async atualizar(id: string, dto: RaiRequestDTO): Promise<RaiResponseDTO> {
+    const res = await apiFetch(`${this.baseUrl}/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(normalizarCorpoRai(dto)),
+    });
+    return (await res.json()) as RaiResponseDTO;
+  }
+
+  static async excluir(id: string): Promise<void> {
+    await apiFetch(`${this.baseUrl}/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
   }
 
   /** Relatórios do estudante, em ordem cronológica (GET /api/rais/aluno/{alunoId}). */

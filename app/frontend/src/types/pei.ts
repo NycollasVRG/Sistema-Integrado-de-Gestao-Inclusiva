@@ -5,6 +5,11 @@ export interface DadosFormularioPei {
   habilidadesInteresses: string;
   dificuldadesApresentadas: string;
   propostasAdaptacoes: string;
+  assinaturaClai?: string;
+  assinaturaSetorPedagogico?: string;
+  assinaturaCoordenadorCurso?: string;
+  assinaturaEstudanteResponsavel?: string;
+  assinaturasDocentes?: string[];
 }
 
 export interface PeiRequestDTO {
@@ -15,6 +20,11 @@ export interface PeiRequestDTO {
   habilidadesInteresses: string;
   dificuldadesApresentadas?: string | null;
   propostasAdaptacoes: string;
+  assinaturaClai?: string | null;
+  assinaturaSetorPedagogico?: string | null;
+  assinaturaCoordenadorCurso?: string | null;
+  assinaturaEstudanteResponsavel?: string | null;
+  assinaturasDocentes?: string[] | null;
 }
 
 export interface PeiUpdateDTO {
@@ -24,6 +34,11 @@ export interface PeiUpdateDTO {
   habilidadesInteresses?: string;
   dificuldadesApresentadas?: string | null;
   propostasAdaptacoes?: string;
+  assinaturaClai?: string | null;
+  assinaturaSetorPedagogico?: string | null;
+  assinaturaCoordenadorCurso?: string | null;
+  assinaturaEstudanteResponsavel?: string | null;
+  assinaturasDocentes?: string[] | null;
 }
 
 export interface PeiResponseDTO {
@@ -36,7 +51,11 @@ export interface PeiResponseDTO {
   habilidadesInteresses: string | null;
   dificuldadesApresentadas: string | null;
   propostasAdaptacoes: string | null;
+  assinaturaClai?: string | null;
+  assinaturaSetorPedagogico?: string | null;
+  assinaturaCoordenadorCurso?: string | null;
+  assinaturaEstudanteResponsavel?: string | null;
+  assinaturasDocentes?: string[] | null;
   criadoEm?: string;
   atualizadoEm?: string;
 }
-

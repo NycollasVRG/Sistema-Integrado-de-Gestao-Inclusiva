@@ -9,7 +9,9 @@ import {
   Info,
   Tag,
   BookOpen,
+  Printer,
 } from 'lucide-react';
+import { imprimirAnexoIIIPea } from '../utils/impressaoAnexosClai';
 
 import type { Aluno, ProblemDetailRFC9457 } from '../types/estudoDeCaso';
 import type { DadosFormularioPea, PeaResponseDTO } from '../types/pea';
@@ -71,7 +73,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
   onVoltar,
   isLoading = false,
 }) => {
-  const { sessao, podeAcessarDadosSensiveis } = useAuth();
+  const { sessao, isCoordenador } = useAuth();
 
   const docentePadraoNovo =
     !peaExistente && sessao?.role === 'PROFESSOR' && sessao?.nome ? sessao.nome : '';
@@ -87,6 +89,8 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
   const [avaliacao, setAvaliacao] = useState('');
   const [bibliografiaBasica, setBibliografiaBasica] = useState('');
   const [bibliografiaComplementar, setBibliografiaComplementar] = useState('');
+  const [assinaturaDocente, setAssinaturaDocente] = useState('');
+  const [dataAssinatura, setDataAssinatura] = useState('');
   const [disciplinaId, setDisciplinaId] = useState('');
 
   // Erros estruturados por campo
@@ -134,6 +138,8 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
     setAvaliacao(peaExistente?.avaliacao ?? '');
     setBibliografiaBasica(peaExistente?.bibliografiaBasica ?? '');
     setBibliografiaComplementar(peaExistente?.bibliografiaComplementar ?? '');
+    setAssinaturaDocente(peaExistente?.assinaturaDocente ?? '');
+    setDataAssinatura(peaExistente?.dataAssinatura ?? '');
     setDisciplinaId(peaExistente?.disciplinaId ?? '');
     setErroFormulario(null);
     setErrosCampos({});
@@ -158,13 +164,13 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
     setAnexos([]);
     setErroAcesso(null);
 
-    // Bloqueio preventivo alinhado com TA3.2 e TA11.3 (LGPD / Sigilo Clínico)
-    if (!podeAcessarDadosSensiveis) {
+    // Bloqueio preventivo: anexos de dados sensíveis restritos exclusivamente ao Coordenador da CLAI
+    if (!isCoordenador) {
       setErroAcesso(
-        'Acesso restrito. Seu perfil possui acesso apenas aos dados pedagógicos e não tem autorização para visualizar laudos médicos ou anexos confidenciais.'
+        'Acesso restrito. A visualização de laudos médicos e anexos de dados sensíveis é exclusiva do(a) Coordenador(a) da CLAI.'
       );
       notificarAcessoNegado(
-        'Acesso restrito: a visualização de laudos médicos e anexos confidenciais é restrita à equipe multiprofissional (CLAI) e Coordenação.'
+        'Acesso restrito: anexos de dados sensíveis só podem ser visualizados pelo(a) Coordenador(a) da CLAI.'
       );
       return;
     }
@@ -278,6 +284,8 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
         avaliacao: avaliacao.trim(),
         bibliografiaBasica: bibliografiaBasica.trim(),
         bibliografiaComplementar: bibliografiaComplementar.trim(),
+        assinaturaDocente: assinaturaDocente.trim(),
+        dataAssinatura: dataAssinatura.trim(),
       });
     } catch (err: unknown) {
       const prob = err as Partial<ProblemDetailRFC9457>;
@@ -327,9 +335,36 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
           </div>
         </div>
 
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white self-start sm:self-auto">
-          {peaExistente ? 'PEA Registrado' : 'Novo Documento'}
-        </span>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() =>
+              imprimirAnexoIIIPea(aluno, {
+                peiId: peiId || peaExistente?.peiId || null,
+                disciplinaId: disciplinaId.trim() || null,
+                componenteCurricular: componenteCurricular.trim(),
+                semestreAno: semestreAno.trim(),
+                docente: docente.trim(),
+                objetivoGeral: objetivoGeral.trim(),
+                objetivosEspecificos: objetivosEspecificos.trim(),
+                conteudosProgramaticos: conteudosProgramaticos.trim(),
+                metodologia: metodologia.trim(),
+                avaliacao: avaliacao.trim(),
+                bibliografiaBasica: bibliografiaBasica.trim(),
+                bibliografiaComplementar: bibliografiaComplementar.trim(),
+                assinaturaDocente: assinaturaDocente.trim(),
+                dataAssinatura: dataAssinatura.trim(),
+              })
+            }
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/15 hover:bg-white/25 text-white border border-white/25 transition-colors cursor-pointer"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            Imprimir / PDF
+          </button>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white">
+            {peaExistente ? 'PEA Registrado' : 'Novo Documento'}
+          </span>
+        </div>
       </div>
 
       {/* D3: Alternar entre PEAs existentes ou cadastrar Novo PEA */}
@@ -387,15 +422,15 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
         </div>
       )}
 
-      {/* Aviso contextual de sigilo clínico (LGPD) para perfis sem acesso a laudos */}
-      {!podeAcessarDadosSensiveis && (
+      {/* Aviso contextual de sigilo clínico (LGPD) para perfis sem acesso a anexos sensíveis */}
+      {!isCoordenador && (
         <div className="m-5 p-4 bg-amber-50 border border-amber-200 rounded-lg flex gap-3">
           <Lock className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
           <div>
-            <h3 className="text-sm font-bold text-amber-800">Acesso restrito por sigilo clínico (LGPD)</h3>
+            <h3 className="text-sm font-bold text-amber-800">Anexos de dados sensíveis restritos à Coordenação da CLAI</h3>
             <p className="text-xs text-amber-700 mt-1">
-              O perfil {sessao?.role ? ROTULO_ROLE[sessao.role] : 'Professor'} pode acessar e preencher as informações pedagógicas,
-              mas não possui permissão para visualizar os Laudos Médicos e Anexos Confidenciais do estudante.
+              O perfil {sessao?.role ? ROTULO_ROLE[sessao.role] : 'atual'} pode acessar e preencher as informações pedagógicas do PEA,
+              mas a visualização de anexos de dados sensíveis é exclusiva do(a) Coordenador(a) da CLAI.
             </p>
           </div>
         </div>
@@ -426,7 +461,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
-          {!podeAcessarDadosSensiveis && <Lock className="w-3.5 h-3.5 text-amber-600" />}
+          {!isCoordenador && <Lock className="w-3.5 h-3.5 text-amber-600" />}
           <span>Laudos Médicos / Anexos</span>
         </button>
       </div>
@@ -777,6 +812,41 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
               </p>
             )}
           </div>
+
+          {/* Assinatura do(a) Docente (Anexo III) */}
+          <section className="space-y-4 bg-gray-50/70 p-5 rounded-xl border border-gray-200">
+            <h3 className="text-sm font-bold text-ifpb-dark">Assinatura do(a) Docente (Anexo III)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1 md:col-span-2">
+                <label htmlFor="pea-assinatura-docente" className="text-xs font-bold text-gray-700 uppercase">
+                  Assinatura do(a) Docente
+                </label>
+                <input
+                  id="pea-assinatura-docente"
+                  type="text"
+                  maxLength={255}
+                  value={assinaturaDocente}
+                  disabled={isLoading}
+                  onChange={(e) => setAssinaturaDocente(e.target.value)}
+                  placeholder="Nome completo do(a) docente"
+                  className={getClasseCampo('assinaturaDocente')}
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="pea-data-assinatura" className="text-xs font-bold text-gray-700 uppercase">
+                  Data
+                </label>
+                <input
+                  id="pea-data-assinatura"
+                  type="date"
+                  value={dataAssinatura}
+                  disabled={isLoading}
+                  onChange={(e) => setDataAssinatura(e.target.value)}
+                  className={getClasseCampo('dataAssinatura')}
+                />
+              </div>
+            </div>
+          </section>
 
           <div className="flex justify-between pt-5 border-t border-gray-200 gap-3">
             <button

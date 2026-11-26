@@ -13,6 +13,7 @@ interface TelaAlunoProps {
   peiAtual?: PeiResponseDTO | null;
   onAbrirFormularioPei?: () => void;
   onAbrirFormularioPea?: () => void;
+  onAbrirFormularioRai?: () => void;
 }
 
 export const TelaAluno: React.FC<TelaAlunoProps> = ({
@@ -25,6 +26,7 @@ export const TelaAluno: React.FC<TelaAlunoProps> = ({
   peiAtual = null,
   onAbrirFormularioPei,
   onAbrirFormularioPea,
+  onAbrirFormularioRai,
 }) => {
   // Determina o status consolidado do Estudo de Caso
   const isPendente = !estudoAtual;
@@ -253,7 +255,18 @@ export const TelaAluno: React.FC<TelaAlunoProps> = ({
                   className="w-full py-2.5 px-4 rounded-md text-xs font-bold border border-ifpb-teal text-ifpb-teal hover:bg-ifpb-tealLight transition-colors flex items-center justify-center space-x-2 cursor-pointer"
                 >
                   <ClipboardList className="w-4 h-4" />
-                  <span>Acessar PEA</span>
+                  <span>Acessar PEA (Anexo III)</span>
+                </button>
+              )}
+
+              {onAbrirFormularioRai && (
+                <button
+                  type="button"
+                  onClick={onAbrirFormularioRai}
+                  className="w-full py-2.5 px-4 rounded-md text-xs font-bold border border-ifpb-teal text-ifpb-teal hover:bg-ifpb-tealLight transition-colors flex items-center justify-center space-x-2 cursor-pointer"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Acessar / Emitir RAI (Anexo V)</span>
                 </button>
               )}
 
