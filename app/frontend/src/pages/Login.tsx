@@ -1,13 +1,13 @@
 import React, { useState, type FormEvent } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { AlertTriangle, Eye, EyeOff, LogIn, RotateCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toProblem } from '../services/apiClient';
+import { obterRotaInicialPorRole } from '../utils/rotasPorCargo';
 
 export const Login: React.FC = () => {
-  const { autenticado, login, avisoSessao, limparAviso } = useAuth();
-  const location = useLocation();
-  const destino = (location.state as { from?: string } | null)?.from ?? '/estudantes';
+  const { autenticado, sessao, login, avisoSessao, limparAviso } = useAuth();
+  const destino = obterRotaInicialPorRole(sessao?.role);
 
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
