@@ -1,5 +1,6 @@
 package com.br.CLAI.dto.response;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -19,6 +20,8 @@ public record PeaResponseDTO(
         String avaliacao,
         String bibliografiaBasica,
         String bibliografiaComplementar,
+        String assinaturaDocente,
+        LocalDate dataAssinatura,
         LocalDateTime criadoEm,
         LocalDateTime atualizadoEm
 ) {
@@ -33,24 +36,35 @@ public record PeaResponseDTO(
             LocalDateTime criadoEm,
             LocalDateTime atualizadoEm) {
         this(
-                id,
-                acompanhamentoId,
-                null,
-                alunoId,
-                disciplinaId,
-                null,
-                null,
-                null,
-                objetivoGeral,
-                null,
-                null,
-                metodologia,
-                avaliacao,
-                null,
-                null,
-                criadoEm,
-                atualizadoEm
+                id, acompanhamentoId, null, alunoId, disciplinaId,
+                null, null, null, objetivoGeral, null, null, metodologia, avaliacao,
+                null, null, null, null, criadoEm, atualizadoEm
+        );
+    }
+
+    public PeaResponseDTO(
+            UUID id,
+            UUID acompanhamentoId,
+            UUID peiId,
+            UUID alunoId,
+            UUID disciplinaId,
+            String componenteCurricular,
+            String semestreAno,
+            String docente,
+            String objetivoGeral,
+            String objetivosEspecificos,
+            String conteudosProgramaticos,
+            String metodologia,
+            String avaliacao,
+            String bibliografiaBasica,
+            String bibliografiaComplementar,
+            LocalDateTime criadoEm,
+            LocalDateTime atualizadoEm) {
+        this(
+                id, acompanhamentoId, peiId, alunoId, disciplinaId,
+                componenteCurricular, semestreAno, docente, objetivoGeral, objetivosEspecificos,
+                conteudosProgramaticos, metodologia, avaliacao, bibliografiaBasica, bibliografiaComplementar,
+                null, null, criadoEm, atualizadoEm
         );
     }
 }
-

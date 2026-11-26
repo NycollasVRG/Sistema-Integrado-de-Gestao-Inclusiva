@@ -1,6 +1,7 @@
 package com.br.CLAI.domain;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
@@ -47,6 +48,12 @@ public class Pea extends BaseEntity {
 
     @Column(name = "bibliografia_complementar", columnDefinition = "TEXT")
     private String bibliografiaComplementar;
+
+    @Column(name = "assinatura_docente", length = 255)
+    private String assinaturaDocente;
+
+    @Column(name = "data_assinatura")
+    private LocalDate dataAssinatura;
 
     public Pea() {
     }
@@ -190,5 +197,21 @@ public class Pea extends BaseEntity {
 
     public void setBibliografiaComplementar(String bibliografiaComplementar) {
         this.bibliografiaComplementar = bibliografiaComplementar;
+    }
+
+    public String getAssinaturaDocente() {
+        return assinaturaDocente;
+    }
+
+    public void setAssinaturaDocente(String assinaturaDocente) {
+        this.assinaturaDocente = assinaturaDocente;
+    }
+
+    public LocalDate getDataAssinatura() {
+        return dataAssinatura;
+    }
+
+    public void setDataAssinatura(LocalDate dataAssinatura) {
+        this.dataAssinatura = dataAssinatura;
     }
 }

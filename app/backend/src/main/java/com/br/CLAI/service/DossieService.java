@@ -232,7 +232,7 @@ public class DossieService {
                 .toList();
 
         List<PlanoAcaoResponseDTO> planosDto = planos.stream()
-                .map(planoAcaoMapper::toResponse)
+                .map(plano -> planoAcaoMapper.toResponse(plano, !externo))
                 .toList();
 
         List<PeiResponseDTO> peisDto = peis.stream()
@@ -250,7 +250,7 @@ public class DossieService {
                 .toList();
 
         List<RaiResponseDTO> raisDto = rais.stream()
-                .map(this::converterRai)
+                .map(rai -> RaiService.converterParaResponse(rai, aluno))
                 .toList();
 
         List<AtaReuniaoResponseDTO> atasDto = atas.stream()
@@ -502,20 +502,6 @@ public class DossieService {
                 || textoAuditado.contains("DIAGNOSTICO_NEUROPSICOLOGICO")
                 || textoAuditado.contains("LAUDOS-MEDICOS")
                 || textoAuditado.contains("HISTORICO-SOCIOEMOCIONAL");
-    }
-
-    private RaiResponseDTO converterRai(Rai rai) {
-        return new RaiResponseDTO(
-                rai.getId(),
-                rai.getAlunoId(),
-                rai.getPeiId(),
-                rai.getAcompanhamentoId(),
-                rai.getTipoRelatorio() != null ? rai.getTipoRelatorio() : TipoRelatorio.RAI,
-                rai.getBimestre(),
-                rai.getIndicativoRegressao(),
-                rai.getDescricao(),
-                rai.getCriadoEm()
-        );
     }
 
     private NotificacaoResponseDTO converterNotificacao(Notificacao n) {

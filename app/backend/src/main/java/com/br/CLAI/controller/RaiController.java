@@ -9,9 +9,11 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,15 +39,23 @@ public class RaiController {
         this.rbacGuard = rbacGuard;
     }
 
-    /**
-     * Emite um RAI (ou RAE, quando {@code tipoRelatorio = RAE}). Com
-     * {@code indicativoRegressao = true} o serviço notifica o COORDENADOR (TA3.3)
-     * e o registro passa a compor a Linha do Tempo do estudante (TA9.2/TA9.3).
-     */
     @PostMapping
     public ResponseEntity<RaiResponseDTO> emitirRai(@Valid @RequestBody RaiRequestDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(raiService.emitirRai(dto, extrairUsuarioIdAutenticado()));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<RaiResponseDTO> atualizarRai(
+            @PathVariable UUID id,
+            @Valid @RequestBody RaiRequestDTO dto) {
+        return ResponseEntity.ok(raiService.atualizarRai(id, dto, extrairUsuarioIdAutenticado()));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluirRai(@PathVariable UUID id) {
+        raiService.excluirRai(id, extrairUsuarioIdAutenticado());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/aluno/{alunoId}")
@@ -58,7 +68,6 @@ public class RaiController {
         return ResponseEntity.ok(raiService.buscarPorId(id));
     }
 
-    /** Autoria infalsificável quando há sessão; nula apenas em chamadas sem contexto de segurança. */
     private UUID extrairUsuarioIdAutenticado() {
         Optional<Usuario> usuario = rbacGuard.getUsuarioAutenticado();
         return usuario.map(Usuario::getId).orElse(null);
