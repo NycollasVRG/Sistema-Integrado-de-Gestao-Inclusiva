@@ -1,9 +1,10 @@
-// Contratos da US 07 (adaptação DUA de provas via IA). O request aceita somente
-// alunoId e textoProva: as tags são extraídas do aluno pelo back-end (LGPD).
+// Contratos da US 07 (adaptação DUA de provas via IA). O request aceita
+// alunoId, textoProva e opcionalmente os nomes das tagsDificuldade selecionadas (LGPD).
 
 export interface AdaptacaoDuaRequestDTO {
   alunoId: string;
   textoProva: string;
+  tagsDificuldade?: string[];
 }
 
 /** Espelha QuestaoAdaptadaDuaDTO do back-end; não há campo de alternativas separado. */

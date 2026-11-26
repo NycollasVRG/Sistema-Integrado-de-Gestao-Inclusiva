@@ -3,6 +3,7 @@ package com.br.CLAI.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.List;
 import java.util.UUID;
 
 public record AdaptacaoDuaRequestDTO(
@@ -10,6 +11,12 @@ public record AdaptacaoDuaRequestDTO(
         UUID alunoId,
 
         @NotBlank(message = "O texto da prova é obrigatório para adaptação DUA.")
-        String textoProva
+        String textoProva,
+
+        List<String> tagsDificuldade
 ) {
+    public AdaptacaoDuaRequestDTO(UUID alunoId, String textoProva) {
+        this(alunoId, textoProva, null);
+    }
 }
+

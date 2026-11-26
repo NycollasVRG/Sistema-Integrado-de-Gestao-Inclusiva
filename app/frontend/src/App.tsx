@@ -1018,7 +1018,9 @@ const AppConteudo: React.FC = () => {
           searchTerm={termoBusca}
           onSearch={setTermoBusca}
           subTitle={
-            location.pathname.startsWith('/admin')
+            location.pathname === '/admin/auditoria'
+              ? 'Trilha de Auditoria (US 06)'
+              : location.pathname.startsWith('/admin')
               ? 'Gestão de Acessos e Usuários (RBAC)'
               : location.pathname === '/estudantes/novo'
               ? 'Cadastro de Estudante'
@@ -1032,6 +1034,8 @@ const AppConteudo: React.FC = () => {
               ? 'Adaptação DUA de Provas'
               : location.pathname === '/triagem'
               ? 'Triagem e Indicações'
+              : location.pathname === '/dashboard'
+              ? 'Dashboard de Alertas e Indicadores'
               : matchEstudo || location.pathname === '/estudo-de-caso'
               ? 'Formulário de Estudo de Caso'
               : matchPei || location.pathname === '/pei'

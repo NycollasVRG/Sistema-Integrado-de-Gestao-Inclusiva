@@ -66,7 +66,7 @@ public class AdaptacaoDuaService {
         Aluno aluno = alunoRepository.findById(dto.alunoId())
                 .orElseThrow(() -> new NaoEncontradoException("Aluno não encontrado com o ID fornecido."));
 
-        List<String> tags = extrairNomesTags(aluno);
+        List<String> tags = resolverTagsAplicadas(dto, aluno);
         String textoHigienizado = higienizar(dto.textoProva(), aluno);
 
         IaAdaptacaoDuaPayloadDTO payload = new IaAdaptacaoDuaPayloadDTO(textoHigienizado, tags, PROMPT_DUA);
@@ -89,6 +89,23 @@ public class AdaptacaoDuaService {
                 PROMPT_DUA,
                 LocalDateTime.now(clock)
         );
+    }
+
+    /**
+     * TA7.1: somente nomes das tags (selecionadas pelo professor ou cadastradas no aluno),
+     * higienizadas para nunca enviar identificadores pessoais ou laudos/diagnósticos.
+     */
+    private List<String> resolverTagsAplicadas(AdaptacaoDuaRequestDTO dto, Aluno aluno) {
+        if (dto.tagsDificuldade() != null) {
+            return dto.tagsDificuldade().stream()
+                    .filter(n -> n != null && !n.isBlank())
+                    .map(String::trim)
+                    .map(tag -> higienizar(tag, aluno))
+                    .filter(tag -> !tag.isBlank() && !"[DADO REMOVIDO]".equals(tag))
+                    .distinct()
+                    .toList();
+        }
+        return extrairNomesTags(aluno);
     }
 
     /** TA7.1: somente nomes das tags; nada de dados do aluno ou clínicos. */
