@@ -258,7 +258,7 @@ class Us02EstudoCasoEPlanoAcaoTest {
     @DisplayName("TA2.1: Deve bloquear POST /api/planos-acao com HTTP 400 RFC 9457 quando Estudo de Caso estiver PENDENTE ou RASCUNHO")
     void ta21DeveBloquearPlanoAcaoSemEstudoConcluido() throws Exception {
         String token = jwtService.gerarToken(psicopedagogaUser);
-        String payloadPlano = payloadPlanoAcaoAnexoIII();
+        String payloadPlano = payloadPlanoAcaoAnexoII();
 
         // 1. Aluno sem nenhum estudo (PENDENTE)
         mockMvc.perform(post("/api/planos-acao")
@@ -288,7 +288,7 @@ class Us02EstudoCasoEPlanoAcaoTest {
     }
 
     @Test
-    @DisplayName("TA2.1: Deve criar, consultar, atualizar e excluir Plano de Ação (Anexo III) quando Estudo de Caso estiver ATIVO ou ENCERRADO")
+    @DisplayName("TA2.1: Deve criar, consultar, atualizar e excluir Plano de Ação da CLAI (Anexo II) quando Estudo de Caso estiver ATIVO ou ENCERRADO")
     void ta21DevePermitirPlanoAcaoQuandoEstudoEstiverConcluido() throws Exception {
         String token = jwtService.gerarToken(psicopedagogaUser);
 
@@ -297,28 +297,30 @@ class Us02EstudoCasoEPlanoAcaoTest {
         estudoAtivo.setHistorico("Histórico completo");
         estudosEmMemoria.add(estudoAtivo);
 
-        // POST /api/planos-acao com estudo ATIVO -> 201 Created com dados do aluno e Anexo III
+        // POST /api/planos-acao com estudo ATIVO -> 201 Created com dados do aluno e Anexo II
         mockMvc.perform(post("/api/planos-acao")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payloadPlanoAcaoAnexoIII()))
+                        .content(payloadPlanoAcaoAnexoII()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.alunoId").value(alunoId.toString()))
                 .andExpect(jsonPath("$.nomeEstudante").value("Maria Clara Silva"))
                 .andExpect(jsonPath("$.matriculaEstudante").value("202610025"))
                 .andExpect(jsonPath("$.cursoEstudante").value("Tecnologia em Sistemas para Internet"))
-                .andExpect(jsonPath("$.componenteCurricular").value("Algoritmos e Programação"))
-                .andExpect(jsonPath("$.semestreAno").value("2026.1"))
-                .andExpect(jsonPath("$.docente").value("Prof. João Mendes"))
-                .andExpect(jsonPath("$.objetivoGeral").value("Desenvolver lógica computacional com recursos acessíveis."))
-                .andExpect(jsonPath("$.bibliografiaBasica").value("CORMEN, T. H. Algoritmos. 3. ed. Rio de Janeiro: Elsevier, 2012."));
+                .andExpect(jsonPath("$.periodoLetivo").value("2026.1"))
+                .andExpect(jsonPath("$.periodoIngresso").value("2025.1"))
+                .andExpect(jsonPath("$.nomeResponsavel").value("José Carlos Silva"))
+                .andExpect(jsonPath("$.possuiComorbidade").value(true))
+                .andExpect(jsonPath("$.comorbidadeDetalhes").value("Astigmatismo severo associado"))
+                .andExpect(jsonPath("$.identificacaoNecessidadesEspecificas").value("Baixa visão com necessidade de ampliação de fonte e contraste."))
+                .andExpect(jsonPath("$.assinaturaCoordenadorClai").value("Prof. Carlos Coordenador"));
 
         // Também deve funcionar quando estudo estiver ENCERRADO
         estudoAtivo.setStatus(StatusEstudoCaso.ENCERRADO);
         mockMvc.perform(post("/api/planos-acao")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(payloadPlanoAcaoAnexoIII()))
+                        .content(payloadPlanoAcaoAnexoII()))
                 .andExpect(status().isCreated());
 
         UUID planoId = planosEmMemoria.keySet().iterator().next();
@@ -331,8 +333,8 @@ class Us02EstudoCasoEPlanoAcaoTest {
 
         String payloadUpdate = """
                 {
-                  "componenteCurricular": "Estrutura de Dados",
-                  "avaliacao": "Avaliação prática com tempo ampliado em 50% e leitor de tela."
+                  "periodoLetivo": "2026.2",
+                  "propostasIntervencao": "Monitoria individualizada e provas ampliadas em fonte 20."
                 }
                 """;
         mockMvc.perform(put("/api/planos-acao/{id}", planoId)
@@ -340,8 +342,8 @@ class Us02EstudoCasoEPlanoAcaoTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payloadUpdate))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.componenteCurricular").value("Estrutura de Dados"))
-                .andExpect(jsonPath("$.avaliacao").value("Avaliação prática com tempo ampliado em 50% e leitor de tela."));
+                .andExpect(jsonPath("$.periodoLetivo").value("2026.2"))
+                .andExpect(jsonPath("$.propostasIntervencao").value("Monitoria individualizada e provas ampliadas em fonte 20."));
 
         mockMvc.perform(delete("/api/planos-acao/{id}", planoId)
                         .header("Authorization", "Bearer " + token))
@@ -531,22 +533,32 @@ class Us02EstudoCasoEPlanoAcaoTest {
         assertEquals(3, estudosEmMemoria.size());
     }
 
-    private String payloadPlanoAcaoAnexoIII() {
+    private String payloadPlanoAcaoAnexoII() {
         return String.format("""
                 {
                   "acompanhamentoId": "%s",
+                  "periodoLetivo": "2026.1",
+                  "periodoIngresso": "2025.1",
+                  "dataNascimento": "2004-05-12",
+                  "telefoneEstudante": "(83) 99999-1111",
+                  "emailEstudante": "maria.clara@academico.ifpb.edu.br",
+                  "nomeResponsavel": "José Carlos Silva",
+                  "grauParentescoResponsavel": "Pai",
+                  "telefoneResponsavel": "(83) 98888-2222",
+                  "emailResponsavel": "jose.carlos@email.com",
+                  "possuiComorbidade": true,
+                  "comorbidadeDetalhes": "Astigmatismo severo associado",
+                  "usaMedicacaoContinua": false,
+                  "frequentaServicosApoio": true,
+                  "servicosApoioDetalhes": "Acompanhamento na FUNAD",
+                  "apresentouDocumentosComprobatorios": true,
+                  "documentosComprobatoriosDetalhes": "Laudo oftalmológico atualizado",
+                  "identificacaoNecessidadesEspecificas": "Baixa visão com necessidade de ampliação de fonte e contraste.",
+                  "relatoPercursoEducacional": "Facilidade em lógica e leitura com leitor de telas.",
                   "demandasIdentificadas": "Necessidade de ampliação de contraste e tempo adicional em laboratório.",
                   "propostasIntervencao": "Uso de IDE com tema de alto contraste e prorrogação de 50%% nas provas práticas.",
-                  "componenteCurricular": "Algoritmos e Programação",
-                  "semestreAno": "2026.1",
-                  "docente": "Prof. João Mendes",
-                  "objetivoGeral": "Desenvolver lógica computacional com recursos acessíveis.",
-                  "objetivosEspecificos": "Construir estruturas condicionais, laços e funções modulares.",
-                  "conteudosProgramaticos": "1. Variáveis; 2. Estruturas de Controle; 3. Vetores e Funções.",
-                  "metodologia": "Roteiros textuais descritivos e atendimento individualizado no contraturno.",
-                  "avaliacao": "Listas práticas em dupla e avaliação oral assistida.",
-                  "bibliografiaBasica": "CORMEN, T. H. Algoritmos. 3. ed. Rio de Janeiro: Elsevier, 2012.",
-                  "bibliografiaComplementar": "ASCENCIO, A. F. G. Fundamentos da Programação de Computadores. 3. ed. São Paulo: Pearson, 2012."
+                  "assinaturaCoordenadorClai": "Prof. Carlos Coordenador",
+                  "dataAssinatura": "2026-03-10"
                 }
                 """, acompanhamentoId);
     }

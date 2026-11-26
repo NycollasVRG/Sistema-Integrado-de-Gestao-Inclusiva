@@ -11,18 +11,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class PeaMapper {
 
-    public Pea toEntity(
-            PeaRequestDTO dto,
-            Acompanhamento acompanhamento) {
+    public Pea toEntity(PeaRequestDTO dto, Acompanhamento acompanhamento) {
         return toEntity(dto, acompanhamento, null);
     }
 
-    public Pea toEntity(
-            PeaRequestDTO dto,
-            Acompanhamento acompanhamento,
-            Pei pei) {
-
-        return new Pea(
+    public Pea toEntity(PeaRequestDTO dto, Acompanhamento acompanhamento, Pei pei) {
+        Pea pea = new Pea(
                 acompanhamento,
                 pei,
                 dto.disciplinaId(),
@@ -37,55 +31,25 @@ public class PeaMapper {
                 dto.bibliografiaBasica(),
                 dto.bibliografiaComplementar()
         );
+        pea.setAssinaturaDocente(dto.assinaturaDocente());
+        pea.setDataAssinatura(dto.dataAssinatura());
+        return pea;
     }
 
-    public void updateEntityFromDto(
-            Pea pea,
-            PeaUpdateDTO dto) {
-
-        if (dto.disciplinaId() != null) {
-            pea.setDisciplinaId(dto.disciplinaId());
-        }
-
-        if (dto.componenteCurricular() != null) {
-            pea.setComponenteCurricular(dto.componenteCurricular());
-        }
-
-        if (dto.semestreAno() != null) {
-            pea.setSemestreAno(dto.semestreAno());
-        }
-
-        if (dto.docente() != null) {
-            pea.setDocente(dto.docente());
-        }
-
-        if (dto.objetivoGeral() != null) {
-            pea.setObjetivoGeral(dto.objetivoGeral());
-        }
-
-        if (dto.objetivosEspecificos() != null) {
-            pea.setObjetivosEspecificos(dto.objetivosEspecificos());
-        }
-
-        if (dto.conteudosProgramaticos() != null) {
-            pea.setConteudosProgramaticos(dto.conteudosProgramaticos());
-        }
-
-        if (dto.metodologia() != null) {
-            pea.setMetodologia(dto.metodologia());
-        }
-
-        if (dto.avaliacao() != null) {
-            pea.setAvaliacao(dto.avaliacao());
-        }
-
-        if (dto.bibliografiaBasica() != null) {
-            pea.setBibliografiaBasica(dto.bibliografiaBasica());
-        }
-
-        if (dto.bibliografiaComplementar() != null) {
-            pea.setBibliografiaComplementar(dto.bibliografiaComplementar());
-        }
+    public void updateEntityFromDto(Pea pea, PeaUpdateDTO dto) {
+        if (dto.disciplinaId() != null) pea.setDisciplinaId(dto.disciplinaId());
+        if (dto.componenteCurricular() != null) pea.setComponenteCurricular(dto.componenteCurricular());
+        if (dto.semestreAno() != null) pea.setSemestreAno(dto.semestreAno());
+        if (dto.docente() != null) pea.setDocente(dto.docente());
+        if (dto.objetivoGeral() != null) pea.setObjetivoGeral(dto.objetivoGeral());
+        if (dto.objetivosEspecificos() != null) pea.setObjetivosEspecificos(dto.objetivosEspecificos());
+        if (dto.conteudosProgramaticos() != null) pea.setConteudosProgramaticos(dto.conteudosProgramaticos());
+        if (dto.metodologia() != null) pea.setMetodologia(dto.metodologia());
+        if (dto.avaliacao() != null) pea.setAvaliacao(dto.avaliacao());
+        if (dto.bibliografiaBasica() != null) pea.setBibliografiaBasica(dto.bibliografiaBasica());
+        if (dto.bibliografiaComplementar() != null) pea.setBibliografiaComplementar(dto.bibliografiaComplementar());
+        if (dto.assinaturaDocente() != null) pea.setAssinaturaDocente(dto.assinaturaDocente());
+        if (dto.dataAssinatura() != null) pea.setDataAssinatura(dto.dataAssinatura());
     }
 
     public PeaResponseDTO toResponse(Pea pea) {
@@ -111,9 +75,10 @@ public class PeaMapper {
                 pea.getAvaliacao(),
                 pea.getBibliografiaBasica(),
                 pea.getBibliografiaComplementar(),
+                pea.getAssinaturaDocente(),
+                pea.getDataAssinatura(),
                 pea.getCriadoEm(),
                 pea.getAtualizadoEm()
         );
     }
 }
-

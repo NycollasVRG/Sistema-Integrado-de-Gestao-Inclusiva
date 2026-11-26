@@ -14,7 +14,10 @@ import {
   BookOpen,
   PlusCircle,
   ExternalLink,
+  Printer,
+  Trash2,
 } from 'lucide-react';
+import { imprimirAnexoIIIPei } from '../utils/impressaoAnexosClai';
 import { ConfirmModal } from './ConfirmModal';
 
 interface FormularioPeiProps {
@@ -72,6 +75,11 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
   const [habilidades, setHabilidades] = useState<string>('');
   const [dificuldadesApresentadas, setDificuldadesApresentadas] = useState<string>('');
   const [propostas, setPropostas] = useState<string>('');
+  const [assinaturaClai, setAssinaturaClai] = useState<string>('');
+  const [assinaturaSetorPedagogico, setAssinaturaSetorPedagogico] = useState<string>('');
+  const [assinaturaCoordenadorCurso, setAssinaturaCoordenadorCurso] = useState<string>('');
+  const [assinaturaEstudanteResponsavel, setAssinaturaEstudanteResponsavel] = useState<string>('');
+  const [assinaturasDocentes, setAssinaturasDocentes] = useState<string[]>(['']);
 
   const [erros, setErros] = useState<Record<string, string>>({});
   const [tentouSalvar, setTentouSalvar] = useState<boolean>(false);
@@ -84,11 +92,28 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
     setHabilidades(peiExistente?.habilidadesInteresses || '');
     setDificuldadesApresentadas(peiExistente?.dificuldadesApresentadas || '');
     setPropostas(peiExistente?.propostasAdaptacoes || '');
+    setAssinaturaClai(peiExistente?.assinaturaClai || '');
+    setAssinaturaSetorPedagogico(peiExistente?.assinaturaSetorPedagogico || '');
+    setAssinaturaCoordenadorCurso(peiExistente?.assinaturaCoordenadorCurso || '');
+    setAssinaturaEstudanteResponsavel(peiExistente?.assinaturaEstudanteResponsavel || '');
+    setAssinaturasDocentes(
+      peiExistente?.assinaturasDocentes && peiExistente.assinaturasDocentes.length > 0
+        ? peiExistente.assinaturasDocentes
+        : ['']
+    );
     setErros({});
     setTentouSalvar(false);
   }, [peiExistente, aluno.id]);
 
-  const mensagensObrigatorias: Record<keyof DadosFormularioPei, string> = {
+  type CampoObrigatorioPei =
+    | 'semestreAno'
+    | 'historicoEstudante'
+    | 'necessidadesEspecificas'
+    | 'habilidadesInteresses'
+    | 'dificuldadesApresentadas'
+    | 'propostasAdaptacoes';
+
+  const mensagensObrigatorias: Record<CampoObrigatorioPei, string> = {
     semestreAno: 'O Semestre/Ano é obrigatório (ex.: 2026.1).',
     historicoEstudante: 'O Histórico (antes e na instituição) é obrigatório.',
     necessidadesEspecificas: 'O detalhamento das Necessidades Específicas é obrigatório.',
@@ -100,7 +125,7 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
 
   const validarCampos = (valores: DadosFormularioPei): Record<string, string> => {
     const novosErros: Record<string, string> = {};
-    (Object.keys(mensagensObrigatorias) as Array<keyof DadosFormularioPei>).forEach((campo) => {
+    (Object.keys(mensagensObrigatorias) as CampoObrigatorioPei[]).forEach((campo) => {
       if (!valores[campo].trim()) {
         novosErros[campo] = mensagensObrigatorias[campo];
       }
@@ -111,7 +136,7 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
     return novosErros;
   };
 
-  const atualizarCampo = (campo: keyof DadosFormularioPei, valor: string, setter: (v: string) => void) => {
+  const atualizarCampo = (campo: CampoObrigatorioPei, valor: string, setter: (v: string) => void) => {
     setter(valor);
     if (tentouSalvar) {
       setErros((prev) => {
@@ -126,16 +151,23 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
     }
   };
 
+  const montarValoresAtuais = (): DadosFormularioPei => ({
+    semestreAno: semestreAno.trim(),
+    historicoEstudante: historicoEstudante.trim(),
+    necessidadesEspecificas: necessidadesEspecificas.trim(),
+    habilidadesInteresses: habilidades.trim(),
+    dificuldadesApresentadas: dificuldadesApresentadas.trim(),
+    propostasAdaptacoes: propostas.trim(),
+    assinaturaClai: assinaturaClai.trim(),
+    assinaturaSetorPedagogico: assinaturaSetorPedagogico.trim(),
+    assinaturaCoordenadorCurso: assinaturaCoordenadorCurso.trim(),
+    assinaturaEstudanteResponsavel: assinaturaEstudanteResponsavel.trim(),
+    assinaturasDocentes: assinaturasDocentes.map((d) => d.trim()).filter((d) => d.length > 0),
+  });
+
   const handleSalvar = async () => {
     setTentouSalvar(true);
-    const valores: DadosFormularioPei = {
-      semestreAno: semestreAno.trim(),
-      historicoEstudante: historicoEstudante.trim(),
-      necessidadesEspecificas: necessidadesEspecificas.trim(),
-      habilidadesInteresses: habilidades.trim(),
-      dificuldadesApresentadas: dificuldadesApresentadas.trim(),
-      propostasAdaptacoes: propostas.trim(),
-    };
+    const valores = montarValoresAtuais();
     const novosErros = validarCampos(valores);
     setErros(novosErros);
     if (Object.keys(novosErros).length > 0) return;
@@ -206,9 +238,19 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
             </p>
           </div>
         </div>
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white self-start sm:self-auto">
-          {peiExistente ? 'PEI Registrado' : 'Novo Documento'}
-        </span>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => imprimirAnexoIIIPei(aluno, montarValoresAtuais(), peasVinculados)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/15 hover:bg-white/25 text-white border border-white/25 transition-colors cursor-pointer"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            Imprimir / PDF
+          </button>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white">
+            {peiExistente ? 'PEI Registrado' : 'Novo Documento'}
+          </span>
+        </div>
       </div>
 
       <div className="bg-[#EEF1EC] border-b border-[#DDE5DB] px-6 py-3 text-xs text-ifpb-dark flex items-start space-x-2">
@@ -546,6 +588,119 @@ export const FormularioPei: React.FC<FormularioPeiProps> = ({
               ))}
             </div>
           )}
+        </section>
+
+        {/* Assinaturas do Anexo III (PEI) */}
+        <section className="space-y-4 bg-gray-50/70 p-5 rounded-xl border border-gray-200">
+          <h3 className="text-sm font-bold text-ifpb-dark">Assinaturas do PEI (Anexo III)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label htmlFor="pei-ass-clai" className="text-xs font-bold text-ifpb-dark uppercase">
+                Assinatura da CLAI
+              </label>
+              <input
+                id="pei-ass-clai"
+                type="text"
+                maxLength={255}
+                value={assinaturaClai}
+                disabled={isLoading}
+                onChange={(e) => setAssinaturaClai(e.target.value)}
+                placeholder="Nome do representante da CLAI"
+                className={classeInput()}
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="pei-ass-pedagogico" className="text-xs font-bold text-ifpb-dark uppercase">
+                Assinatura do Setor Pedagógico (responsável)
+              </label>
+              <input
+                id="pei-ass-pedagogico"
+                type="text"
+                maxLength={255}
+                value={assinaturaSetorPedagogico}
+                disabled={isLoading}
+                onChange={(e) => setAssinaturaSetorPedagogico(e.target.value)}
+                placeholder="Nome do responsável do Setor Pedagógico"
+                className={classeInput()}
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="pei-ass-coordenador" className="text-xs font-bold text-ifpb-dark uppercase">
+                Assinatura do(a) Coordenador(a) de Curso
+              </label>
+              <input
+                id="pei-ass-coordenador"
+                type="text"
+                maxLength={255}
+                value={assinaturaCoordenadorCurso}
+                disabled={isLoading}
+                onChange={(e) => setAssinaturaCoordenadorCurso(e.target.value)}
+                placeholder="Nome do(a) Coordenador(a) de Curso"
+                className={classeInput()}
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="pei-ass-estudante" className="text-xs font-bold text-ifpb-dark uppercase">
+                Assinatura do Estudante ou Responsável
+              </label>
+              <input
+                id="pei-ass-estudante"
+                type="text"
+                maxLength={255}
+                value={assinaturaEstudanteResponsavel}
+                disabled={isLoading}
+                onChange={(e) => setAssinaturaEstudanteResponsavel(e.target.value)}
+                placeholder="Nome do estudante ou responsável legal"
+                className={classeInput()}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-ifpb-dark uppercase">Assinatura dos Docentes</span>
+              <button
+                type="button"
+                onClick={() => setAssinaturasDocentes((prev) => [...prev, ''])}
+                disabled={isLoading}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-ifpb-teal bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                Adicionar Docente
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {assinaturasDocentes.map((doc, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    maxLength={255}
+                    value={doc}
+                    disabled={isLoading}
+                    onChange={(e) =>
+                      setAssinaturasDocentes((prev) =>
+                        prev.map((item, i) => (i === idx ? e.target.value : item))
+                      )
+                    }
+                    placeholder={`Docente ${idx + 1}`}
+                    className={classeInput()}
+                  />
+                  {assinaturasDocentes.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAssinaturasDocentes((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
+                      aria-label="Remover docente"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
 
         <div className="pt-6 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-4">

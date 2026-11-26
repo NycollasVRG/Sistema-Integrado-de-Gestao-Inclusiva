@@ -26,7 +26,7 @@ function formatarTamanho(bytes: number): string {
  * Use `key={alunoId}` no pai para reiniciar o estado ao trocar de aluno.
  */
 export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
-  const { podeAcessarDadosSensiveis, podeBaixarLaudo, isCoordenador } = useAuth();
+  const { podeAcessarDadosSensiveis, isCoordenador } = useAuth();
   const [prontuario, setProntuario] = useState<ProntuarioConsolidadoDTO | null>(null);
   const [anexos, setAnexos] = useState<AnexoEstudanteDTO[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -79,7 +79,7 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
       return false;
     }
     if (anexo.classificacao === 'DIAGNOSTICO_NEUROPSICOLOGICO') {
-      return !podeBaixarLaudo;
+      return !isCoordenador;
     }
     return false;
   };

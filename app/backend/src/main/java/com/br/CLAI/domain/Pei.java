@@ -28,6 +28,21 @@ public class Pei extends BaseEntity {
     @Column(name = "propostas_adaptacoes", columnDefinition = "TEXT")
     private String propostasAdaptacoes;
 
+    @Column(name = "assinatura_clai", length = 255)
+    private String assinaturaClai;
+
+    @Column(name = "assinatura_setor_pedagogico", length = 255)
+    private String assinaturaSetorPedagogico;
+
+    @Column(name = "assinatura_coordenador_curso", length = 255)
+    private String assinaturaCoordenadorCurso;
+
+    @Column(name = "assinatura_estudante_responsavel", length = 255)
+    private String assinaturaEstudanteResponsavel;
+
+    @Column(name = "assinaturas_docentes", columnDefinition = "TEXT")
+    private String assinaturasDocentes;
+
     public Pei() {
     }
 
@@ -108,5 +123,45 @@ public class Pei extends BaseEntity {
 
     public void setPropostasAdaptacoes(String propostasAdaptacoes) {
         this.propostasAdaptacoes = propostasAdaptacoes;
+    }
+
+    public String getAssinaturaClai() {
+        return assinaturaClai;
+    }
+
+    public void setAssinaturaClai(String assinaturaClai) {
+        this.assinaturaClai = assinaturaClai;
+    }
+
+    public String getAssinaturaSetorPedagogico() {
+        return assinaturaSetorPedagogico;
+    }
+
+    public void setAssinaturaSetorPedagogico(String assinaturaSetorPedagogico) {
+        this.assinaturaSetorPedagogico = assinaturaSetorPedagogico;
+    }
+
+    public String getAssinaturaCoordenadorCurso() {
+        return assinaturaCoordenadorCurso;
+    }
+
+    public void setAssinaturaCoordenadorCurso(String assinaturaCoordenadorCurso) {
+        this.assinaturaCoordenadorCurso = assinaturaCoordenadorCurso;
+    }
+
+    public String getAssinaturaEstudanteResponsavel() {
+        return assinaturaEstudanteResponsavel;
+    }
+
+    public void setAssinaturaEstudanteResponsavel(String assinaturaEstudanteResponsavel) {
+        this.assinaturaEstudanteResponsavel = assinaturaEstudanteResponsavel;
+    }
+
+    public String getAssinaturasDocentes() {
+        return assinaturasDocentes;
+    }
+
+    public void setAssinaturasDocentes(String assinaturasDocentes) {
+        this.assinaturasDocentes = assinaturasDocentes;
     }
 }

@@ -1,22 +1,17 @@
 package com.br.CLAI.domain;
 
 import com.br.CLAI.domain.enums.TipoRelatorio;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * Relatório de Acompanhamento Individualizado (RAI) bimestral. Também comporta o
+ * Relatório de Acompanhamento Individualizado (RAI - Anexo V). Também comporta o
  * RAE (Relatório de Atendimento Educacional) através de {@link #tipoRelatorio}.
- *
- * <p>O vínculo com {@code sigi.aluno}, {@code sigi.acompanhamento} e {@code sigi.pei}
- * é obrigatório/ facultativo conforme a DDL e permite a agregação do evento na
- * Linha do Tempo do estudante.</p>
  */
 @Entity
 @Table(name = "rai", schema = "sigi")
@@ -45,6 +40,70 @@ public class Rai extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String descricao;
 
+    // Cabeçalho Anexo V
+    @Column(name = "periodo_letivo", length = 30)
+    private String periodoLetivo;
+
+    @Column(name = "componente_curricular", length = 200)
+    private String componenteCurricular;
+
+    @Column(name = "docente", length = 255)
+    private String docente;
+
+    // Aspectos Observados — Relacionamento
+    @Column(name = "relacionamento_opcoes", columnDefinition = "TEXT")
+    private String relacionamentoOpcoes;
+
+    @Column(name = "relacionamento_outros", length = 255)
+    private String relacionamentoOutros;
+
+    @Column(name = "relacionamento_comentario", columnDefinition = "TEXT")
+    private String relacionamentoComentario;
+
+    // Aspectos Observados — Habilidades Cognitivas
+    @Column(name = "habilidades_cognitivas_opcoes", columnDefinition = "TEXT")
+    private String habilidadesCognitivasOpcoes;
+
+    @Column(name = "habilidades_cognitivas_outros", length = 255)
+    private String habilidadesCognitivasOutros;
+
+    @Column(name = "habilidades_cognitivas_comentario", columnDefinition = "TEXT")
+    private String habilidadesCognitivasComentario;
+
+    // Aspectos Observados — Habilidades Socioemocionais
+    @Column(name = "habilidades_socioemocionais_opcoes", columnDefinition = "TEXT")
+    private String habilidadesSocioemocionaisOpcoes;
+
+    @Column(name = "habilidades_socioemocionais_outros", length = 255)
+    private String habilidadesSocioemocionaisOutros;
+
+    @Column(name = "habilidades_socioemocionais_comentario", columnDefinition = "TEXT")
+    private String habilidadesSocioemocionaisComentario;
+
+    // Relatos e Parecer do Anexo V
+    @Column(name = "avancos_gerais", columnDefinition = "TEXT")
+    private String avancosGerais;
+
+    @Column(name = "dificuldades_aprendizagem", columnDefinition = "TEXT")
+    private String dificuldadesAprendizagem;
+
+    @Column(name = "fatores_externos", columnDefinition = "TEXT")
+    private String fatoresExternos;
+
+    @Column(name = "parecer", columnDefinition = "TEXT")
+    private String parecer;
+
+    // Rodapé — Data e Assinatura do(a) Docente
+    @Column(name = "data_relatorio")
+    private LocalDate dataRelatorio;
+
+    @Column(name = "assinatura_docente", length = 255)
+    private String assinaturaDocente;
+
+    @OneToMany(mappedBy = "rai", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OrderBy("ordem ASC")
+    private List<RaiHabilidade> habilidadesDesenvolvidas = new ArrayList<>();
+
     public Rai() {
     }
 
@@ -59,9 +118,6 @@ public class Rai extends BaseEntity {
         this.descricao = descricao;
     }
 
-    /**
-     * Construtor de compatibilidade com os primeiros chamadores do módulo de RAI.
-     */
     public Rai(UUID id, UUID alunoId, UUID peiId, UUID acompanhamentoId, Integer bimestre,
                Boolean indicativoRegressao, String descricao, LocalDateTime criadoEm) {
         this(alunoId, peiId, acompanhamentoId, TipoRelatorio.RAI, bimestre, indicativoRegressao, descricao);
@@ -69,59 +125,97 @@ public class Rai extends BaseEntity {
         setCriadoEm(criadoEm);
     }
 
-    public UUID getAlunoId() {
-        return alunoId;
+    public void substituirHabilidades(List<RaiHabilidade> novas) {
+        this.habilidadesDesenvolvidas.clear();
+        if (novas != null) {
+            for (RaiHabilidade h : novas) {
+                h.setRai(this);
+                this.habilidadesDesenvolvidas.add(h);
+            }
+        }
     }
 
-    public void setAlunoId(UUID alunoId) {
-        this.alunoId = alunoId;
-    }
+    public UUID getAlunoId() { return alunoId; }
+    public void setAlunoId(UUID alunoId) { this.alunoId = alunoId; }
 
-    public UUID getPeiId() {
-        return peiId;
-    }
+    public UUID getPeiId() { return peiId; }
+    public void setPeiId(UUID peiId) { this.peiId = peiId; }
 
-    public void setPeiId(UUID peiId) {
-        this.peiId = peiId;
-    }
+    public UUID getAcompanhamentoId() { return acompanhamentoId; }
+    public void setAcompanhamentoId(UUID acompanhamentoId) { this.acompanhamentoId = acompanhamentoId; }
 
-    public UUID getAcompanhamentoId() {
-        return acompanhamentoId;
-    }
-
-    public void setAcompanhamentoId(UUID acompanhamentoId) {
-        this.acompanhamentoId = acompanhamentoId;
-    }
-
-    public TipoRelatorio getTipoRelatorio() {
-        return tipoRelatorio;
-    }
-
+    public TipoRelatorio getTipoRelatorio() { return tipoRelatorio; }
     public void setTipoRelatorio(TipoRelatorio tipoRelatorio) {
         this.tipoRelatorio = tipoRelatorio != null ? tipoRelatorio : TipoRelatorio.RAI;
     }
 
-    public Integer getBimestre() {
-        return bimestre;
-    }
+    public Integer getBimestre() { return bimestre; }
+    public void setBimestre(Integer bimestre) { this.bimestre = bimestre; }
 
-    public void setBimestre(Integer bimestre) {
-        this.bimestre = bimestre;
-    }
-
-    public Boolean getIndicativoRegressao() {
-        return indicativoRegressao;
-    }
-
+    public Boolean getIndicativoRegressao() { return indicativoRegressao; }
     public void setIndicativoRegressao(Boolean indicativoRegressao) {
         this.indicativoRegressao = indicativoRegressao != null ? indicativoRegressao : false;
     }
 
-    public String getDescricao() {
-        return descricao;
-    }
+    public String getDescricao() { return descricao; }
+    public void setDescricao(String descricao) { this.descricao = descricao; }
 
-    public void setDescricao(String descricao) {
-        this.descricao = descricao;
+    public String getPeriodoLetivo() { return periodoLetivo; }
+    public void setPeriodoLetivo(String periodoLetivo) { this.periodoLetivo = periodoLetivo; }
+
+    public String getComponenteCurricular() { return componenteCurricular; }
+    public void setComponenteCurricular(String componenteCurricular) { this.componenteCurricular = componenteCurricular; }
+
+    public String getDocente() { return docente; }
+    public void setDocente(String docente) { this.docente = docente; }
+
+    public String getRelacionamentoOpcoes() { return relacionamentoOpcoes; }
+    public void setRelacionamentoOpcoes(String relacionamentoOpcoes) { this.relacionamentoOpcoes = relacionamentoOpcoes; }
+
+    public String getRelacionamentoOutros() { return relacionamentoOutros; }
+    public void setRelacionamentoOutros(String relacionamentoOutros) { this.relacionamentoOutros = relacionamentoOutros; }
+
+    public String getRelacionamentoComentario() { return relacionamentoComentario; }
+    public void setRelacionamentoComentario(String relacionamentoComentario) { this.relacionamentoComentario = relacionamentoComentario; }
+
+    public String getHabilidadesCognitivasOpcoes() { return habilidadesCognitivasOpcoes; }
+    public void setHabilidadesCognitivasOpcoes(String habilidadesCognitivasOpcoes) { this.habilidadesCognitivasOpcoes = habilidadesCognitivasOpcoes; }
+
+    public String getHabilidadesCognitivasOutros() { return habilidadesCognitivasOutros; }
+    public void setHabilidadesCognitivasOutros(String habilidadesCognitivasOutros) { this.habilidadesCognitivasOutros = habilidadesCognitivasOutros; }
+
+    public String getHabilidadesCognitivasComentario() { return habilidadesCognitivasComentario; }
+    public void setHabilidadesCognitivasComentario(String habilidadesCognitivasComentario) { this.habilidadesCognitivasComentario = habilidadesCognitivasComentario; }
+
+    public String getHabilidadesSocioemocionaisOpcoes() { return habilidadesSocioemocionaisOpcoes; }
+    public void setHabilidadesSocioemocionaisOpcoes(String habilidadesSocioemocionaisOpcoes) { this.habilidadesSocioemocionaisOpcoes = habilidadesSocioemocionaisOpcoes; }
+
+    public String getHabilidadesSocioemocionaisOutros() { return habilidadesSocioemocionaisOutros; }
+    public void setHabilidadesSocioemocionaisOutros(String habilidadesSocioemocionaisOutros) { this.habilidadesSocioemocionaisOutros = habilidadesSocioemocionaisOutros; }
+
+    public String getHabilidadesSocioemocionaisComentario() { return habilidadesSocioemocionaisComentario; }
+    public void setHabilidadesSocioemocionaisComentario(String habilidadesSocioemocionaisComentario) { this.habilidadesSocioemocionaisComentario = habilidadesSocioemocionaisComentario; }
+
+    public String getAvancosGerais() { return avancosGerais; }
+    public void setAvancosGerais(String avancosGerais) { this.avancosGerais = avancosGerais; }
+
+    public String getDificuldadesAprendizagem() { return dificuldadesAprendizagem; }
+    public void setDificuldadesAprendizagem(String dificuldadesAprendizagem) { this.dificuldadesAprendizagem = dificuldadesAprendizagem; }
+
+    public String getFatoresExternos() { return fatoresExternos; }
+    public void setFatoresExternos(String fatoresExternos) { this.fatoresExternos = fatoresExternos; }
+
+    public String getParecer() { return parecer; }
+    public void setParecer(String parecer) { this.parecer = parecer; }
+
+    public LocalDate getDataRelatorio() { return dataRelatorio; }
+    public void setDataRelatorio(LocalDate dataRelatorio) { this.dataRelatorio = dataRelatorio; }
+
+    public String getAssinaturaDocente() { return assinaturaDocente; }
+    public void setAssinaturaDocente(String assinaturaDocente) { this.assinaturaDocente = assinaturaDocente; }
+
+    public List<RaiHabilidade> getHabilidadesDesenvolvidas() { return habilidadesDesenvolvidas; }
+    public void setHabilidadesDesenvolvidas(List<RaiHabilidade> habilidadesDesenvolvidas) {
+        this.habilidadesDesenvolvidas = habilidadesDesenvolvidas != null ? habilidadesDesenvolvidas : new ArrayList<>();
     }
 }

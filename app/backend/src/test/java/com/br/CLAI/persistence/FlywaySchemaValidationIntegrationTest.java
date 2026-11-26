@@ -63,6 +63,7 @@ class FlywaySchemaValidationIntegrationTest {
                 "V11__create_ata_reuniao.sql",
                 "V12__create_audit_log.sql",
                 "V13__create_alerta_pedagogico.sql",
+                "V14__alinhamento_anexos_oficiais_clai.sql",
                 "R__01_seed_us11_rbac.sql",
                 "R__02_seed_us02_estudo_caso.sql",
                 "R__03_seed_us03_planejamento_pedagogico.sql"
@@ -72,8 +73,8 @@ class FlywaySchemaValidationIntegrationTest {
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'sigi' AND table_type = 'BASE TABLE'",
                 Integer.class
         );
-        assertEquals(24, totalTabelasSigi,
-                "23 tabelas de domínio (incluindo audit_log e alerta_pedagogico) + flyway_schema_history no schema sigi.");
+        assertEquals(25, totalTabelasSigi,
+                "24 tabelas de domínio (incluindo audit_log, alerta_pedagogico e rai_habilidade) + flyway_schema_history no schema sigi.");
 
         Integer indiceEstudoAtivo = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'sigi' AND indexname = 'idx_estudo_caso_ativo'",
@@ -121,7 +122,8 @@ class FlywaySchemaValidationIntegrationTest {
                 "V10__create_indicacao.sql",
                 "V11__create_ata_reuniao.sql",
                 "V12__create_audit_log.sql",
-                "V13__create_alerta_pedagogico.sql"
+                "V13__create_alerta_pedagogico.sql",
+                "V14__alinhamento_anexos_oficiais_clai.sql"
         ), scriptsPrd);
 
         try (Connection prdConn = DriverManager.getConnection(prdUrl, postgres.getUsername(), postgres.getPassword());

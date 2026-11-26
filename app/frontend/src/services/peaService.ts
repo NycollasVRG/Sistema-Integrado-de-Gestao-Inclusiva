@@ -41,6 +41,8 @@ export class PeaService {
       avaliacao: dto.avaliacao.trim(),
       bibliografiaBasica: dto.bibliografiaBasica?.trim() || null,
       bibliografiaComplementar: dto.bibliografiaComplementar?.trim() || null,
+      assinaturaDocente: dto.assinaturaDocente?.trim() || null,
+      dataAssinatura: dto.dataAssinatura?.trim() || null,
     };
 
     const response = await apiFetch(this.baseUrl, {
@@ -75,6 +77,10 @@ export class PeaService {
       bibliografiaBasica: dto.bibliografiaBasica !== undefined ? (dto.bibliografiaBasica?.trim() || '') : undefined,
       bibliografiaComplementar:
         dto.bibliografiaComplementar !== undefined ? (dto.bibliografiaComplementar?.trim() || '') : undefined,
+      assinaturaDocente:
+        dto.assinaturaDocente !== undefined ? (dto.assinaturaDocente?.trim() || '') : undefined,
+      dataAssinatura:
+        dto.dataAssinatura !== undefined ? (dto.dataAssinatura?.trim() || null) : undefined,
     };
 
     const response = await apiFetch(`${this.baseUrl}/${encodeURIComponent(id)}`, {

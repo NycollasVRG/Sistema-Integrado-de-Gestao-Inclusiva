@@ -3,7 +3,6 @@ package com.br.CLAI.service;
 import com.br.CLAI.domain.Aluno;
 import com.br.CLAI.domain.AnexoEstudante;
 import com.br.CLAI.domain.Usuario;
-import com.br.CLAI.domain.enums.NivelRestricao;
 import com.br.CLAI.domain.enums.Role;
 import com.br.CLAI.domain.enums.TipoClassificacaoAnexo;
 import com.br.CLAI.dto.response.AnexoEstudanteResponseDTO;
@@ -192,8 +191,15 @@ public class AnexoEstudanteService {
 
         return anexoEstudanteRepository.findByAlunoIdOrderByCriadoEmDesc(estudanteId)
                 .stream()
-                .filter(anexo -> anexo.getClassificacao() != TipoClassificacaoAnexo.LAUDO_MEDICO
-                        || podeVisualizarLaudoMedico(anexo, usuario))
+                .filter(anexo -> {
+                    if (anexo.getClassificacao() == TipoClassificacaoAnexo.LAUDO_MEDICO) {
+                        return podeVisualizarLaudoMedico(anexo, usuario);
+                    }
+                    if (anexo.getClassificacao() != null && anexo.getClassificacao().isSensivel()) {
+                        return ehCoordenadorAtivo(usuario);
+                    }
+                    return true;
+                })
                 .map(anexo -> AnexoEstudanteResponseDTO.fromEntity(anexo, ehCoordenador))
                 .toList();
     }
@@ -286,14 +292,9 @@ public class AnexoEstudanteService {
     }
 
     private void validarAcessoEstritoSaude(Usuario usuario) {
-        boolean autorizado = usuario != null
-                && Boolean.TRUE.equals(usuario.getAcessoAtivo())
-                && usuario.getNivelRestricao() == NivelRestricao.SUPER_RESTRICAO
-                && Boolean.TRUE.equals(usuario.getAutorizacaoSaude());
-
-        if (!autorizado) {
+        if (!ehCoordenadorAtivo(usuario)) {
             throw new AcessoNegadoException(
-                    "Acesso negado: visualização e descriptografia de anexos médicos sensíveis restrita a profissionais com nível SUPER_RESTRICAO e autorização de saúde ativa."
+                    "Acesso negado: visualização e descriptografia de anexos de dados sensíveis restrita exclusivamente ao(à) Coordenador(a) da CLAI."
             );
         }
     }

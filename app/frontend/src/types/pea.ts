@@ -11,6 +11,8 @@ export interface DadosFormularioPea {
   avaliacao: string;
   bibliografiaBasica: string;
   bibliografiaComplementar: string;
+  assinaturaDocente?: string;
+  dataAssinatura?: string;
 }
 
 export interface PeaRequestDTO {
@@ -27,6 +29,8 @@ export interface PeaRequestDTO {
   avaliacao: string;
   bibliografiaBasica?: string | null;
   bibliografiaComplementar?: string | null;
+  assinaturaDocente?: string | null;
+  dataAssinatura?: string | null;
 }
 
 export interface PeaUpdateDTO {
@@ -42,6 +46,8 @@ export interface PeaUpdateDTO {
   avaliacao?: string;
   bibliografiaBasica?: string | null;
   bibliografiaComplementar?: string | null;
+  assinaturaDocente?: string | null;
+  dataAssinatura?: string | null;
 }
 
 export interface PeaResponseDTO {
@@ -60,8 +66,8 @@ export interface PeaResponseDTO {
   avaliacao: string | null;
   bibliografiaBasica: string | null;
   bibliografiaComplementar: string | null;
+  assinaturaDocente?: string | null;
+  dataAssinatura?: string | null;
   criadoEm?: string;
   atualizadoEm?: string;
 }
-
-
