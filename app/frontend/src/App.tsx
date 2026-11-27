@@ -9,7 +9,7 @@ import {
   useParams,
 } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, Users } from 'lucide-react';
-import { HeaderIFPB } from './components/HeaderIFPB';
+import { LayoutAutenticado } from './components/LayoutAutenticado';
 import { TelaAluno } from './components/TelaAluno';
 import { FormularioEstudoDeCaso } from './components/FormularioEstudoDeCaso';
 import { FormularioPei } from './components/FormularioPei';
@@ -72,6 +72,13 @@ import { IndicarEstudante } from './pages/IndicarEstudante';
 import { TriagemIndicacoes } from './pages/TriagemIndicacoes';
 import { DashboardAlertas } from './pages/DashboardAlertas';
 import { AdaptacaoDua } from './pages/AdaptacaoDua';
+import { InicioAdmin } from './pages/inicio/InicioAdmin';
+import { InicioCoordenador } from './pages/inicio/InicioCoordenador';
+import { InicioPsicopedagogo } from './pages/inicio/InicioPsicopedagogo';
+import { InicioProfessor } from './pages/inicio/InicioProfessor';
+import { InicioAlunoApoiador } from './pages/inicio/InicioAlunoApoiador';
+import type { Role } from './types/auth';
+import { obterRotaInicialPorRole, SUBTITULO_INICIO_POR_ROLE } from './utils/rotasPorCargo';
 
 function resumoParaAluno(estudante: EstudanteResumo): Aluno {
   return {
@@ -94,6 +101,23 @@ function ordenarPorVersaoDesc(estudos: EstudoDeCasoResponseDTO[]): EstudoDeCasoR
 const RedirecionarParaProntuario: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={id ? `/estudantes/${id}/prontuario` : '/estudantes'} replace />;
+};
+
+const RedirecionarParaInicioDoCargo: React.FC = () => {
+  const { sessao } = useAuth();
+  return <Navigate to={obterRotaInicialPorRole(sessao?.role)} replace />;
+};
+
+const RotaInicioPorCargo: React.FC<{ rolePermitida: Role; children: React.ReactNode }> = ({
+  rolePermitida,
+  children,
+}) => {
+  const { sessao } = useAuth();
+  if (!sessao) return <Navigate to="/login" replace />;
+  if (sessao.role !== rolePermitida) {
+    return <Navigate to={obterRotaInicialPorRole(sessao.role)} replace />;
+  }
+  return <>{children}</>;
 };
 
 const CardCarregamento: React.FC<{ mensagem: string }> = ({ mensagem }) => (
@@ -1110,148 +1134,174 @@ const AppConteudo: React.FC = () => {
 
   const isLogin = location.pathname === '/login';
 
-  return (
-    <div
-      className={`${
-        isLogin ? 'h-screen overflow-hidden' : 'min-h-screen'
-      } bg-[#F8FAF8] flex flex-col justify-between selection:bg-ifpb-teal selection:text-white`}
-    >
-      {/* Alertas Toasts flutuantes */}
-      <ToastAlert toasts={toasts} onFechar={removerToast} />
+  const subTitle =
+    location.pathname === '/inicio/admin'
+      ? SUBTITULO_INICIO_POR_ROLE.ADMIN
+      : location.pathname === '/inicio/coordenador'
+      ? SUBTITULO_INICIO_POR_ROLE.COORDENADOR
+      : location.pathname === '/inicio/psicopedagogo'
+      ? SUBTITULO_INICIO_POR_ROLE.CLAI_PSICOPEDAGOGO
+      : location.pathname === '/inicio/professor'
+      ? SUBTITULO_INICIO_POR_ROLE.PROFESSOR
+      : location.pathname === '/inicio/aluno-apoiador'
+      ? SUBTITULO_INICIO_POR_ROLE.ALUNO_APOIADOR
+      : location.pathname === '/admin/auditoria'
+      ? 'Trilha de Auditoria (US 06)'
+      : location.pathname.startsWith('/admin')
+      ? 'Gestão de Acessos e Usuários (RBAC)'
+      : location.pathname === '/estudantes/novo'
+      ? 'Cadastro de Estudante'
+      : location.pathname.startsWith('/estudantes/') && location.pathname.endsWith('/editar')
+      ? 'Edição de Estudante'
+      : location.pathname === '/estudantes'
+      ? 'Gestão de Estudantes'
+      : location.pathname === '/indicacoes/nova'
+      ? 'Indicar Estudante'
+      : location.pathname === '/adaptacao-dua'
+      ? 'Adaptação DUA de Provas'
+      : location.pathname === '/triagem'
+      ? 'Triagem e Indicações'
+      : location.pathname === '/dashboard'
+      ? 'Dashboard de Alertas e Indicadores'
+      : matchEstudo || location.pathname === '/estudo-de-caso'
+      ? 'Formulário de Estudo de Caso'
+      : matchPei || location.pathname === '/pei'
+        ? 'Plano Educacional Individualizado (PEI)'
+        : matchPea || location.pathname === '/pea'
+          ? 'Plano de Ensino Adaptado (PEA)'
+          : matchPlanoAcao || location.pathname === '/plano-de-acao'
+            ? 'Plano de Ação (Anexo III)'
+            : 'Ficha do Estudante';
 
-      {/* Modal global de sigilo clínico/LGPD (403) */}
-      <ModalAcessoNegadoLGPD />
-
-      {/* Cabeçalho Oficial do IFPB (totalmente ocultado na tela de login) */}
-      {!isLogin && (
-        <HeaderIFPB
-          searchTerm={termoBusca}
-          onSearch={setTermoBusca}
-          subTitle={
-            location.pathname === '/admin/auditoria'
-              ? 'Trilha de Auditoria (US 06)'
-              : location.pathname.startsWith('/admin')
-              ? 'Gestão de Acessos e Usuários (RBAC)'
-              : location.pathname === '/estudantes/novo'
-              ? 'Cadastro de Estudante'
-              : location.pathname.startsWith('/estudantes/') && location.pathname.endsWith('/editar')
-              ? 'Edição de Estudante'
-              : location.pathname === '/estudantes'
-              ? 'Gestão de Estudantes'
-              : location.pathname === '/indicacoes/nova'
-              ? 'Indicar Estudante'
-              : location.pathname === '/adaptacao-dua'
-              ? 'Adaptação DUA de Provas'
-              : location.pathname === '/triagem'
-              ? 'Triagem e Indicações'
-              : location.pathname === '/dashboard'
-              ? 'Dashboard de Alertas e Indicadores'
-              : matchEstudo || location.pathname === '/estudo-de-caso'
-              ? 'Formulário de Estudo de Caso'
-              : matchPei || location.pathname === '/pei'
-                ? 'Plano Educacional Individualizado (PEI)'
-                : matchPea || location.pathname === '/pea'
-                  ? 'Plano de Ensino Adaptado (PEA)'
-                  : matchPlanoAcao || location.pathname === '/plano-de-acao'
-                    ? 'Plano de Ação (Anexo III)'
-                    : 'Ficha do Estudante'
+  const rotasAplicacao = (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route element={<RotaProtegida />}>
+        {/* Telas iniciais dedicadas por cargo */}
+        <Route path="/inicio" element={<RedirecionarParaInicioDoCargo />} />
+        <Route
+          path="/inicio/admin"
+          element={
+            <RotaInicioPorCargo rolePermitida="ADMIN">
+              <InicioAdmin />
+            </RotaInicioPorCargo>
           }
         />
-      )}
+        <Route
+          path="/inicio/coordenador"
+          element={
+            <RotaInicioPorCargo rolePermitida="COORDENADOR">
+              <InicioCoordenador />
+            </RotaInicioPorCargo>
+          }
+        />
+        <Route
+          path="/inicio/psicopedagogo"
+          element={
+            <RotaInicioPorCargo rolePermitida="CLAI_PSICOPEDAGOGO">
+              <InicioPsicopedagogo onAbrirProntuario={abrirProntuarioDaListagem} />
+            </RotaInicioPorCargo>
+          }
+        />
+        <Route
+          path="/inicio/professor"
+          element={
+            <RotaInicioPorCargo rolePermitida="PROFESSOR">
+              <InicioProfessor onAbrirProntuario={abrirProntuarioDaListagem} />
+            </RotaInicioPorCargo>
+          }
+        />
+        <Route
+          path="/inicio/aluno-apoiador"
+          element={
+            <RotaInicioPorCargo rolePermitida="ALUNO_APOIADOR">
+              <InicioAlunoApoiador onAbrirProntuario={abrirProntuarioDaListagem} />
+            </RotaInicioPorCargo>
+          }
+        />
 
-      {/* Conteúdo Principal */}
-      <main
-        className={`w-full flex-1 ${
-          isLogin
-            ? 'flex items-center justify-center p-4 overflow-y-auto'
-            : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
-        }`}
-      >
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route element={<RotaProtegida />}>
-            <Route
-              path="/admin/usuarios"
-              element={<PainelAdminUsuarios onNotificar={adicionarToast} />}
+        <Route
+          path="/admin/usuarios"
+          element={<PainelAdminUsuarios onNotificar={adicionarToast} />}
+        />
+        <Route path="/admin/auditoria" element={<PainelAdminAuditoria />} />
+        <Route path="/admin" element={<Navigate to="/admin/usuarios" replace />} />
+        <Route
+          path="/estudantes"
+          element={<AreaGestaoEstudantes onAbrirProntuario={abrirProntuarioDaListagem} />}
+        />
+        <Route
+          path="/estudantes/novo"
+          element={
+            <FormularioEstudante
+              onNotificar={adicionarToast}
+              onEstudanteSalvo={handleEstudanteSalvo}
             />
-            <Route path="/admin/auditoria" element={<PainelAdminAuditoria />} />
-            <Route path="/admin" element={<Navigate to="/admin/usuarios" replace />} />
-            <Route
-              path="/estudantes"
-              element={<AreaGestaoEstudantes onAbrirProntuario={abrirProntuarioDaListagem} />}
+          }
+        />
+        <Route
+          path="/estudantes/:id/editar"
+          element={
+            <FormularioEstudante
+              onNotificar={adicionarToast}
+              onEstudanteSalvo={handleEstudanteSalvo}
             />
-            <Route
-              path="/estudantes/novo"
-              element={
-                <FormularioEstudante
-                  onNotificar={adicionarToast}
-                  onEstudanteSalvo={handleEstudanteSalvo}
-                />
-              }
-            />
-            <Route
-              path="/estudantes/:id/editar"
-              element={
-                <FormularioEstudante
-                  onNotificar={adicionarToast}
-                  onEstudanteSalvo={handleEstudanteSalvo}
-                />
-              }
-            />
-            <Route path="/estudantes/:id" element={<RedirecionarParaProntuario />} />
+          }
+        />
+        <Route path="/estudantes/:id" element={<RedirecionarParaProntuario />} />
 
-            {/* US 10: indicação de estudantes e painel de triagem da CLAI */}
-            <Route path="/indicacoes/nova" element={<IndicarEstudante onNotificar={adicionarToast} />} />
-            <Route path="/triagem" element={<TriagemIndicacoes onNotificar={adicionarToast} />} />
-            <Route path="/indicacoes" element={<Navigate to="/triagem" replace />} />
+        {/* US 10: indicação de estudantes e painel de triagem da CLAI */}
+        <Route path="/indicacoes/nova" element={<IndicarEstudante onNotificar={adicionarToast} />} />
+        <Route path="/triagem" element={<TriagemIndicacoes onNotificar={adicionarToast} />} />
+        <Route path="/indicacoes" element={<Navigate to="/triagem" replace />} />
 
-            {/* US 07: envio de prova, preview editavel e download da adaptacao DUA */}
-            <Route path="/adaptacao-dua" element={<AdaptacaoDua onNotificar={adicionarToast} />} />
+        {/* US 07: envio de prova, preview editavel e download da adaptacao DUA */}
+        <Route path="/adaptacao-dua" element={<AdaptacaoDua onNotificar={adicionarToast} />} />
 
-            {/* US 05: dashboard de métricas, alertas inteligentes e histórico de tratativas */}
-            <Route path="/dashboard" element={<DashboardAlertas onNotificar={adicionarToast} />} />
+        {/* US 05: dashboard de métricas, alertas inteligentes e histórico de tratativas */}
+        <Route path="/dashboard" element={<DashboardAlertas onNotificar={adicionarToast} />} />
 
-            <Route path="/" element={<Navigate to="/estudantes" replace />} />
-            <Route
-              path="/estudo-de-caso"
-              element={
-                <Navigate
-                  to={alunoSelecionado ? `/estudantes/${alunoSelecionado.id}/estudo-de-caso` : '/estudantes'}
-                  replace
-                />
-              }
+        <Route path="/" element={<RedirecionarParaInicioDoCargo />} />
+        <Route
+          path="/estudo-de-caso"
+          element={
+            <Navigate
+              to={alunoSelecionado ? `/estudantes/${alunoSelecionado.id}/estudo-de-caso` : '/estudantes'}
+              replace
             />
-            <Route
-              path="/pei"
-              element={
-                <Navigate
-                  to={alunoSelecionado ? `/estudantes/${alunoSelecionado.id}/pei` : '/estudantes'}
-                  replace
-                />
-              }
+          }
+        />
+        <Route
+          path="/pei"
+          element={
+            <Navigate
+              to={alunoSelecionado ? `/estudantes/${alunoSelecionado.id}/pei` : '/estudantes'}
+              replace
             />
-            <Route
-              path="/pea"
-              element={
-                <Navigate
-                  to={alunoSelecionado ? `/estudantes/${alunoSelecionado.id}/pea` : '/estudantes'}
-                  replace
-                />
-              }
+          }
+        />
+        <Route
+          path="/pea"
+          element={
+            <Navigate
+              to={alunoSelecionado ? `/estudantes/${alunoSelecionado.id}/pea` : '/estudantes'}
+              replace
             />
-            <Route
-              path="/plano-de-acao"
-              element={
-                <Navigate
-                  to={
-                    alunoSelecionado
-                      ? `/estudantes/${alunoSelecionado.id}/plano-de-acao`
-                      : '/estudantes'
-                  }
-                  replace
-                />
+          }
+        />
+        <Route
+          path="/plano-de-acao"
+          element={
+            <Navigate
+              to={
+                alunoSelecionado
+                  ? `/estudantes/${alunoSelecionado.id}/plano-de-acao`
+                  : '/estudantes'
               }
+              replace
             />
+          }
+        />
 
             <Route
               path="/estudantes/:id/prontuario"
@@ -1533,10 +1583,48 @@ const AppConteudo: React.FC = () => {
                 )
               }
             />
-            <Route path="*" element={<Navigate to="/estudantes" replace />} />
+            <Route path="*" element={<RedirecionarParaInicioDoCargo />} />
           </Route>
         </Routes>
-      </main>
+  );
+
+  return (
+    <>
+      {/* Alertas Toasts flutuantes */}
+      <ToastAlert toasts={toasts} onFechar={removerToast} />
+
+      {/* Modal global de sigilo clínico/LGPD (403) */}
+      <ModalAcessoNegadoLGPD />
+
+      {isLogin ? (
+        <div className="h-screen overflow-hidden bg-[#F8FAF8] flex flex-col justify-between selection:bg-ifpb-teal selection:text-white">
+          <main className="w-full flex-1 flex items-center justify-center p-4 overflow-y-auto">
+            {rotasAplicacao}
+          </main>
+
+          <footer className="w-full bg-[#1A2E26] text-gray-300 text-xs border-t border-gray-800 py-3 sm:py-4 mt-0">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-ifpb-green"></div>
+                <p className="font-medium text-white">
+                  Instituto Federal de Educação, Ciência e Tecnologia da Paraíba &bull; Campus Cajazeiras
+                </p>
+              </div>
+              <p className="text-gray-400">
+                CLAI - Coordenação Local de Acessibilidade e Inclusão &bull; Sistema SIGI
+              </p>
+            </div>
+          </footer>
+        </div>
+      ) : (
+        <LayoutAutenticado
+          subTitle={subTitle}
+          searchTerm={termoBusca}
+          onSearch={setTermoBusca}
+        >
+          {rotasAplicacao}
+        </LayoutAutenticado>
+      )}
 
       {/* Modais de Ações Rápidas do Prontuário com Aluno Pré-carregado (Ref. TA9.3) */}
       <ModalNovoAtendimento
@@ -1698,26 +1786,7 @@ const AppConteudo: React.FC = () => {
         }}
         onError={(titulo, detalhe) => adicionarToast('erro', titulo, detalhe)}
       />
-
-      {/* Rodapé Institucional */}
-      <footer
-        className={`w-full bg-[#1A2E26] text-gray-300 text-xs border-t border-gray-800 ${
-          isLogin ? 'py-3 sm:py-4 mt-0' : 'py-6 mt-12'
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-2.5 h-2.5 rounded-full bg-ifpb-green"></div>
-            <p className="font-medium text-white">
-              Instituto Federal de Educação, Ciência e Tecnologia da Paraíba &bull; Campus Cajazeiras
-            </p>
-          </div>
-          <p className="text-gray-400">
-            CLAI - Coordenação Local de Acessibilidade e Inclusão &bull; Sistema SIGI
-          </p>
-        </div>
-      </footer>
-    </div>
+    </>
   );
 };
 
