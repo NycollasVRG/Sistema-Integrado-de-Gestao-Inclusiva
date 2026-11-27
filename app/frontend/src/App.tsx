@@ -113,7 +113,7 @@ const RotaInicioPorCargo: React.FC<{ rolePermitida: Role; children: React.ReactN
   children,
 }) => {
   const { sessao } = useAuth();
-  if (!sessao) return <Navigate to="/login" replace />;
+  if (!sessao) return <Navigate to="/" replace />;
   if (sessao.role !== rolePermitida) {
     return <Navigate to={obterRotaInicialPorRole(sessao.role)} replace />;
   }
@@ -655,7 +655,7 @@ const AppConteudo: React.FC = () => {
           adicionarToast(
             'erro',
             'Acompanhamento não encontrado',
-            'Não foi identificado um acompanhamento para este aluno no banco de dados.'
+            'Este estudante ainda não possui um acompanhamento ativo.'
           );
           return;
         }
@@ -1132,7 +1132,7 @@ const AppConteudo: React.FC = () => {
     }
   };
 
-  const isLogin = location.pathname === '/login';
+  const isLogin = location.pathname === '/' || location.pathname === '/login';
 
   const subTitle =
     location.pathname === '/inicio/admin'
@@ -1146,9 +1146,9 @@ const AppConteudo: React.FC = () => {
       : location.pathname === '/inicio/aluno-apoiador'
       ? SUBTITULO_INICIO_POR_ROLE.ALUNO_APOIADOR
       : location.pathname === '/admin/auditoria'
-      ? 'Trilha de Auditoria (US 06)'
+      ? 'Trilha de Auditoria'
       : location.pathname.startsWith('/admin')
-      ? 'Gestão de Acessos e Usuários (RBAC)'
+      ? 'Gestão de Acessos e Usuários'
       : location.pathname === '/estudantes/novo'
       ? 'Cadastro de Estudante'
       : location.pathname.startsWith('/estudantes/') && location.pathname.endsWith('/editar')
@@ -1175,6 +1175,7 @@ const AppConteudo: React.FC = () => {
 
   const rotasAplicacao = (
     <Routes>
+      <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
       <Route element={<RotaProtegida />}>
         {/* Telas iniciais dedicadas por cargo */}
@@ -1261,7 +1262,6 @@ const AppConteudo: React.FC = () => {
         {/* US 05: dashboard de métricas, alertas inteligentes e histórico de tratativas */}
         <Route path="/dashboard" element={<DashboardAlertas onNotificar={adicionarToast} />} />
 
-        <Route path="/" element={<RedirecionarParaInicioDoCargo />} />
         <Route
           path="/estudo-de-caso"
           element={
@@ -1501,7 +1501,7 @@ const AppConteudo: React.FC = () => {
                   <CardCarregamento mensagem="Carregando Plano de Ação..." />
                 ) : !estudoConcluidoParaPlanoAcao && planosAcaoDoAluno.length === 0 ? (
                   <CardErroEstudante
-                    mensagem="O Plano de Ação só pode ser elaborado após a conclusão do Estudo de Caso (TA2.1)."
+                    mensagem="O Plano de Ação só pode ser elaborado após a conclusão do Estudo de Caso."
                     onVoltar={() => irParaProntuario(alunoSelecionado.id)}
                   />
                 ) : (

@@ -6,12 +6,30 @@ import type { SessaoUsuario } from '../types/auth';
  */
 export const CHAVE_SESSAO = 'sigi_clai_sessao';
 
+export function tokenExpiradoLocalmente(token: string): boolean {
+  try {
+    const partes = token.split('.');
+    if (partes.length !== 3) return true;
+    const base64 = partes[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(base64)) as { exp?: unknown };
+    if (typeof payload.exp !== 'number') return false;
+    return payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+
 export function lerSessao(): SessaoUsuario | null {
   try {
     const bruto = localStorage.getItem(CHAVE_SESSAO);
     if (!bruto) return null;
     const sessao = JSON.parse(bruto) as SessaoUsuario;
-    return sessao && typeof sessao.token === 'string' && sessao.token ? sessao : null;
+    if (!sessao || typeof sessao.token !== 'string' || !sessao.token) return null;
+    if (tokenExpiradoLocalmente(sessao.token)) {
+      localStorage.removeItem(CHAVE_SESSAO);
+      return null;
+    }
+    return sessao;
   } catch {
     return null;
   }
@@ -31,19 +49,19 @@ export function obterToken(): string | null {
 
 type Ouvinte<T> = (valor: T) => void;
 
-const ouvintesSessaoEncerrada = new Set<Ouvinte<string>>();
+const ouvintesSessaoEncerrada = new Set<Ouvinte<string | null>>();
 const ouvintesAcessoNegado = new Set<Ouvinte<string | undefined>>();
 
 /** Registra callback para quando a sessão for encerrada pelo servidor (401). */
-export function aoEncerrarSessao(ouvinte: Ouvinte<string>): () => void {
+export function aoEncerrarSessao(ouvinte: Ouvinte<string | null>): () => void {
   ouvintesSessaoEncerrada.add(ouvinte);
   return () => {
     ouvintesSessaoEncerrada.delete(ouvinte);
   };
 }
 
-/** TA11.4: limpa imediatamente o storage e avisa a UI para redirecionar ao login. */
-export function encerrarSessao(motivo: string): void {
+/** Limpa imediatamente o storage e avisa a UI para redirecionar ao login. */
+export function encerrarSessao(motivo: string | null = null): void {
   limparSessao();
   ouvintesSessaoEncerrada.forEach((ouvinte) => ouvinte(motivo));
 }

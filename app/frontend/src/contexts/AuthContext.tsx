@@ -9,7 +9,9 @@ import { podeGerirTriagem, podeIndicarEstudante } from '../utils/indicacao';
 interface AuthContextValue {
   sessao: SessaoUsuario | null;
   autenticado: boolean;
-  /** Motivo do encerramento forçado da sessão (ex.: acesso revogado), exibido no login. */
+  /** True enquanto o token salvo no navegador está sendo validado no servidor. */
+  verificandoSessao: boolean;
+  /** Motivo do encerramento forçado da sessão, quando aplicável. */
   avisoSessao: string | null;
   limparAviso: () => void;
   login: (email: string, senha: string) => Promise<SessaoUsuario>;
@@ -37,13 +39,15 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sessao, setSessao] = useState<SessaoUsuario | null>(() => lerSessao());
+  const [verificandoSessao, setVerificandoSessao] = useState<boolean>(() => lerSessao() !== null);
   const [avisoSessao, setAvisoSessao] = useState<string | null>(null);
 
-  // TA11.4: o apiClient encerra a sessão ao receber 401; a UI reage e volta ao login.
+  // O apiClient encerra a sessão ao receber 401; a UI reage e volta ao login.
   useEffect(
     () =>
       aoEncerrarSessao((motivo) => {
         setSessao(null);
+        setVerificandoSessao(false);
         setAvisoSessao(motivo);
       }),
     [],
@@ -58,21 +62,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('storage', aoMudarStorage);
   }, []);
 
-  // Revalida a sessão restaurada do storage (detecta acesso revogado ao reabrir o app).
+  // Valida a sessão restaurada do storage antes de liberar acesso às rotas protegidas.
   useEffect(() => {
     if (!lerSessao()) return;
+    let ativo = true;
     revalidarSessao()
       .then((atualizada) => {
+        if (!ativo) return;
         if (atualizada) setSessao(atualizada);
       })
       .catch(() => {
-        // 401 já tratado globalmente; falhas de rede mantêm a sessão atual.
+        // 401 já tratado globalmente; falhas de rede mantêm o estado atual.
+      })
+      .finally(() => {
+        if (ativo) setVerificandoSessao(false);
       });
+    return () => {
+      ativo = false;
+    };
   }, []);
 
   const login = useCallback(async (email: string, senha: string) => {
     const nova = await autenticar(email, senha);
     setSessao(nova);
+    setVerificandoSessao(false);
     setAvisoSessao(null);
     return nova;
   }, []);
@@ -84,6 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (userId) removerRascunhosDoUsuario(userId);
     limparSessao();
     setSessao(null);
+    setVerificandoSessao(false);
     setAvisoSessao(null);
   }, []);
 
@@ -93,7 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const nivel = sessao?.nivelRestricao;
     return {
       sessao,
-      autenticado: sessao !== null,
+      autenticado: sessao !== null && !verificandoSessao,
+      verificandoSessao,
       avisoSessao,
       limparAviso,
       login,
@@ -114,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessao?.role === 'ADMIN',
       podeAdaptarDua: podeAdaptarDua(sessao?.role),
     };
-  }, [sessao, avisoSessao, limparAviso, login, logout]);
+  }, [sessao, verificandoSessao, avisoSessao, limparAviso, login, logout]);
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;
 };
