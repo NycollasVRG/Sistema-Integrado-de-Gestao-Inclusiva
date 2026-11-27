@@ -261,7 +261,7 @@ export const FormularioPea: React.FC<FormularioPeaProps> = ({
       disciplina &&
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(disciplina)
     ) {
-      novosErros.disciplinaId = 'Informe um UUID válido para a disciplina.';
+      novosErros.disciplinaId = 'Informe um identificador válido para a disciplina.';
     }
 
     if (Object.keys(novosErros).length > 0) {

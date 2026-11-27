@@ -202,7 +202,7 @@ export const ModalDetalheAta: React.FC<ModalDetalheAtaProps> = ({
                 <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
                   Ata finalizada em {formatarData(ata.finalizadaEm)}. Campos originais em modo
-                  somente leitura (TA8.4); alterações devem ser registradas por Termo Aditivo.
+                  somente leitura; alterações devem ser registradas por Termo Aditivo.
                 </span>
               </div>
             )}

@@ -204,8 +204,8 @@ export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
           <Info className="w-4 h-4 text-ifpb-teal shrink-0 mt-0.5" />
           <p className="text-xs text-ifpb-dark leading-relaxed">
             {isRae
-              ? `O ${tipoRelatorio} fica registrado na Linha do Tempo do estudante. Ao marcar indicativo de regressão, o Coordenador recebe uma notificação para revisar o PEI (TA3.3).`
-              : 'O dossiê compila prontuário, atas, convocações, notificações, anexos e a trilha de auditoria em um arquivo gerado pelo servidor. Escolha o escopo antes de confirmar (TA6.2 / TA6.4).'}
+              ? `O ${tipoRelatorio} fica registrado na Linha do Tempo do estudante. Ao marcar indicativo de regressão, o Coordenador recebe uma notificação para revisar o PEI.`
+              : 'O dossiê reúne prontuário, atas, convocações, notificações, anexos e histórico de ações em um arquivo para download. Escolha o escopo antes de confirmar.'}
           </p>
         </div>
 
@@ -327,8 +327,8 @@ export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
                   </span>
                   <span className="block text-[11px] text-gray-500 mt-1">
                     {opcao === 'INTERNO'
-                      ? 'Inclui laudos médicos e todos os registros classificados como SUPER_RESTRICAO.'
-                      : 'Omite laudos médicos e registros SUPER_RESTRICAO para transferência externa (TA6.4).'}
+                      ? 'Inclui laudos médicos e registros restritos para uso interno.'
+                      : 'Omite laudos médicos e dados sensíveis para transferência externa.'}
                   </span>
                 </span>
               </label>
@@ -338,8 +338,8 @@ export const ModalConfirmacaoAcao: React.FC<ModalConfirmacaoAcaoProps> = ({
               <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                 <p className="text-[11px] text-amber-800 leading-relaxed">
-                  Atenção LGPD: o arquivo externo não conterá dados clínicos nem informação classificada
-                  como SUPER_RESTRICAO. Confira o protocolo gerado após o download.
+                  O arquivo externo não conterá laudos médicos nem dados sensíveis. Confira o
+                  protocolo gerado após o download.
                 </p>
               </div>
             )}

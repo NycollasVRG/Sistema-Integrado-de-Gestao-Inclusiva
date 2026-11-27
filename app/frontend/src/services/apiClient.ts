@@ -1,6 +1,12 @@
 import type { ProblemDetailRFC9457 } from '../types/estudoDeCaso';
 import { API_URL, USE_LOCAL_FALLBACK } from '../config/featureFlags';
 import { encerrarSessao, lerSessao, notificarAcessoNegado, obterToken } from './authSessao';
+import {
+  mensagemPadraoPorStatus,
+  sanitizarDetalhe,
+  sanitizarProblema,
+  sanitizarTitulo,
+} from '../utils/mensagensErro';
 
 /**
  * Cliente HTTP único para os serviços (Estudo de Caso, PEI, PEA, Timeline).
@@ -14,31 +20,16 @@ export const STATUS_DESCONHECIDO = -1;
 const STATUS_INDISPONIVEL = 503;
 
 export function problemaRede(): ApiProblem {
+  const padrao = mensagemPadraoPorStatus(STATUS_REDE);
   return {
-    title: 'Servidor indisponível',
+    title: padrao.title,
     status: STATUS_REDE,
-    detail:
-      'Não foi possível se comunicar com o servidor. Verifique sua conexão e tente novamente.',
+    detail: padrao.detail,
   };
 }
 
-function problemaPadrao(status: number): Pick<ApiProblem, 'title' | 'detail'> {
-  switch (status) {
-    case 400:
-      return { title: 'Requisição inválida', detail: 'Os dados enviados são inválidos.' };
-    case 401:
-      return { title: 'Sessão expirada', detail: 'Faça login novamente para continuar.' };
-    case 403:
-      return { title: 'Acesso negado', detail: 'Você não possui permissão para executar esta ação.' };
-    case 404:
-      return { title: 'Recurso não encontrado', detail: 'O registro solicitado não foi encontrado.' };
-    case STATUS_INDISPONIVEL:
-      return { title: 'Servidor indisponível', detail: 'O servidor não está respondendo. Tente novamente em instantes.' };
-    default:
-      return status >= 500
-        ? { title: 'Erro no servidor', detail: 'Ocorreu um erro interno. Tente novamente em instantes.' }
-        : { title: 'Erro na requisição', detail: 'Não foi possível concluir a operação.' };
-  }
+function problemaPadrao(status: number, ehLogin = false): Pick<ApiProblem, 'title' | 'detail'> {
+  return mensagemPadraoPorStatus(status, ehLogin);
 }
 
 export function isProblem(e: unknown): e is ApiProblem {
@@ -53,10 +44,20 @@ export function isAbortError(e: unknown): boolean {
   return (e as { name?: unknown }).name === 'AbortError';
 }
 
-/** Converte qualquer valor lançado em um ProblemDetail exibível. */
-export function toProblem(e: unknown, titulo = 'Erro inesperado', detalhe = 'Ocorreu um erro inesperado.'): ApiProblem {
-  if (isProblem(e)) return e;
-  return { title: titulo, status: STATUS_DESCONHECIDO, detail: detalhe };
+/** Converte qualquer valor lançado em um ProblemDetail exibível e sanitizado. */
+export function toProblem(
+  e: unknown,
+  titulo = 'Erro inesperado',
+  detalhe = 'Algo deu errado. Tente novamente.',
+): ApiProblem {
+  if (isProblem(e)) {
+    return sanitizarProblema(e);
+  }
+  return {
+    title: sanitizarTitulo(titulo, 'Erro inesperado'),
+    status: STATUS_DESCONHECIDO,
+    detail: sanitizarDetalhe(detalhe, 'Algo deu errado. Tente novamente.'),
+  };
 }
 
 /** Backend indisponível (falha de rede ou 503 do proxy do Vite). */
@@ -82,21 +83,22 @@ async function lerProblema(res: Response, input = ''): Promise<ApiProblem> {
   } catch {
     // Corpo vazio ou não-JSON: usa a mensagem padrão do status.
   }
-  const padrao =
-    res.status === 401 && ehRotaLogin(input)
-      ? { title: 'Falha na autenticação', detail: 'E-mail ou senha incorretos.' }
-      : problemaPadrao(res.status);
-  return {
-    title: (corpo.title as string) || padrao.title,
-    status: res.status,
-    detail: (corpo.detail as string) || padrao.detail,
-    type: (corpo.type as string) || undefined,
-    instance: (corpo.instance as string) || undefined,
-    timestamp: (corpo.timestamp as string) || undefined,
-    errors: (corpo.errors as Record<string, string>) || undefined,
-    // US 08: o 409 de ata finalizada orienta a UI a abrir o formulário de termo aditivo.
-    termoAditivoUri: (corpo.termoAditivoUri as string) || undefined,
-  };
+  const ehLogin = ehRotaLogin(input);
+  const padrao = problemaPadrao(res.status, ehLogin);
+  return sanitizarProblema(
+    {
+      title: (corpo.title as string) || padrao.title,
+      status: res.status,
+      detail: (corpo.detail as string) || padrao.detail,
+      type: (corpo.type as string) || undefined,
+      instance: (corpo.instance as string) || undefined,
+      timestamp: (corpo.timestamp as string) || undefined,
+      errors: (corpo.errors as Record<string, string>) || undefined,
+      // US 08: o 409 de ata finalizada orienta a UI a abrir o formulário de termo aditivo.
+      termoAditivoUri: (corpo.termoAditivoUri as string) || undefined,
+    },
+    ehLogin,
+  );
 }
 
 /**
@@ -136,9 +138,9 @@ export function tratarStatusGlobal(
   ignorarAcessoNegado = false,
 ): void {
   if (status === 401 && !ehRotaLogin(input)) {
-    // Só encerra se ainda há sessão: evita avisos duplicados em requisições paralelas.
+    // Sessão expirada ou encerrada: desloga silenciosamente e redireciona ao login.
     if (lerSessao()) {
-      encerrarSessao(problema.detail || 'Sua sessão foi encerrada. Faça login novamente.');
+      encerrarSessao(null);
     }
   } else if (status === 403 && !ignorarAcessoNegado) {
     notificarAcessoNegado(problema.detail);
