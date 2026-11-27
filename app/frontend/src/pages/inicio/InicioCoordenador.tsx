@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Bell,
+  Briefcase,
   ClipboardList,
   ClipboardPlus,
   FileText,
@@ -313,6 +314,12 @@ export const InicioCoordenador: React.FC = () => {
             descricao="Registrar encaminhamento pedagógico espontâneo para a equipe."
             to="/indicacoes/nova"
             icone={ClipboardPlus}
+          />
+          <CardAcaoRapida
+            titulo="Gestão de Cargos"
+            descricao="Cadastrar, editar e gerenciar cargos institucionais."
+            to="/cargos"
+            icone={Briefcase}
           />
         </div>
       </section>

@@ -226,10 +226,10 @@ export const InicioAdmin: React.FC = () => {
               <p className="text-xs text-gray-500 mt-0.5">Distribuição de contas por cargo</p>
             </div>
             <Link
-              to="/admin/usuarios"
+              to="/cargos"
               className="text-xs font-semibold text-purple-700 hover:text-purple-900"
             >
-              Gerenciar
+              Gerir cargos
             </Link>
           </div>
 

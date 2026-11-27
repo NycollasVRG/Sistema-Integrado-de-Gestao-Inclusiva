@@ -31,6 +31,8 @@ interface AuthContextValue {
   podeGerirAtas: boolean;
   /** US 07: espelha o @PreAuthorize do POST /api/dua/adaptar. */
   podeAdaptarDua: boolean;
+  /** Gestão do catálogo de cargos: ADMIN e COORDENADOR podem criar/editar/excluir. */
+  podeGerirCargos: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -113,6 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessao?.role === 'COORDENADOR' ||
         sessao?.role === 'ADMIN',
       podeAdaptarDua: podeAdaptarDua(sessao?.role),
+      podeGerirCargos: sessao?.role === 'ADMIN' || sessao?.role === 'COORDENADOR',
     };
   }, [sessao, avisoSessao, limparAviso, login, logout]);
 

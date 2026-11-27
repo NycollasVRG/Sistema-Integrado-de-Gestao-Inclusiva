@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Briefcase,
   ClipboardList,
   ClipboardPlus,
   FileText,
@@ -38,12 +39,20 @@ export interface PermissoesMenu {
   podeGerirTriagem: boolean;
   podeVerDashboard: boolean;
   podeAdaptarDua: boolean;
+  podeGerirCargos: boolean;
 }
 
 /** Constrói as seções e itens do menu lateral esquerdo de acordo com o cargo/RBAC autenticado. */
 export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLateral[] {
-  const { role, isAdmin, podeIndicarEstudante, podeGerirTriagem, podeVerDashboard, podeAdaptarDua } =
-    permissoes;
+  const {
+    role,
+    isAdmin,
+    podeIndicarEstudante,
+    podeGerirTriagem,
+    podeVerDashboard,
+    podeAdaptarDua,
+    podeGerirCargos,
+  } = permissoes;
 
   const principal: ItemMenuLateral[] = [
     {
@@ -118,28 +127,46 @@ export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLat
     },
   ];
 
-  if (isAdmin) {
+  if (isAdmin || podeGerirCargos) {
+    const itensGestao: ItemMenuLateral[] = [];
+
+    if (isAdmin) {
+      itensGestao.push({
+        id: 'admin-usuarios',
+        rotulo: 'Gestão de Usuários',
+        descricao: 'Controle de acessos e perfis RBAC',
+        to: '/admin/usuarios',
+        icone: Shield,
+        destaque: 'admin',
+      });
+    }
+
+    if (podeGerirCargos) {
+      itensGestao.push({
+        id: 'gestao-cargos',
+        rotulo: 'Gestão de Cargos',
+        descricao: 'Cadastro e gestão de cargos institucionais',
+        to: '/cargos',
+        icone: Briefcase,
+        destaque: 'admin',
+      });
+    }
+
+    if (isAdmin) {
+      itensGestao.push({
+        id: 'admin-auditoria',
+        rotulo: 'Trilha de Auditoria',
+        descricao: 'Logs imutáveis somente leitura',
+        to: '/admin/auditoria',
+        icone: History,
+        destaque: 'admin',
+      });
+    }
+
     secoes.push({
       id: 'administracao',
-      titulo: 'Administração',
-      itens: [
-        {
-          id: 'admin-usuarios',
-          rotulo: 'Gestão de Usuários',
-          descricao: 'Controle de acessos e perfis RBAC',
-          to: '/admin/usuarios',
-          icone: Shield,
-          destaque: 'admin',
-        },
-        {
-          id: 'admin-auditoria',
-          rotulo: 'Trilha de Auditoria',
-          descricao: 'Logs imutáveis somente leitura',
-          to: '/admin/auditoria',
-          icone: History,
-          destaque: 'admin',
-        },
-      ],
+      titulo: isAdmin ? 'Administração' : 'Coordenação',
+      itens: itensGestao,
     });
   }
 
