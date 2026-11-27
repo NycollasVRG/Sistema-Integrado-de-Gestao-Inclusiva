@@ -1,18 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  BookOpen,
-  ClipboardPlus,
-  FileText,
-  GraduationCap,
-  Lock,
-  Users,
-} from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ClipboardPlus, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import type { EstudanteResumo } from '../../types/gestaoEstudantes';
 import { GestaoEstudantesService } from '../../services/gestaoEstudantesService';
 import { BannerBoasVindasCargo } from '../../components/inicio/BannerBoasVindasCargo';
-import { CardResumoKpi } from '../../components/inicio/CardResumoKpi';
-import { CardAcaoRapida } from '../../components/inicio/CardAcaoRapida';
 import { ListaEstudantesRapida } from '../../components/inicio/ListaEstudantesRapida';
 
 interface InicioProfessorProps {
@@ -46,7 +38,7 @@ export const InicioProfessor: React.FC<InicioProfessorProps> = ({ onAbrirProntua
       })
       .catch(() => {
         if (controlador.signal.aborted) return;
-        setErro('Não foi possível carregar a lista resumida de estudantes agora.');
+        setErro('Não foi possível carregar os estudantes no momento.');
       })
       .finally(() => {
         if (!controlador.signal.aborted) setCarregando(false);
@@ -55,84 +47,34 @@ export const InicioProfessor: React.FC<InicioProfessorProps> = ({ onAbrirProntua
     return () => controlador.abort();
   }, [revisao]);
 
-  const emTriagem = useMemo(
-    () => estudantes.filter((e) => e.status === 'EM_TRIAGEM').length,
-    [estudantes],
-  );
-
   if (!sessao) return null;
 
+  const subtituloLista =
+    totalEstudantes !== null
+      ? `${totalEstudantes} estudante(s) em acompanhamento`
+      : 'Acesse rapidamente o prontuário ou PEA do estudante';
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <BannerBoasVindasCargo
         sessao={sessao}
         icone={GraduationCap}
         carregando={carregando}
         onAtualizar={recarregar}
+        acaoExtra={
+          <Link
+            to="/indicacoes/nova"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-ifpb-teal hover:bg-ifpb-tealHover px-3.5 py-2 text-xs font-semibold text-white transition-colors"
+          >
+            <ClipboardPlus className="w-3.5 h-3.5" />
+            Indicar estudante
+          </Link>
+        }
       />
 
-      {/* Indicadores do Docente */}
-      <section aria-label="Resumo docente" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <CardResumoKpi
-          titulo="Estudantes Acompanhados"
-          valor={totalEstudantes ?? '—'}
-          descricao="Discentes ativos com orientações pedagógicas disponíveis"
-          icone={Users}
-          tom="teal"
-          carregando={carregando}
-          to="/estudantes"
-        />
-        <CardResumoKpi
-          titulo="Em Triagem (Recentes)"
-          valor={emTriagem}
-          descricao="Estudantes desta amostra aguardando análise da CLAI"
-          icone={BookOpen}
-          tom={emTriagem > 0 ? 'amber' : 'green'}
-          carregando={carregando}
-          to="/estudantes"
-        />
-        <CardResumoKpi
-          titulo="Escopo de Sigilo LGPD"
-          valor="Pedagógico"
-          descricao="Acesso funcional a PEAs e adaptações, com sigilo clínico protegido"
-          icone={Lock}
-          tom="slate"
-        />
-      </section>
-
-      {/* Ações Principais do Professor */}
-      <section aria-label="Ferramentas do professor">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3">
-          Ferramentas Pedagógicas
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <CardAcaoRapida
-            titulo="Adaptação DUA de Provas"
-            descricao="Envie sua avaliação, gere sugestões com IA baseadas nas necessidades do estudante e baixe a versão adaptada."
-            to="/adaptacao-dua"
-            icone={FileText}
-            badge="IA Assistiva"
-          />
-          <CardAcaoRapida
-            titulo="Indicar Estudante à CLAI"
-            descricao="Identificou dificuldades em sala? Encaminhe uma demanda espontânea com justificativa e disciplinas observadas."
-            to="/indicacoes/nova"
-            icone={ClipboardPlus}
-            destaque="green"
-          />
-          <CardAcaoRapida
-            titulo="Consultar Estudantes e PEAs"
-            descricao="Acesse o catálogo de estudantes para consultar orientações pedagógicas e registrar Planos de Ensino Adaptados."
-            to="/estudantes"
-            icone={Users}
-          />
-        </div>
-      </section>
-
-      {/* Lista Rápida de Estudantes */}
       <ListaEstudantesRapida
-        titulo="Acesso Rápido aos Estudantes"
-        subtitulo="Filtre rapidamente e abra o prontuário pedagógico ou PEA do discente"
+        titulo="Estudantes em Acompanhamento"
+        subtitulo={subtituloLista}
         estudantes={estudantes}
         carregando={carregando}
         erro={erro}
