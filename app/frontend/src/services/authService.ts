@@ -11,7 +11,7 @@ export async function autenticar(email: string, senha: string): Promise<SessaoUs
   });
   const dados = (await res.json()) as Partial<SessaoUsuario> | null;
   if (!dados || typeof dados.token !== 'string' || !dados.token.trim()) {
-    throw new Error('A resposta de login não contém o token JWT.');
+    throw new Error('Não foi possível entrar. Tente novamente.');
   }
   const sessao = dados as SessaoUsuario;
   salvarSessao(sessao);

@@ -5,9 +5,6 @@ import {
   ArrowRight,
   Brain,
   ClipboardList,
-  ClipboardPlus,
-  FileText,
-  LayoutDashboard,
   UserRoundPlus,
   Users,
 } from 'lucide-react';
@@ -21,7 +18,6 @@ import { DashboardAlertaService } from '../../services/dashboardAlertaService';
 import { formatarDataHora } from '../../utils/indicacao';
 import { BannerBoasVindasCargo } from '../../components/inicio/BannerBoasVindasCargo';
 import { CardResumoKpi } from '../../components/inicio/CardResumoKpi';
-import { CardAcaoRapida } from '../../components/inicio/CardAcaoRapida';
 import { ListaEstudantesRapida } from '../../components/inicio/ListaEstudantesRapida';
 
 interface InicioPsicopedagogoProps {
@@ -87,58 +83,54 @@ export const InicioPsicopedagogo: React.FC<InicioPsicopedagogoProps> = ({
   if (!sessao) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <BannerBoasVindasCargo
         sessao={sessao}
         icone={Brain}
         carregando={carregando}
         onAtualizar={recarregar}
+        acaoExtra={
+          <Link
+            to="/estudantes/novo"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-ifpb-teal hover:bg-ifpb-tealHover px-3.5 py-2 text-xs font-semibold text-white transition-colors"
+          >
+            <UserRoundPlus className="w-3.5 h-3.5" />
+            Cadastrar estudante
+          </Link>
+        }
       />
 
-      {/* Indicadores da Equipe CLAI */}
       <section aria-label="Indicadores psicopedagógicos" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <CardResumoKpi
           titulo="Fila de Triagem"
           valor={dados.indicacoesPendentes.length}
-          descricao="Indicações pendentes para abertura de Estudo de Caso"
           icone={ClipboardList}
-          tom={dados.indicacoesPendentes.length > 0 ? 'amber' : 'green'}
           carregando={carregando}
           to="/triagem"
         />
         <CardResumoKpi
           titulo="Estudantes Ativos"
           valor={dados.totalEstudantes ?? '—'}
-          descricao="Prontuários disponíveis para acompanhamento"
           icone={Users}
-          tom="teal"
           carregando={carregando}
           to="/estudantes"
         />
         <CardResumoKpi
-          titulo="Alertas Pedagógicos"
+          titulo="Alertas Ativos"
           valor={dados.alertasAtivos.length}
-          descricao="Sinalizações ativas que requerem atenção da CLAI"
           icone={AlertTriangle}
-          tom={dados.alertasAtivos.length > 0 ? 'red' : 'green'}
           carregando={carregando}
           to="/dashboard"
         />
       </section>
 
-      {/* Fila de Triagem + Lista Rápida de Prontuários */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <section className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <ClipboardList className="w-4 h-4 text-ifpb-teal" aria-hidden="true" />
-                Fila de Triagem Pendente
-              </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Demandas espontâneas encaminhadas por docentes e coordenação
-              </p>
-            </div>
+          <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-ifpb-teal" aria-hidden="true" />
+              Fila de Triagem
+            </h2>
             <Link
               to="/triagem"
               className="inline-flex items-center gap-1 text-xs font-semibold text-ifpb-teal hover:text-ifpb-tealHover shrink-0"
@@ -152,16 +144,16 @@ export const InicioPsicopedagogo: React.FC<InicioPsicopedagogoProps> = ({
             {carregando ? (
               <div className="p-5 space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-14 bg-gray-100 rounded-lg animate-pulse" />
+                  <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />
                 ))}
               </div>
             ) : dados.indicacoesPendentes.length === 0 ? (
               <div className="p-8 text-center text-sm text-gray-500">
-                Nenhuma indicação pendente na fila de triagem.
+                Nenhuma indicação pendente.
               </div>
             ) : (
               dados.indicacoesPendentes.slice(0, 5).map((ind) => (
-                <div key={ind.id} className="px-5 py-3.5 hover:bg-[#F8FAF8]">
+                <div key={ind.id} className="px-5 py-3 hover:bg-gray-50/70">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">
@@ -170,18 +162,6 @@ export const InicioPsicopedagogo: React.FC<InicioPsicopedagogoProps> = ({
                       <p className="text-xs text-gray-500 mt-0.5">
                         Matrícula {ind.matriculaAluno} &bull; {formatarDataHora(ind.criadoEm)}
                       </p>
-                      {ind.disciplinasObservadas.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {ind.disciplinasObservadas.slice(0, 3).map((disc) => (
-                            <span
-                              key={disc}
-                              className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200"
-                            >
-                              {disc}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                     <Link
                       to="/triagem"
@@ -198,52 +178,12 @@ export const InicioPsicopedagogo: React.FC<InicioPsicopedagogoProps> = ({
 
         <ListaEstudantesRapida
           titulo="Prontuários Recentes"
-          subtitulo="Abra diretamente Estudo de Caso, PEI, Plano de Ação e Atas"
+          subtitulo="Acesso direto aos prontuários ativos"
           estudantes={dados.estudantes}
           carregando={carregando}
           onAbrirProntuario={onAbrirProntuario}
         />
       </div>
-
-      {/* Atalhos Rápidos */}
-      <section aria-label="Atalhos do psicopedagogo">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3">
-          Ações Rápidas da CLAI
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <CardAcaoRapida
-            titulo="Triagem e Indicações"
-            descricao="Avaliar encaminhamentos e iniciar novos Estudos de Caso."
-            to="/triagem"
-            icone={ClipboardList}
-          />
-          <CardAcaoRapida
-            titulo="Cadastrar Estudante"
-            descricao="Registrar novo estudante com indicadores de acompanhamento."
-            to="/estudantes/novo"
-            icone={UserRoundPlus}
-            destaque="green"
-          />
-          <CardAcaoRapida
-            titulo="Dashboard de Alertas"
-            descricao="Acompanhar indicadores e registrar tratativas pedagógicas."
-            to="/dashboard"
-            icone={LayoutDashboard}
-          />
-          <CardAcaoRapida
-            titulo="Adaptação DUA"
-            descricao="Apoiar docentes na adaptação inclusiva de avaliações."
-            to="/adaptacao-dua"
-            icone={FileText}
-          />
-          <CardAcaoRapida
-            titulo="Nova Indicação"
-            descricao="Registrar nova demanda de acompanhamento para triagem."
-            to="/indicacoes/nova"
-            icone={ClipboardPlus}
-          />
-        </div>
-      </section>
     </div>
   );
 };

@@ -107,7 +107,7 @@ export const PainelAdminAuditoria: React.FC = () => {
 
   if (!isAdmin) {
     return (
-      <CardAcessoRestrito mensagem="A consulta à trilha de auditoria é restrita a perfis ROLE_ADMIN." />
+      <CardAcessoRestrito mensagem="Esta área é exclusiva para administradores." />
     );
   }
 
@@ -124,14 +124,13 @@ export const PainelAdminAuditoria: React.FC = () => {
           <div>
             <h2 className="text-xl font-bold text-ifpb-dark">Trilha de Auditoria</h2>
             <p className="text-sm text-gray-600 mt-1 max-w-2xl">
-              Consulta somente leitura dos registros imutáveis de operações realizadas no sistema
-              (US 06 / TA6.1).
+              Histórico somente leitura das ações realizadas no sistema.
             </p>
           </div>
         </div>
         <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-600 self-start">
           <Lock className="w-3.5 h-3.5 text-purple-700" />
-          Registros append-only &bull; sem edição ou exclusão
+          Somente leitura &bull; sem edição ou exclusão
         </div>
       </div>
 
@@ -174,7 +173,7 @@ export const PainelAdminAuditoria: React.FC = () => {
             type="text"
             value={usuarioId}
             onChange={(evento) => setUsuarioId(evento.target.value)}
-            placeholder="UUID (opcional)"
+            placeholder="ID do usuário (opcional)"
             className="w-full px-3 py-2 rounded-lg text-xs border border-gray-300 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-ifpb-teal/30 focus:border-ifpb-teal"
           />
         </div>

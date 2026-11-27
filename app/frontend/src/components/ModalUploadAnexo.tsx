@@ -111,7 +111,7 @@ const ConteudoModalUploadAnexo: React.FC<ConteudoModalProps> = ({
       isOpen
       onClose={onClose}
       titulo={classificacaoFixa === 'LAUDO_MEDICO' ? 'Enviar Laudo Médico' : 'Enviar Anexo do Estudante'}
-      subtitulo="Documentos médicos sensíveis são cifrados automaticamente em repouso (AES-256-GCM)"
+      subtitulo="Documentos sensíveis são armazenados com proteção e acesso restrito"
       icone={<FileUp className="w-5 h-5" />}
       maxWidthClass="max-w-lg"
       isLoading={enviando}
@@ -183,8 +183,8 @@ const ConteudoModalUploadAnexo: React.FC<ConteudoModalProps> = ({
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 flex items-start gap-2">
             <Lock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
             <span>
-              <strong>Documento sensível (LGPD / TA11.1):</strong> este arquivo será criptografado com
-              AES-256-GCM em repouso no servidor e protegido por controle estrito de acesso.
+              <strong>Documento sensível:</strong> este arquivo é armazenado de forma protegida e
+              com acesso restrito.
             </span>
           </div>
         )}

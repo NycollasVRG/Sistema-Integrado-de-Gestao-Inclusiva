@@ -16,19 +16,19 @@ export const ROTULO_NIVEL_RESTRICAO: Record<NivelRestricao, string> = {
 };
 
 export const DESCRICAO_CURTA_ROLE: Record<Role, string> = {
-  ADMIN: 'Governança de acessos RBAC, auditoria imutável e supervisão geral do SIGI-CLAI.',
-  COORDENADOR: 'Supervisão pedagógica, gestão de alertas críticos, triagens e revisões de PEI.',
-  CLAI_PSICOPEDAGOGO: 'Acompanhamento especializado, triagem de indicações, Estudos de Caso, PEIs e atas.',
-  PROFESSOR: 'Apoio pedagógico em sala, adaptação DUA de provas, PEAs e indicação de estudantes.',
-  ALUNO_APOIADOR: 'Consulta funcional de orientações pedagógicas para apoio inclusivo aos estudantes.',
+  ADMIN: 'Gestão de usuários, auditoria e acompanhamento geral do sistema.',
+  COORDENADOR: 'Acompanhamento de alertas, triagens e revisões de PEI.',
+  CLAI_PSICOPEDAGOGO: 'Triagem de indicações, prontuários e acompanhamentos da CLAI.',
+  PROFESSOR: 'Consulta de estudantes, adaptações de provas e encaminhamentos.',
+  ALUNO_APOIADOR: 'Consulta de orientações pedagógicas para apoio aos estudantes.',
 };
 
 export const SUBTITULO_INICIO_POR_ROLE: Record<Role, string> = {
-  ADMIN: 'Painel Inicial • Administrador',
-  COORDENADOR: 'Painel Inicial • Coordenador',
-  CLAI_PSICOPEDAGOGO: 'Painel Inicial • Psicopedagogo CLAI',
-  PROFESSOR: 'Painel Inicial • Professor',
-  ALUNO_APOIADOR: 'Painel Inicial • Aluno Apoiador',
+  ADMIN: 'Início • Administrador',
+  COORDENADOR: 'Início • Coordenador',
+  CLAI_PSICOPEDAGOGO: 'Início • Psicopedagogo CLAI',
+  PROFESSOR: 'Início • Professor',
+  ALUNO_APOIADOR: 'Início • Aluno Apoiador',
 };
 
 export function obterRotaInicialPorRole(role?: Role | null): string {
@@ -38,10 +38,10 @@ export function obterRotaInicialPorRole(role?: Role | null): string {
 export function obterEstiloBadgeNivel(nivel?: NivelRestricao | null): string {
   switch (nivel) {
     case 'SUPER_RESTRICAO':
-      return 'bg-purple-50 text-purple-800 border-purple-200';
+      return 'bg-ifpb-tealLight text-ifpb-teal border-ifpb-teal/30';
     case 'RESTRICAO_MODERADA':
-      return 'bg-amber-50 text-amber-800 border-amber-200';
+      return 'bg-gray-100 text-gray-700 border-gray-200';
     default:
-      return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+      return 'bg-ifpb-greenLight text-ifpb-greenHover border-ifpb-green/30';
   }
 }

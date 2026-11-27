@@ -1,12 +1,13 @@
 import React, { useState, type FormEvent } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Eye, EyeOff, LogIn, RotateCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toProblem } from '../services/apiClient';
 import { obterRotaInicialPorRole } from '../utils/rotasPorCargo';
 
 export const Login: React.FC = () => {
-  const { autenticado, sessao, login, avisoSessao, limparAviso } = useAuth();
+  const navigate = useNavigate();
+  const { autenticado, verificandoSessao, sessao, login, avisoSessao, limparAviso } = useAuth();
   const destino = obterRotaInicialPorRole(sessao?.role);
 
   const [email, setEmail] = useState('');
@@ -14,6 +15,14 @@ export const Login: React.FC = () => {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
+
+  if (verificandoSessao) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center py-12">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-ifpb-teal" />
+      </div>
+    );
+  }
 
   if (autenticado) return <Navigate to={destino} replace />;
 
@@ -27,9 +36,10 @@ export const Login: React.FC = () => {
     limparAviso();
     setCarregando(true);
     try {
-      await login(email, senha);
+      const novaSessao = await login(email, senha);
+      navigate(obterRotaInicialPorRole(novaSessao.role), { replace: true });
     } catch (falha: unknown) {
-      setErro(toProblem(falha, 'Falha na autenticação', 'Não foi possível autenticar.').detail);
+      setErro(toProblem(falha, 'Não foi possível entrar', 'Não foi possível entrar. Tente novamente.').detail);
     } finally {
       setCarregando(false);
     }

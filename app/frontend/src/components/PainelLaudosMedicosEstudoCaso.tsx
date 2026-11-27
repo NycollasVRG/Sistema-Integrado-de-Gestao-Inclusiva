@@ -239,7 +239,7 @@ export const PainelLaudosMedicosEstudoCaso: React.FC<PainelLaudosMedicosEstudoCa
                       <p className="text-xs text-gray-500">
                         Laudo Médico &bull; {formatarTamanho(laudo.tamanhoBytes)} &bull;{' '}
                         {new Date(laudo.criadoEm).toLocaleDateString('pt-BR')}
-                        {laudo.criptografado ? ' • Cifrado (AES-256-GCM)' : ''}
+                        {laudo.criptografado ? ' • Protegido' : ''}
                       </p>
                     </div>
                   </div>
