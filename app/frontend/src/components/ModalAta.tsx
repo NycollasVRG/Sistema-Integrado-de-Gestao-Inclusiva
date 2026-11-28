@@ -543,7 +543,7 @@ export const ModalAta: React.FC<ModalAtaProps> = ({
                   </button>
                 </div>
                 <p className="text-[11px] text-gray-500">
-                  O arquivo é cifrado em repouso (AES-256-GCM) e pode ser baixado no detalhe da ata.
+                  O arquivo é armazenado com proteção e pode ser baixado no detalhe da ata.
                 </p>
               </div>
 

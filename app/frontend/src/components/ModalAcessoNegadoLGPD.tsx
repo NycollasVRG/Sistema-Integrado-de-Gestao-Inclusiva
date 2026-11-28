@@ -3,7 +3,7 @@ import { Lock } from 'lucide-react';
 import { ModalBase } from './ModalBase';
 import { aoAcessoNegado } from '../services/authSessao';
 
-export const MENSAGEM_LGPD = 'Acesso Negado: Documento protegido por sigilo clínico/LGPD';
+export const MENSAGEM_LGPD = 'Você não tem permissão para acessar este conteúdo.';
 
 /**
  * Modal global de acesso negado (TA11.2). Escuta o 403 capturado pelo apiClient
@@ -29,8 +29,8 @@ export const ModalAcessoNegadoLGPD: React.FC = () => {
     <ModalBase
       isOpen={aberto}
       onClose={fechar}
-      titulo="Acesso Negado"
-      subtitulo="Restrição de sigilo clínico / LGPD"
+      titulo="Acesso Restrito"
+      subtitulo="Permissão necessária para visualizar este item"
       icone={<Lock className="w-5 h-5" />}
       maxWidthClass="max-w-md"
       footer={

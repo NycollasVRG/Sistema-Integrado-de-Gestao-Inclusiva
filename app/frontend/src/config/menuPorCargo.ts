@@ -13,15 +13,11 @@ import {
 import type { Role } from '../types/auth';
 import { obterRotaInicialPorRole } from '../utils/rotasPorCargo';
 
-export type DestaqueMenu = 'padrao' | 'admin';
-
 export interface ItemMenuLateral {
   id: string;
   rotulo: string;
-  descricao: string;
   to: string;
   icone: LucideIcon;
-  destaque?: DestaqueMenu;
   /** Quando true, apenas correspondência exata ativa o item (ex.: rota inicial). */
   correspondenciaExata?: boolean;
 }
@@ -42,7 +38,7 @@ export interface PermissoesMenu {
   podeGerirCargos: boolean;
 }
 
-/** Constrói as seções e itens do menu lateral esquerdo de acordo com o cargo/RBAC autenticado. */
+/** Constrói as seções e itens do menu lateral esquerdo de acordo com o cargo autenticado. */
 export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLateral[] {
   const {
     role,
@@ -58,7 +54,6 @@ export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLat
     {
       id: 'inicio',
       rotulo: 'Início',
-      descricao: 'Visão geral e atalhos do seu cargo',
       to: obterRotaInicialPorRole(role),
       icone: Home,
       correspondenciaExata: true,
@@ -69,7 +64,6 @@ export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLat
     principal.push({
       id: 'dashboard',
       rotulo: 'Dashboard de Alertas',
-      descricao: 'Indicadores, alertas e tratativas',
       to: '/dashboard',
       icone: LayoutDashboard,
     });
@@ -78,11 +72,7 @@ export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLat
   const acompanhamento: ItemMenuLateral[] = [
     {
       id: 'estudantes',
-      rotulo: role === 'ALUNO_APOIADOR' ? 'Estudantes Acompanhados' : 'Gestão de Estudantes',
-      descricao:
-        role === 'ALUNO_APOIADOR'
-          ? 'Consulta funcional de prontuários'
-          : 'Catálogo, busca e prontuários',
+      rotulo: role === 'ALUNO_APOIADOR' ? 'Estudantes Acompanhados' : 'Estudantes',
       to: '/estudantes',
       icone: Users,
     },
@@ -92,7 +82,6 @@ export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLat
     acompanhamento.push({
       id: 'triagem',
       rotulo: 'Triagem e Indicações',
-      descricao: 'Analisar indicações e iniciar estudos',
       to: '/triagem',
       icone: ClipboardList,
     });
@@ -102,7 +91,6 @@ export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLat
     acompanhamento.push({
       id: 'indicar-estudante',
       rotulo: 'Indicar Estudante',
-      descricao: 'Encaminhar demanda espontânea à CLAI',
       to: '/indicacoes/nova',
       icone: ClipboardPlus,
     });
@@ -112,7 +100,6 @@ export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLat
     acompanhamento.push({
       id: 'adaptacao-dua',
       rotulo: 'Adaptação DUA',
-      descricao: 'Adaptar provas com apoio de IA',
       to: '/adaptacao-dua',
       icone: FileText,
     });
@@ -134,10 +121,8 @@ export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLat
       itensGestao.push({
         id: 'admin-usuarios',
         rotulo: 'Gestão de Usuários',
-        descricao: 'Controle de acessos e perfis RBAC',
         to: '/admin/usuarios',
         icone: Shield,
-        destaque: 'admin',
       });
     }
 
@@ -145,21 +130,17 @@ export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLat
       itensGestao.push({
         id: 'gestao-cargos',
         rotulo: 'Gestão de Cargos',
-        descricao: 'Cadastro e gestão de cargos institucionais',
         to: '/cargos',
         icone: Briefcase,
-        destaque: 'admin',
       });
     }
 
     if (isAdmin) {
       itensGestao.push({
         id: 'admin-auditoria',
-        rotulo: 'Trilha de Auditoria',
-        descricao: 'Logs imutáveis somente leitura',
+        rotulo: 'Auditoria',
         to: '/admin/auditoria',
         icone: History,
-        destaque: 'admin',
       });
     }
 

@@ -33,11 +33,11 @@ function normalizarTags(valor: unknown): TagDificuldadeDTO[] {
 
 function normalizarEstudante(valor: unknown): EstudanteResumo {
   if (!valor || typeof valor !== 'object') {
-    throw new Error('A API retornou um estudante em formato inválido.');
+    throw new Error('Não foi possível carregar os dados do estudante.');
   }
   const registro = valor as Record<string, unknown>;
   if (typeof registro.id !== 'string') {
-    throw new Error('A resposta da API não contém o identificador do estudante.');
+    throw new Error('Não foi possível carregar os dados do estudante.');
   }
   const status = typeof registro.status === 'string' ? registro.status : 'ATIVO';
 
@@ -107,15 +107,15 @@ export const GestaoEstudantesService = {
   async listarTags(signal?: AbortSignal): Promise<TagDificuldadeDTO[]> {
     const dados = await requisitar<unknown>('/api/indicadores', { signal });
     if (!Array.isArray(dados)) {
-      throw new Error('A API de indicadores retornou um formato inesperado.');
+      throw new Error('Não foi possível carregar os indicadores.');
     }
     return dados.map((item): TagDificuldadeDTO => {
       if (!item || typeof item !== 'object') {
-        throw new Error('A API retornou uma tag em formato inválido.');
+        throw new Error('Não foi possível carregar os indicadores.');
       }
       const tag = item as Record<string, unknown>;
       if (typeof tag.id !== 'string' || typeof tag.nome !== 'string') {
-        throw new Error('Uma tag retornada pela API está sem id ou nome.');
+        throw new Error('Não foi possível carregar os indicadores.');
       }
       return {
         id: tag.id,
@@ -144,7 +144,7 @@ export const GestaoEstudantesService = {
       totalPages: number;
     }>(`/api/alunos?${parametros}`, { signal });
     if (!Array.isArray(dados.content)) {
-      throw new Error('Formato de paginação inesperado na resposta da API.');
+      throw new Error('Não foi possível carregar a lista de estudantes.');
     }
     return {
       content: dados.content.map(normalizarEstudante),

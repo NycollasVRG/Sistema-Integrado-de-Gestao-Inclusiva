@@ -107,7 +107,7 @@ export const PainelAdminUsuarios: React.FC<PainelAdminUsuariosProps> = ({ onNoti
         )
       );
 
-      const msgSucesso = `Acesso de ${usuarioParaRevogar.nome} revogado com sucesso. Todas as sessões ativas foram invalidadas (TA11.4).`;
+      const msgSucesso = `Acesso de ${usuarioParaRevogar.nome} revogado com sucesso.`;
       setFeedback({ tipo: 'sucesso', texto: msgSucesso });
       onNotificar?.('sucesso', 'Acesso Revogado com Sucesso', msgSucesso);
       setUsuarioParaRevogar(null);
@@ -126,7 +126,7 @@ export const PainelAdminUsuarios: React.FC<PainelAdminUsuariosProps> = ({ onNoti
         <ShieldAlert className="w-12 h-12 text-red-600 mx-auto" />
         <h2 className="text-xl font-bold text-red-900">Acesso Restrito ao Painel Administrativo</h2>
         <p className="text-sm text-red-700">
-          Você está conectado com o perfil <strong>{sessao?.role ?? 'Desconhecido'}</strong>. O Painel de Gestão de Acessos é exclusivo para Administradores do SIGI-CLAI (ROLE_ADMIN).
+          Esta área é exclusiva para administradores do sistema.
         </p>
       </div>
     );
@@ -139,13 +139,13 @@ export const PainelAdminUsuarios: React.FC<PainelAdminUsuariosProps> = ({ onNoti
         <div>
           <div className="flex items-center space-x-2 text-ifpb-teal font-semibold text-xs uppercase tracking-wider">
             <Shield className="w-4 h-4" />
-            <span>Módulo Administrativo &bull; US 11</span>
+            <span>Administração</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mt-1">
             Gestão de Acessos e Usuários
           </h1>
           <p className="text-sm text-gray-600 mt-0.5">
-            Visualize perfis RBAC, restrições LGPD e execute revogação instantânea de credenciais (TA11.4).
+            Consulte os usuários cadastrados, permissões de acesso e revogue sessões quando necessário.
           </p>
         </div>
 
@@ -268,7 +268,7 @@ export const PainelAdminUsuarios: React.FC<PainelAdminUsuariosProps> = ({ onNoti
         {carregando && (
           <div className="p-12 text-center text-gray-500 space-y-3">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ifpb-teal mx-auto" />
-            <p className="text-sm">Carregando usuários e permissões RBAC...</p>
+            <p className="text-sm">Carregando usuários...</p>
           </div>
         )}
 
@@ -391,12 +391,12 @@ export const PainelAdminUsuarios: React.FC<PainelAdminUsuariosProps> = ({ onNoti
                         {usuario.acessoAtivo ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            Ativo (v{usuario.tokenVersion})
+                            Ativo
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
                             <XCircle className="w-3.5 h-3.5 text-red-600" />
-                            Acesso Revogado (v{usuario.tokenVersion})
+                            Acesso Revogado
                           </span>
                         )}
                       </td>
@@ -444,7 +444,7 @@ export const PainelAdminUsuarios: React.FC<PainelAdminUsuariosProps> = ({ onNoti
       {usuarioParaRevogar && (
         <ConfirmModal
           titulo="Revogar Acesso do Usuário"
-          mensagem={`Tem certeza que deseja revogar imediatamente o acesso de "${usuarioParaRevogar.nome}" (${usuarioParaRevogar.email})? Esta ação definirá o vínculo como inativo, incrementará a versão do token (tokenVersion) e invalidará sumariamente qualquer sessão ativa do usuário no SIGI-CLAI (Critério TA11.4).`}
+          mensagem={`Tem certeza que deseja revogar o acesso de "${usuarioParaRevogar.nome}" (${usuarioParaRevogar.email})? O usuário será desconectado imediatamente.`}
           textoConfirmar="Sim, Revogar Imediatamente"
           textoCancelar="Cancelar"
           variante="perigo"

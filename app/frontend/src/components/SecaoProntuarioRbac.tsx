@@ -63,7 +63,7 @@ export const SecaoProntuarioRbac: React.FC<Props> = ({ alunoId }) => {
         ? ' Laudos Médicos ficam restritos à Coordenação da CLAI até liberação do seu cargo no Estudo de Caso.'
         : '';
     setMensagemSucessoUpload(
-      `"${novoAnexo.nomeOriginal}" (${ROTULO_CLASSIFICACAO[novoAnexo.classificacao] ?? novoAnexo.classificacao}) enviado com sucesso${novoAnexo.criptografado ? ' e cifrado em repouso (AES-256-GCM)' : ''}.${notaSigiloLaudo}`,
+      `"${novoAnexo.nomeOriginal}" (${ROTULO_CLASSIFICACAO[novoAnexo.classificacao] ?? novoAnexo.classificacao}) enviado com sucesso.${notaSigiloLaudo}`,
     );
     // Sincroniza listagem com o backend para manter ordenação, RBAC e metadados atualizados.
     void AnexoService.listarPorAluno(alunoId)

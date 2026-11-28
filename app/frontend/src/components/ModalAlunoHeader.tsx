@@ -27,7 +27,7 @@ export const ModalAlunoHeader: React.FC<ModalAlunoHeaderProps> = ({ aluno }) => 
 
         <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-white text-gray-600 border border-gray-200">
           <Lock className="w-3 h-3 mr-1 text-ifpb-teal" />
-          Somente Leitura &bull; TA9.3
+          Somente Leitura
         </span>
       </div>
 
