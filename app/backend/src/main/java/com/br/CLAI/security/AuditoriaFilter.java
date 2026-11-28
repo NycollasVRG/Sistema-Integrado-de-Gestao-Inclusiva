@@ -161,6 +161,9 @@ public class AuditoriaFilter extends OncePerRequestFilter {
         if (endpoint.startsWith("/api/admin/usuarios")) {
             return "USUARIO";
         }
+        if (endpoint.startsWith("/api/cargos")) {
+            return "CARGO";
+        }
         if (endpoint.startsWith("/api/dashboard/alertas")) {
             return "ALERTA_PEDAGOGICO";
         }

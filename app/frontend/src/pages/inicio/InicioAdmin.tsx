@@ -204,10 +204,10 @@ export const InicioAdmin: React.FC = () => {
               Usuários por Cargo
             </h2>
             <Link
-              to="/admin/usuarios"
+              to="/cargos"
               className="text-xs font-semibold text-ifpb-teal hover:text-ifpb-tealHover"
             >
-              Gerenciar
+              Gerir cargos
             </Link>
           </div>
 

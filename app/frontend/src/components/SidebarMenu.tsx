@@ -24,6 +24,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ abertoMobile, onFechar
     podeGerirTriagem,
     podeVerDashboard,
     podeAdaptarDua,
+    podeGerirCargos,
   } = useAuth();
   const location = useLocation();
 
@@ -43,6 +44,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ abertoMobile, onFechar
     podeGerirTriagem,
     podeVerDashboard,
     podeAdaptarDua,
+    podeGerirCargos,
   });
 
   const conteudoNavegacao = (emDrawer: boolean) => (

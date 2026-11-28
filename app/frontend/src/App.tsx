@@ -66,6 +66,7 @@ import { ModalAcessoNegadoLGPD } from './components/ModalAcessoNegadoLGPD';
 import { useAuth } from './contexts/AuthContext';
 import { PainelAdminUsuarios } from './pages/PainelAdminUsuarios';
 import { PainelAdminAuditoria } from './pages/PainelAdminAuditoria';
+import { PainelCargos } from './pages/PainelCargos';
 import { SecaoProntuarioRbac } from './components/SecaoProntuarioRbac';
 import { FormularioEstudante } from './pages/FormularioEstudante';
 import { IndicarEstudante } from './pages/IndicarEstudante';
@@ -1147,6 +1148,8 @@ const AppConteudo: React.FC = () => {
       ? SUBTITULO_INICIO_POR_ROLE.ALUNO_APOIADOR
       : location.pathname === '/admin/auditoria'
       ? 'Trilha de Auditoria'
+      : location.pathname.startsWith('/cargos')
+      ? 'Gestão de Cargos'
       : location.pathname.startsWith('/admin')
       ? 'Gestão de Acessos e Usuários'
       : location.pathname === '/estudantes/novo'
@@ -1224,6 +1227,10 @@ const AppConteudo: React.FC = () => {
         <Route
           path="/admin/usuarios"
           element={<PainelAdminUsuarios onNotificar={adicionarToast} />}
+        />
+        <Route
+          path="/cargos"
+          element={<PainelCargos onNotificar={adicionarToast} />}
         />
         <Route path="/admin/auditoria" element={<PainelAdminAuditoria />} />
         <Route path="/admin" element={<Navigate to="/admin/usuarios" replace />} />

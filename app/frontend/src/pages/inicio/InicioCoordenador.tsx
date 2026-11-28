@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Bell,
+  Briefcase,
   ClipboardList,
   LayoutDashboard,
   ShieldAlert,
@@ -102,13 +103,22 @@ export const InicioCoordenador: React.FC = () => {
         carregando={carregando}
         onAtualizar={recarregar}
         acaoExtra={
-          <Link
-            to="/estudantes/novo"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-ifpb-teal hover:bg-ifpb-tealHover px-3.5 py-2 text-xs font-semibold text-white transition-colors"
-          >
-            <UserRoundPlus className="w-3.5 h-3.5" />
-            Cadastrar estudante
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to="/cargos"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 px-3.5 py-2 text-xs font-semibold text-gray-700 transition-colors"
+            >
+              <Briefcase className="w-3.5 h-3.5 text-ifpb-teal" />
+              Gerir cargos
+            </Link>
+            <Link
+              to="/estudantes/novo"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-ifpb-teal hover:bg-ifpb-tealHover px-3.5 py-2 text-xs font-semibold text-white transition-colors"
+            >
+              <UserRoundPlus className="w-3.5 h-3.5" />
+              Cadastrar estudante
+            </Link>
+          </div>
         }
       />
 

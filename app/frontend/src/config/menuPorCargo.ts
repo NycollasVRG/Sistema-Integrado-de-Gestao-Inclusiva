@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Briefcase,
   ClipboardList,
   ClipboardPlus,
   FileText,
@@ -34,12 +35,20 @@ export interface PermissoesMenu {
   podeGerirTriagem: boolean;
   podeVerDashboard: boolean;
   podeAdaptarDua: boolean;
+  podeGerirCargos: boolean;
 }
 
 /** Constrói as seções e itens do menu lateral esquerdo de acordo com o cargo autenticado. */
 export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLateral[] {
-  const { role, isAdmin, podeIndicarEstudante, podeGerirTriagem, podeVerDashboard, podeAdaptarDua } =
-    permissoes;
+  const {
+    role,
+    isAdmin,
+    podeIndicarEstudante,
+    podeGerirTriagem,
+    podeVerDashboard,
+    podeAdaptarDua,
+    podeGerirCargos,
+  } = permissoes;
 
   const principal: ItemMenuLateral[] = [
     {
@@ -105,24 +114,40 @@ export function obterSecoesMenuLateral(permissoes: PermissoesMenu): SecaoMenuLat
     },
   ];
 
-  if (isAdmin) {
+  if (isAdmin || podeGerirCargos) {
+    const itensGestao: ItemMenuLateral[] = [];
+
+    if (isAdmin) {
+      itensGestao.push({
+        id: 'admin-usuarios',
+        rotulo: 'Gestão de Usuários',
+        to: '/admin/usuarios',
+        icone: Shield,
+      });
+    }
+
+    if (podeGerirCargos) {
+      itensGestao.push({
+        id: 'gestao-cargos',
+        rotulo: 'Gestão de Cargos',
+        to: '/cargos',
+        icone: Briefcase,
+      });
+    }
+
+    if (isAdmin) {
+      itensGestao.push({
+        id: 'admin-auditoria',
+        rotulo: 'Auditoria',
+        to: '/admin/auditoria',
+        icone: History,
+      });
+    }
+
     secoes.push({
       id: 'administracao',
-      titulo: 'Administração',
-      itens: [
-        {
-          id: 'admin-usuarios',
-          rotulo: 'Gestão de Usuários',
-          to: '/admin/usuarios',
-          icone: Shield,
-        },
-        {
-          id: 'admin-auditoria',
-          rotulo: 'Auditoria',
-          to: '/admin/auditoria',
-          icone: History,
-        },
-      ],
+      titulo: isAdmin ? 'Administração' : 'Coordenação',
+      itens: itensGestao,
     });
   }
 
